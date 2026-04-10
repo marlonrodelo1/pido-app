@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { MapPin, Search, X, ChevronRight } from 'lucide-react'
+import { MapPin, Search, X, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentPosition } from '../lib/geolocation'
@@ -215,69 +215,80 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
 
   const destacados = establecimientos.filter(r => r.rating >= 4.5).slice(0, 5)
 
+  // Helpers para promo badge
+  const promoBadge = (promo) => {
+    if (promo.tipo === 'descuento_porcentaje') return `-${promo.valor}%`
+    if (promo.tipo === 'descuento_fijo') return `-${promo.valor}€`
+    if (promo.tipo === '2x1') return '2×1'
+    return 'GRATIS'
+  }
+  const promoEmoji = (promo) => {
+    if (promo.tipo === 'descuento_porcentaje') return '🏷️'
+    if (promo.tipo === 'descuento_fijo') return '💰'
+    if (promo.tipo === '2x1') return '🍔'
+    return '🎁'
+  }
+
+  /* ── Glass card base style ── */
+  const glass = {
+    background: 'rgba(255,255,255,0.08)',
+    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255,255,255,0.1)',
+  }
+
   return (
     <div>
-      {/* Dirección */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
-        paddingBottom: 16, borderBottom: '1px solid #1A1919',
-      }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: 'var(--c-primary-glow)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <MapPin size={16} strokeWidth={2.5} color="var(--c-primary)" />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: 'var(--c-muted)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>Enviar a</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {perfil?.direccion || 'Configura tu dirección'}
+      {/* ── Dirección ── */}
+      <div style={{ marginBottom: 16, padding: '0 0 14px', background: '#0E0E0E' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MapPin size={18} strokeWidth={2} color="#FF9066" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 500, marginBottom: 2 }}>Enviar a</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#F5F5F5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {perfil?.direccion || 'Configura tu dirección'}
+            </div>
           </div>
+          <ChevronRight size={16} strokeWidth={1.8} color="rgba(255,255,255,0.45)" style={{ flexShrink: 0 }} />
         </div>
-        <ChevronRight size={14} strokeWidth={2} color="var(--c-muted)" style={{ flexShrink: 0 }} />
       </div>
 
       {/* Aviso geolocalización */}
       {geoError && (
-        <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 12, background: 'rgba(251,191,36,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14 }}>📍</span>
           <span style={{ fontSize: 11, color: '#FBBF24', fontWeight: 600 }}>Activa tu ubicación para ver restaurantes cerca de ti</span>
         </div>
       )}
 
-      {/* Buscador */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        background: '#262626', borderRadius: 10,
-        padding: '12px 14px', marginBottom: 20,
-      }}>
-        <Search size={18} strokeWidth={1.8} color="var(--c-muted)" />
-        <input
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder={ctx.placeholder}
-          style={{
-            border: 'none', outline: 'none', fontSize: 14,
-            fontFamily: 'inherit', background: 'transparent',
-            flex: 1, color: 'var(--c-text)',
-          }}
-        />
-        {busqueda && (
-          <button
-            onClick={() => setBusqueda('')}
-            style={{
-              background: '#1A1919', border: 'none', borderRadius: 50,
-              width: 22, height: 22, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <X size={12} color="var(--c-muted)" />
-          </button>
-        )}
+      {/* ── Buscador + Filtro ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+          background: '#262626', borderRadius: 8, padding: '10px 12px',
+        }}>
+          <Search size={18} strokeWidth={1.8} color="rgba(255,255,255,0.45)" />
+          <input
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder={ctx.placeholder}
+            style={{ border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', flex: 1, color: '#F5F5F5' }}
+          />
+          {busqueda && (
+            <button onClick={() => setBusqueda('')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 50, width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={10} color="rgba(255,255,255,0.45)" />
+            </button>
+          )}
+        </div>
+        <button style={{
+          background: '#262626', border: 'none', borderRadius: 8,
+          padding: '10px 12px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <SlidersHorizontal size={18} strokeWidth={1.8} color="rgba(255,255,255,0.45)" />
+        </button>
       </div>
 
-      {/* Categorías */}
+      {/* ── Categorías (scroll horizontal) ── */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 24, paddingBottom: 4 }}>
         {categoriasGenerales.map(c => {
           const isActive = catActiva === c.nombre
@@ -286,26 +297,23 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
               key={c.nombre}
               onClick={() => setCatActiva(isActive ? null : c.nombre)}
               style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                 background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                minWidth: 60, padding: '8px 4px',
-                opacity: catActiva && !isActive ? 0.45 : 1,
-                transition: 'opacity 0.2s',
+                minWidth: 60, padding: '4px',
+                opacity: catActiva && !isActive ? 0.4 : 1, transition: 'opacity 0.2s',
               }}
             >
               <div style={{
-                width: 52, height: 52, borderRadius: 14,
-                background: isActive ? 'var(--c-primary-glow)' : '#262626',
-                border: isActive ? '1.5px solid var(--c-primary)' : '1.5px solid transparent',
+                width: 48, height: 48, borderRadius: 12,
+                background: isActive ? 'rgba(255,107,44,0.15)' : 'rgba(255,255,255,0.08)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 22, transition: 'all 0.2s',
               }}>
                 {c.emoji}
               </div>
               <span style={{
-                fontSize: 10, fontWeight: 600,
-                color: isActive ? 'var(--c-primary-light)' : 'var(--c-muted)',
-                letterSpacing: '0.01em',
+                fontSize: 11, fontWeight: 500,
+                color: isActive ? '#FF9066' : 'rgba(255,255,255,0.45)',
               }}>
                 {c.nombre}
               </span>
@@ -314,12 +322,12 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
         })}
       </div>
 
-      {/* Destacados slider */}
+      {/* ── Destacados slider (estilo Stitch) ── */}
       {!busqueda && !catActiva && destacados.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '-0.01em' }}>Destacados</h2>
-            <span style={{ fontSize: 12, color: 'var(--c-primary-light)', fontWeight: 600, cursor: 'pointer' }}>Ver todo</span>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#F5F5F5' }}>Destacados</h2>
+            <span style={{ fontSize: 12, color: '#FF9066', fontWeight: 500, cursor: 'pointer', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Ver todo</span>
           </div>
           <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
             {destacados.map(r => {
@@ -327,51 +335,39 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
               return (
                 <div
                   key={r.id}
-                  className="tablet-slider-card"
                   onClick={() => onOpenRest(r)}
                   style={{
-                    minWidth: 240, flexShrink: 0,
-                    background: '#1A1919', borderRadius: 14,
+                    minWidth: 260, flexShrink: 0,
+                    background: '#262626', borderRadius: 12,
                     overflow: 'hidden', cursor: 'pointer',
-                    border: '1px solid #262626',
                     opacity: estDest.abierto ? 1 : 0.6,
-                    transition: 'opacity 0.2s',
+                    transition: 'transform 0.3s ease',
                   }}
                 >
+                  {/* Imagen grande */}
                   <div style={{
-                    height: 110,
+                    height: 160,
                     background: r.banner_url
                       ? `url(${r.banner_url}) center/cover`
                       : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
-                    position: 'relative',
-                  }}>
-                    <span style={{
-                      position: 'absolute', top: 8, left: 8,
-                      background: estDest.abierto ? 'rgba(22,163,74,0.9)' : 'rgba(239,68,68,0.9)',
-                      color: '#fff', fontSize: 9, fontWeight: 700,
-                      padding: '3px 8px', borderRadius: 6,
+                  }} />
+                  {/* Info debajo */}
+                  <div style={{ padding: 12 }}>
+                    <div style={{
+                      display: 'inline-block', fontSize: 10, fontWeight: 600,
+                      color: estDest.abierto ? '#76ff00' : '#ff716c',
+                      background: 'rgba(0,0,0,0.4)', padding: '3px 8px',
+                      borderRadius: 4, marginBottom: 8,
                     }}>
                       {estDest.abierto ? 'Abierto' : 'Cerrado'}
-                    </span>
-                  </div>
-                  <div style={{ position: 'relative', padding: '0 12px' }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 11,
-                      border: '2.5px solid #1A1919',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                      overflow: 'hidden',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: '#262626', fontSize: 18,
-                      position: 'absolute', top: -22, left: 12,
-                    }}>
-                      {r.logo_url ? <img src={r.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ctx.emoji}
                     </div>
-                  </div>
-                  <div style={{ padding: '26px 14px 12px' }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--c-text)', marginBottom: 4 }}>{r.nombre}</div>
-                    <div style={{ display: 'flex', gap: 4, fontSize: 11, color: 'var(--c-muted)', alignItems: 'center' }}>
-                      <Stars rating={r.rating} size={10} />
-                      <span style={{ fontWeight: 600 }}>{r.rating?.toFixed(1)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                      <span style={{ color: '#FFB546', fontSize: 12 }}>★</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#F5F5F5' }}>{r.rating?.toFixed(1)}</span>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: '#F5F5F5', marginBottom: 2 }}>{r.nombre}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                      {r.tipo || 'Restaurante'} {r._distancia ? `· ${r._distancia.toFixed(0)}-${Math.round(r._distancia * 5 + 15)} min` : ''}
                     </div>
                   </div>
                 </div>
@@ -381,74 +377,45 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
         </div>
       )}
 
-      {/* Promociones slider */}
+      {/* ── Ofertas Irresistibles (cards gradiente naranja estilo Stitch) ── */}
       {!busqueda && !catActiva && promociones.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '-0.01em' }}>Ofertas y promociones</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#F5F5F5' }}>Ofertas Irresistibles</h2>
           </div>
           <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
             {promociones.map(promo => {
               const est = promo.establecimientos
               if (!est) return null
-              const estadoPromo = estaAbierto(est)
               return (
                 <div
                   key={promo.id}
-                  className="tablet-slider-card"
                   onClick={() => onOpenRest(est)}
                   style={{
-                    minWidth: 260, flexShrink: 0,
-                    background: '#1A1919', borderRadius: 14,
-                    overflow: 'hidden', cursor: 'pointer',
-                    border: '1px solid #262626',
-                    opacity: estadoPromo.abierto ? 1 : 0.6,
+                    minWidth: 240, flexShrink: 0,
+                    background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+                    borderRadius: 12, padding: 20,
+                    cursor: 'pointer', minHeight: 140,
+                    display: 'flex', flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    transition: 'transform 0.3s ease',
                   }}
                 >
-                  <div style={{
-                    height: 120,
-                    background: est.banner_url
-                      ? `url(${est.banner_url}) center/cover`
-                      : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
-                    position: 'relative',
-                  }}>
-                    <div style={{
-                      position: 'absolute', top: 8, left: 8, zIndex: 3,
-                      width: 38, height: 38, borderRadius: 9,
-                      border: '2px solid rgba(255,255,255,0.3)',
-                      overflow: 'hidden',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: '#262626', fontSize: 16,
-                    }}>
-                      {est.logo_url ? <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ctx.emoji}
+                  <div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                      {promoBadge(promo)}
                     </div>
-                    <span style={{
-                      position: 'absolute', top: 8, right: 8,
-                      background: estadoPromo.abierto ? 'rgba(22,163,74,0.9)' : 'rgba(239,68,68,0.9)',
-                      color: '#fff', fontSize: 9, fontWeight: 700,
-                      padding: '3px 8px', borderRadius: 6, zIndex: 3,
-                    }}>
-                      {estadoPromo.abierto ? 'Abierto' : 'Cerrado'}
-                    </span>
-                    <div style={{
-                      position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 2,
-                      background: 'linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 100%)',
-                      padding: '20px 12px 8px', textAlign: 'right',
-                    }}>
-                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>{promo.titulo}</div>
-                      {promo.minimo_compra > 0 && (
-                        <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: 500 }}>
-                          Compra min. {promo.minimo_compra}€
-                        </div>
-                      )}
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.4 }}>
+                      {promo.titulo || `${est.nombre}`}
                     </div>
+                    {promo.minimo_compra > 0 && (
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>
+                        Compra min. {promo.minimo_compra}€
+                      </div>
+                    )}
                   </div>
-                  <div style={{ padding: '10px 14px' }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--c-text)', marginBottom: 3 }}>{est.nombre}</div>
-                    <div style={{ display: 'flex', gap: 4, fontSize: 11, color: 'var(--c-muted)', alignItems: 'center' }}>
-                      <Stars rating={est.rating} size={10} />
-                      <span style={{ fontWeight: 600 }}>{est.rating?.toFixed(1)}</span>
-                    </div>
+                  <div style={{ fontSize: 32, alignSelf: 'flex-end', marginTop: 8 }}>
+                    {promoEmoji(promo)}
                   </div>
                 </div>
               )
@@ -457,64 +424,66 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
         </div>
       )}
 
-      {/* Banner ser socio */}
+      {/* ── Gana dinero repartiendo (estilo Stitch) ── */}
       {!busqueda && !catActiva && onSerSocio && (
-        <button
+        <div
           onClick={onSerSocio}
           style={{
-            width: '100%', background: '#1A1919',
-            borderRadius: 14, padding: '16px 18px',
-            border: '1px solid #262626', cursor: 'pointer',
-            marginBottom: 24, textAlign: 'center',
-            fontFamily: 'inherit',
+            background: '#262626', borderRadius: 12,
+            padding: 20, marginBottom: 24, cursor: 'pointer',
+            textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🛵</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text)', marginBottom: 4 }}>Gana dinero repartiendo con pidoo</div>
-          <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 14 }}>Hasta 1.500€/mes · Regístrate gratis</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#F5F5F5', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+            Gana dinero repartiendo
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 16 }}>
+            Únete al equipo Pidoo hoy mismo
+          </div>
           <div style={{
             display: 'inline-block',
-            background: 'var(--c-btn-gradient)', color: '#fff',
-            fontSize: 13, fontWeight: 700, padding: '10px 24px',
-            borderRadius: 8, letterSpacing: '0.01em',
+            background: '#FF9066', color: '#000',
+            fontSize: 13, fontWeight: 600, padding: '10px 24px',
+            borderRadius: 8,
           }}>
-            Aplicar ahora
+            Aplicar
           </div>
-        </button>
+        </div>
       )}
 
-      {/* Lista */}
+      {/* ── Cerca de ti (grid 2 columnas estilo Stitch) ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '-0.01em' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#F5F5F5' }}>
           {busqueda ? 'Resultados' : catActiva ? ctx.titulo : 'Cerca de ti'}
         </h2>
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>
-          Cargando...
-        </div>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.45)' }}>Cargando...</div>
       )}
 
       {!loading && filtrados.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.45)' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>No hay resultados</div>
         </div>
       )}
 
-      <div className="tablet-grid">
+      {/* Grid 2 columnas */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 12, marginBottom: 80,
+      }}>
         {filtrados.flatMap((r, i) => {
           const isFav = favoritos.includes(r.id)
           const estado = estaAbierto(r)
-          const horarioTxt = horarioHoyTexto(r.horario)
           const items = []
           if (r._fueraDeRadio && (i === 0 || !filtrados[i - 1]._fueraDeRadio)) {
             items.push(
               <div key="fuera-sep" style={{ gridColumn: '1 / -1', padding: '8px 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ flex: 1, height: 1, background: '#262626' }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-muted)', whiteSpace: 'nowrap' }}>Más restaurantes</span>
-                <div style={{ flex: 1, height: 1, background: '#262626' }} />
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>Más restaurantes</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
               </div>
             )
           }
@@ -523,94 +492,44 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
               key={r.id}
               onClick={() => onOpenRest(r)}
               style={{
-                background: '#1A1919', borderRadius: 14,
-                overflow: 'hidden', marginBottom: 12,
-                cursor: 'pointer', border: '1px solid #262626',
+                background: '#262626', borderRadius: 12,
+                overflow: 'hidden', cursor: 'pointer',
                 opacity: estado.abierto ? 1 : 0.6,
-                transition: 'opacity 0.2s',
+                transition: 'transform 0.3s ease',
               }}
             >
-              {/* Banner */}
+              {/* Imagen */}
               <div style={{
-                height: 130,
+                height: 120,
                 background: r.banner_url
                   ? `url(${r.banner_url}) center/cover`
                   : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
                 position: 'relative',
               }}>
-                <span style={{
-                  position: 'absolute', top: 8, left: 8,
-                  background: estado.abierto ? 'rgba(22,163,74,0.9)' : 'rgba(239,68,68,0.9)',
-                  color: '#fff', fontSize: 9, fontWeight: 700,
-                  padding: '4px 10px', borderRadius: 6,
-                }}>
-                  {estado.abierto ? 'Abierto' : 'Cerrado'}
-                </span>
-                <div style={{ position: 'absolute', bottom: 8, right: 10, display: 'flex', gap: 6 }}>
-                  {r._fueraDeRadio && (
-                    <span style={{ background: 'rgba(239,68,68,0.9)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '4px 8px', borderRadius: 6 }}>
-                      Fuera de zona
-                    </span>
-                  )}
-                  {r._distancia != null ? (
-                    <span style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 6 }}>
-                      {r._distancia.toFixed(1)} km
-                    </span>
-                  ) : r.radio_cobertura_km ? (
-                    <span style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 6 }}>
-                      {r.radio_cobertura_km} km
-                    </span>
-                  ) : null}
-                </div>
                 <button
                   onClick={e => { e.stopPropagation(); toggleFav(r.id) }}
                   style={{
-                    position: 'absolute', top: 8, right: 8,
-                    width: 30, height: 30, borderRadius: 8,
-                    background: 'rgba(0,0,0,0.55)',
-                    border: 'none', cursor: 'pointer', fontSize: 13,
+                    position: 'absolute', top: 6, right: 6,
+                    width: 26, height: 26, borderRadius: 6,
+                    background: 'rgba(0,0,0,0.5)',
+                    border: 'none', cursor: 'pointer', fontSize: 11,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   {isFav ? '❤️' : '🤍'}
                 </button>
               </div>
-              {/* Logo */}
-              <div style={{ position: 'relative', padding: '0 16px' }}>
-                <div style={{
-                  width: 50, height: 50, borderRadius: 12,
-                  border: '2.5px solid #1A1919',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.4)',
-                  overflow: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: '#262626', fontSize: 22,
-                  position: 'absolute', top: -25, left: 16,
-                }}>
-                  {r.logo_url ? <img src={r.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ctx.emoji}
+              {/* Info compacta */}
+              <div style={{ padding: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#F5F5F5', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.nombre}
                 </div>
-              </div>
-              {/* Info */}
-              <div style={{ padding: '30px 16px 12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.nombre}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                    <Stars rating={r.rating} size={11} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)' }}>{r.rating?.toFixed(1)}</span>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                  <span style={{ color: '#FFB546', fontSize: 11 }}>★</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#F5F5F5' }}>{r.rating?.toFixed(1)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--c-muted)' }}>
-                  <span>
-                    {!estado.abierto && estado.proximaApertura
-                      ? estado.proximaApertura
-                      : horarioTxt || `${r.total_resenas} reseñas`
-                    }
-                  </span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {ridersActivos[r.id] && (
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 50, background: 'rgba(255,144,102,0.15)', color: 'var(--c-primary-light)' }}>Delivery</span>
-                    )}
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 50, background: '#262626', color: 'var(--c-muted)' }}>Recogida</span>
-                  </div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+                  {r._distancia != null ? `${r._distancia.toFixed(1)} km` : ''} {r._distancia != null ? `· ${Math.round(r._distancia * 5 + 10)} min` : ''}
                 </div>
               </div>
             </div>

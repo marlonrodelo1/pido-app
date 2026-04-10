@@ -12,16 +12,14 @@ export default function BottomNav({ active, onChange }) {
   return (
     <div style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      background: 'var(--c-surface)',
-      borderTop: '1px solid var(--c-border-soft)',
-      backdropFilter: 'var(--blur-md)',
-      WebkitBackdropFilter: 'var(--blur-md)',
+      background: '#0E0E0E',
+      borderTop: '1px solid #262626',
     }}>
       <div style={{
         width: '100%', maxWidth: 420, margin: '0 auto',
         display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-        padding: '8px 4px 10px',
+        padding: '10px 0 calc(10px + env(safe-area-inset-bottom, 0px))',
+        height: 60,
       }}>
         {NAV_ITEMS.map(n => {
           const isActive = active === n.id
@@ -30,18 +28,18 @@ export default function BottomNav({ active, onChange }) {
               key={n.id}
               onClick={() => onChange(n.id)}
               style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                background: isActive ? 'var(--c-primary-glow)' : 'transparent',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                gap: 4,
+                background: 'transparent',
                 border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-                color: isActive ? 'var(--c-primary-light)' : 'var(--c-muted)',
-                fontSize: 9, fontWeight: 600, letterSpacing: '0.04em',
-                padding: '7px 8px', minWidth: 52, minHeight: 44, flex: 1,
-                borderRadius: 10, transition: 'color 0.2s ease, background 0.2s ease',
-                justifyContent: 'center',
+                color: isActive ? '#FF9066' : '#ADAAAA',
+                fontSize: 10, fontWeight: isActive ? 600 : 400,
+                padding: 0, flex: 1,
+                transition: 'color 0.2s ease',
               }}
             >
-              <n.Icon size={21} strokeWidth={isActive ? 2.5 : 1.8} />
-              {n.l}
+              <n.Icon size={22} strokeWidth={isActive ? 2.2 : 1.6} />
+              <span>{n.l}</span>
             </button>
           )
         })}
