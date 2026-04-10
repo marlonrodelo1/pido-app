@@ -22,7 +22,7 @@ export default function BottomNav({ active, onChange }) {
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderRadius: 22,
         border: '1px solid rgba(255,255,255,0.1)',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+        boxShadow: '0 25px 50px -12px rgba(255,107,44,0.06)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         {NAV_ITEMS.map(n => {
@@ -34,7 +34,7 @@ export default function BottomNav({ active, onChange }) {
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', gap: 4,
-                background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+                background: isActive ? 'rgba(255,107,44,0.15)' : 'transparent',
                 border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
                 color: isActive ? '#FF6B2C' : 'rgba(255,255,255,0.45)',
                 padding: '8px 14px',

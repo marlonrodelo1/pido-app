@@ -176,8 +176,8 @@ export default function Perfil() {
             {!loadingDirs && direcciones.map(dir => (
               <div key={dir.id} style={{
                 ...glass, padding: '14px 16px', marginBottom: 10,
-                border: dir.principal ? '1.5px solid rgba(255,107,44,0.4)' : '1px solid rgba(255,255,255,0.08)',
-                background: dir.principal ? 'rgba(255,107,44,0.06)' : 'rgba(255,255,255,0.06)',
+                border: dir.principal ? '1.5px solid rgba(255,107,44,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                background: dir.principal ? 'rgba(255,107,44,0.06)' : 'rgba(255,255,255,0.08)',
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{
@@ -230,9 +230,9 @@ export default function Perfil() {
                 <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
                   {['Casa', 'Trabajo', 'Otro'].map(e => (
                     <button key={e} onClick={() => setNuevaEtiqueta(e)} style={{
-                      padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                      padding: '8px 14px', borderRadius: 12, fontSize: 12, fontWeight: 700,
                       cursor: 'pointer', fontFamily: 'inherit',
-                      border: nuevaEtiqueta === e ? '2px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.12)',
+                      border: nuevaEtiqueta === e ? '2px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
                       background: nuevaEtiqueta === e ? 'rgba(255,107,44,0.12)' : 'rgba(255,255,255,0.04)',
                       color: nuevaEtiqueta === e ? 'var(--c-primary)' : '#F5F5F5',
                     }}>{e === 'Casa' ? '🏠 Casa' : e === 'Trabajo' ? '💼 Trabajo' : '📍 Otro'}</button>
@@ -326,7 +326,7 @@ export default function Perfil() {
             <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Configuración</h2>
             <div style={{ ...glass }}>
               {[{ label: 'Notificaciones', desc: 'Activadas' }, { label: 'Idioma', desc: 'Español' }].map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: i === 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>{item.label}</span>
                   <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>{item.desc}</span>
                 </div>
@@ -344,7 +344,7 @@ export default function Perfil() {
                 { q: '¿Cómo contacto con soporte?', a: 'Escríbenos a soporte@pidoo.es' },
                 { q: '¿Puedo cancelar un pedido?', a: 'Puedes cancelar antes de que el restaurante acepte tu pedido.' },
               ].map((item, i) => (
-                <details key={i} style={{ padding: '14px 16px', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <details key={i} style={{ padding: '14px 16px' }}>
                   <summary style={{ fontSize: 14, fontWeight: 600, cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
                     {item.q} <ChevronRight size={14} color="var(--c-muted)" />
                   </summary>
@@ -376,7 +376,7 @@ export default function Perfil() {
           </div>
           <button onClick={() => avatarRef.current?.click()} style={{
             position: 'absolute', bottom: -4, right: -4, width: 28, height: 28,
-            borderRadius: 10, background: '#1A1A1A', border: '2px solid rgba(255,255,255,0.15)',
+            borderRadius: 10, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '2px solid rgba(255,255,255,0.1)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Camera size={13} strokeWidth={2} color="var(--c-primary)" />
@@ -391,7 +391,7 @@ export default function Perfil() {
           setNombre(perfil?.nombre || ''); setApellido(perfil?.apellido || ''); setTelefono(perfil?.telefono || '')
           setEditando(true)
         }} style={{
-          marginTop: 10, padding: '6px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)',
+          marginTop: 10, padding: '6px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
           background: 'transparent', fontSize: 12, fontWeight: 700, cursor: 'pointer',
           fontFamily: 'inherit', color: 'var(--c-primary)',
         }}>
@@ -405,7 +405,7 @@ export default function Perfil() {
           <button key={i} onClick={item.action} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             width: '100%', padding: '14px 16px', border: 'none', background: 'transparent',
-            borderBottom: '1px solid #262626', cursor: 'pointer', fontFamily: 'inherit',
+            cursor: 'pointer', fontFamily: 'inherit',
             fontSize: 14, fontWeight: 600, color: 'var(--c-text)', textAlign: 'left',
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -437,15 +437,17 @@ export default function Perfil() {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         }} onClick={e => e.target === e.currentTarget && setEditando(false)}>
           <div className="modal-sheet" style={{
-            width: '100%', maxWidth: 420, background: '#131313',
+            width: '100%', maxWidth: 420, background: 'rgba(20,20,20,0.95)',
             borderRadius: '20px 20px 0 0', padding: 24,
             animation: 'slideUp 0.3s ease',
-            border: '1px solid #262626', borderBottom: 'none',
+            backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 -8px 32px rgba(255,107,44,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#F5F5F5' }}>Editar perfil</h3>
               <button onClick={() => setEditando(false)} style={{
-                width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.1)',
+                width: 32, height: 32, borderRadius: 12, background: 'rgba(255,255,255,0.1)',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <X size={16} strokeWidth={2} color="#F5F5F5" />
@@ -481,7 +483,7 @@ export default function Perfil() {
 
             <button onClick={handleGuardar} disabled={saving} style={{
               width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: saving ? '#484847' : 'var(--c-btn-gradient)', color: '#fff',
+              background: saving ? 'rgba(255,255,255,0.08)' : 'var(--c-btn-gradient)', color: '#fff',
               fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
             }}>
               {saving ? 'Guardando...' : 'Guardar cambios'}
@@ -537,18 +539,19 @@ function PromosSection() {
 }
 
 const glass = {
-  background: '#1A1919', borderRadius: 14,
-  border: '1px solid #262626',
+  background: 'rgba(255,255,255,0.08)', borderRadius: 14,
+  border: '1px solid rgba(255,255,255,0.1)',
+  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
 }
 
 const inputDark = {
-  width: '100%', padding: '14px 16px', borderRadius: 10,
-  border: '1px solid #484847', fontSize: 14, fontFamily: 'inherit',
+  width: '100%', padding: '14px 16px', borderRadius: 14,
+  border: 'none', fontSize: 14, fontFamily: 'inherit',
   background: '#262626', color: '#F5F5F5', outline: 'none',
   boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: 11, fontWeight: 700, color: '#767575',
-  marginBottom: 6, display: 'block', letterSpacing: '0.04em', textTransform: 'uppercase',
+  fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)',
+  marginBottom: 6, display: 'block', letterSpacing: '0.05em', textTransform: 'uppercase',
 }

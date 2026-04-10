@@ -13,9 +13,10 @@ function ProductoCard({ p, onOpen, carrito, tamanos = [] }) {
     <div style={{
       display: 'flex', gap: 14,
       padding: '16px', marginBottom: 12,
-      background: '#1A1919',
-      borderRadius: 12,
-      border: '1px solid #262626',
+      background: 'rgba(255,255,255,0.08)',
+      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+      borderRadius: 14,
+      border: '1px solid rgba(255,255,255,0.1)',
     }}>
       {/* Imagen */}
       {p.imagen_url && (
@@ -24,7 +25,7 @@ function ProductoCard({ p, onOpen, carrito, tamanos = [] }) {
           alt=""
           style={{
             width: 90, height: 90,
-            borderRadius: 8, objectFit: 'cover', flexShrink: 0,
+            borderRadius: 12, objectFit: 'cover', flexShrink: 0,
           }}
         />
       )}
@@ -53,7 +54,7 @@ function ProductoCard({ p, onOpen, carrito, tamanos = [] }) {
           <button
             onClick={onOpen}
             style={{
-              width: 36, height: 36, borderRadius: 8, border: 'none',
+              width: 36, height: 36, borderRadius: 12, border: 'none',
               background: enCarrito
                 ? 'var(--c-btn-gradient)'
                 : 'var(--c-btn-gradient)',
@@ -169,7 +170,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
         <div
           className="banner-responsive"
           style={{
-            height: 200, borderRadius: '16px 16px 0 0',
+            height: 200, borderRadius: '22px 22px 0 0',
             background: est.banner_url
               ? `url(${est.banner_url}) center/cover`
               : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
@@ -179,7 +180,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: 80,
           background: 'linear-gradient(180deg, rgba(14,14,14,0.75) 0%, transparent 100%)',
-          borderRadius: '16px 16px 0 0',
+          borderRadius: '22px 22px 0 0',
         }} />
         {/* Botón volver */}
         <button
@@ -188,10 +189,10 @@ export default function RestDetalle({ establecimiento, onBack }) {
             position: 'absolute', top: 14, left: 14,
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.2)',
+            border: '1px solid rgba(255,255,255,0.1)',
             backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
             color: '#fff', padding: '7px 12px',
-            borderRadius: 8, cursor: 'pointer',
+            borderRadius: 12, cursor: 'pointer',
             fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
           }}
         >
@@ -204,8 +205,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
             position: 'absolute', bottom: -24, left: 16,
             width: 56, height: 56, borderRadius: 14,
             border: '3px solid #0E0E0E',
-            overflow: 'hidden', background: '#262626',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+            overflow: 'hidden', background: 'rgba(255,255,255,0.08)',
+            boxShadow: '0 4px 12px rgba(255,107,44,0.06)',
           }}>
             <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
@@ -216,7 +217,6 @@ export default function RestDetalle({ establecimiento, onBack }) {
       <div style={{
         background: '#0E0E0E',
         padding: est.logo_url ? '34px 16px 20px' : '20px 16px',
-        borderBottom: '1px solid #1A1919',
         marginBottom: 0,
       }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
@@ -296,8 +296,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
                   onClick={() => setCatFiltro(null)}
                   style={{
                     padding: '7px 16px', borderRadius: 20,
-                    border: !catFiltro ? 'none' : '1px solid #484847',
-                    background: !catFiltro ? 'var(--c-btn-gradient)' : 'transparent',
+                    border: !catFiltro ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    background: !catFiltro ? 'var(--c-btn-gradient)' : 'rgba(255,255,255,0.08)',
                     color: !catFiltro ? '#fff' : 'var(--c-muted)',
                     fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
@@ -311,8 +311,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
                     onClick={() => setCatFiltro(catFiltro === cat.id ? null : cat.id)}
                     style={{
                       padding: '7px 16px', borderRadius: 20,
-                      border: catFiltro === cat.id ? 'none' : '1px solid #484847',
-                      background: catFiltro === cat.id ? 'var(--c-btn-gradient)' : 'transparent',
+                      border: catFiltro === cat.id ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                      background: catFiltro === cat.id ? 'var(--c-btn-gradient)' : 'rgba(255,255,255,0.08)',
                       color: catFiltro === cat.id ? '#fff' : 'var(--c-muted)',
                       fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
@@ -379,20 +379,22 @@ export default function RestDetalle({ establecimiento, onBack }) {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#131313',
+              background: 'rgba(20,20,20,0.95)',
+              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
               borderRadius: '20px 20px 0 0',
               padding: '20px 20px 36px',
               width: '100%', maxWidth: 420,
               maxHeight: '88vh', overflowY: 'auto',
               animation: 'slideUp 0.3s ease',
-              border: '1px solid #262626',
+              border: '1px solid rgba(255,255,255,0.1)',
               borderBottom: 'none',
+              boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
             }}
           >
             {/* Handle */}
             <div style={{
               width: 36, height: 4, borderRadius: 2,
-              background: '#484847', margin: '0 auto 20px',
+              background: 'rgba(255,255,255,0.1)', margin: '0 auto 20px',
             }} />
 
             {/* Imagen modal */}
@@ -416,8 +418,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
               <button
                 onClick={() => setModal(null)}
                 style={{
-                  background: '#262626', border: 'none',
-                  width: 30, height: 30, borderRadius: 8,
+                  background: 'rgba(255,255,255,0.08)', border: 'none',
+                  width: 30, height: 30, borderRadius: 12,
                   cursor: 'pointer', color: 'var(--c-muted)',
                   fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
@@ -445,11 +447,13 @@ export default function RestDetalle({ establecimiento, onBack }) {
                     style={{
                       display: 'flex', justifyContent: 'space-between',
                       width: '100%', padding: '13px 16px',
-                      borderRadius: 10, marginBottom: 8,
+                      borderRadius: 14, marginBottom: 8,
                       border: tamSel === i
                         ? '1.5px solid var(--c-primary)'
-                        : '1px solid #484847',
-                      background: tamSel === i ? 'rgba(255,107,44,0.08)' : '#1A1919',
+                        : '1px solid rgba(255,255,255,0.1)',
+                      background: tamSel === i ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
+                      backdropFilter: tamSel === i ? 'none' : 'blur(12px)',
+                      WebkitBackdropFilter: tamSel === i ? 'none' : 'blur(12px)',
                       cursor: 'pointer', fontFamily: 'inherit',
                       transition: 'all 0.15s ease',
                     }}
@@ -481,9 +485,11 @@ export default function RestDetalle({ establecimiento, onBack }) {
                       style={{
                         display: 'flex', justifyContent: 'space-between',
                         width: '100%', padding: '13px 16px',
-                        borderRadius: 10, marginBottom: 8,
-                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid #484847',
-                        background: sel ? 'rgba(255,107,44,0.08)' : '#1A1919',
+                        borderRadius: 14, marginBottom: 8,
+                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
+                        background: sel ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
+                        backdropFilter: sel ? 'none' : 'blur(12px)',
+                        WebkitBackdropFilter: sel ? 'none' : 'blur(12px)',
                         cursor: 'pointer', fontFamily: 'inherit',
                         transition: 'all 0.15s ease',
                       }}
@@ -491,7 +497,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
                           width: 20, height: 20, borderRadius: 6,
-                          border: sel ? 'none' : '1.5px solid #484847',
+                          border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.1)',
                           background: sel ? 'var(--c-primary)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0, transition: 'all 0.15s ease',
@@ -514,13 +520,14 @@ export default function RestDetalle({ establecimiento, onBack }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               gap: 24, marginBottom: 20,
               padding: '14px 0',
-              borderTop: '1px solid #262626', borderBottom: '1px solid #262626',
             }}>
               <button
                 onClick={() => setCant(Math.max(1, cant - 1))}
                 style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  border: '1px solid #484847', background: '#1A1919',
+                  width: 40, height: 40, borderRadius: 12,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.08)',
+                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
                   fontSize: 20, cursor: 'pointer', fontFamily: 'inherit',
                   color: 'var(--c-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
@@ -533,7 +540,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
               <button
                 onClick={() => setCant(cant + 1)}
                 style={{
-                  width: 40, height: 40, borderRadius: 10,
+                  width: 40, height: 40, borderRadius: 12,
                   border: 'none', background: 'var(--c-btn-gradient)',
                   color: '#fff', fontSize: 20, cursor: 'pointer',
                   fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center',

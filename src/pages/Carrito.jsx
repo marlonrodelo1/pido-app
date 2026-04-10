@@ -24,9 +24,9 @@ const cardStyle = {
 const S = {
   label: { fontSize: 11, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 },
   selBtn: (active) => ({
-    flex: 1, padding: '12px 0', borderRadius: 10,
-    border: active ? '1.5px solid var(--c-primary)' : '1px solid #484847',
-    background: active ? 'rgba(255,107,44,0.08)' : '#1A1919',
+    flex: 1, padding: '12px 0', borderRadius: 14,
+    border: active ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
+    background: active ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
     fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
     color: active ? 'var(--c-primary-light)' : 'var(--c-text)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -81,8 +81,8 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
       </div>
 
       <div style={{
-        background: '#262626', borderRadius: 12,
-        border: '1px solid #484847',
+        background: '#262626', borderRadius: 14,
+        border: 'none',
         padding: '16px 14px', marginBottom: 16,
       }}>
         <CardElement options={cardStyle} />
@@ -333,7 +333,7 @@ export default function Carrito({ onPedidoCreado }) {
         padding: '13px 22px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 16, minWidth: 300, maxWidth: 380, cursor: 'pointer',
-        boxShadow: '0 12px 32px rgba(255,107,44,0.25)',
+        boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
         zIndex: 50, fontFamily: 'inherit',
       }}>
         <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 8, padding: '2px 10px', fontWeight: 700, fontSize: 14 }}>{totalItems}</span>
@@ -350,18 +350,20 @@ export default function Carrito({ onPedidoCreado }) {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#131313',
+              background: 'rgba(20,20,20,0.95)',
+              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
               borderRadius: '20px 20px 0 0',
               padding: '20px 20px 36px',
               width: '100%', maxWidth: 420,
               maxHeight: '88vh', overflowY: 'auto',
               animation: 'slideUp 0.3s ease',
-              border: '1px solid #262626',
+              border: '1px solid rgba(255,255,255,0.1)',
               borderBottom: 'none',
+              boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
             }}
           >
             {/* Handle */}
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#484847', margin: '0 auto 16px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 16px' }} />
 
             {pasoTarjeta && clientSecret ? (
               <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -381,7 +383,7 @@ export default function Carrito({ onPedidoCreado }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '-0.02em' }}>Tu pedido</h3>
                   <button onClick={() => setOpen(false)} style={{
-                    width: 30, height: 30, borderRadius: 8, background: '#262626',
+                    width: 30, height: 30, borderRadius: 12, background: 'rgba(255,255,255,0.08)',
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <X size={14} strokeWidth={2.5} color="var(--c-muted)" />
@@ -396,8 +398,8 @@ export default function Carrito({ onPedidoCreado }) {
                     <div key={idx} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '12px 14px', marginBottom: 6,
-                      background: '#1A1919', borderRadius: 10,
-                      border: '1px solid #262626',
+                      background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14,
+                      border: '1px solid rgba(255,255,255,0.1)',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--c-text)' }}>{item.cantidad}x {item.nombre}</div>
@@ -407,8 +409,8 @@ export default function Carrito({ onPedidoCreado }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--c-primary-light)' }}>{(item.precio_unitario * item.cantidad).toFixed(2)} €</span>
                         <button onClick={() => removeItem(idx)} style={{
-                          width: 22, height: 22, borderRadius: 6, border: '1px solid #484847',
-                          background: '#262626', cursor: 'pointer', fontSize: 10,
+                          width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
+                          background: 'rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: 10,
                           color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>×</button>
                       </div>
@@ -463,10 +465,10 @@ export default function Carrito({ onPedidoCreado }) {
                       {tarjetasGuardadas.map(c => (
                         <button key={c.id} onClick={() => setTarjetaSel(c.id)} style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 14px', borderRadius: 10, marginBottom: 6,
+                          padding: '10px 14px', borderRadius: 14, marginBottom: 6,
                           cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                          border: tarjetaSel === c.id ? '1.5px solid var(--c-primary)' : '1px solid #484847',
-                          background: tarjetaSel === c.id ? 'rgba(255,107,44,0.08)' : '#1A1919',
+                          border: tarjetaSel === c.id ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
+                          background: tarjetaSel === c.id ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
                         }}>
                           <span style={{ fontSize: 20 }}>💳</span>
                           <div style={{ flex: 1 }}>
@@ -478,8 +480,8 @@ export default function Carrito({ onPedidoCreado }) {
                         </button>
                       ))}
                       <button onClick={() => setTarjetaSel(null)} style={{
-                        width: '100%', padding: '8px', borderRadius: 8,
-                        border: '1px dashed #484847',
+                        width: '100%', padding: '8px', borderRadius: 12,
+                        border: '1px dashed rgba(255,255,255,0.1)',
                         background: 'transparent', color: 'var(--c-muted)',
                         fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                       }}>
@@ -514,7 +516,7 @@ export default function Carrito({ onPedidoCreado }) {
                 )}
 
                 {/* Desglose */}
-                <div style={{ fontSize: 13, color: 'var(--c-muted)', padding: '14px 0', borderTop: '1px solid #262626' }}>
+                <div style={{ fontSize: 13, color: 'var(--c-muted)', padding: '14px 0', marginTop: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Subtotal</span><span style={{ color: 'var(--c-text)', fontWeight: 600 }}>{subtotal.toFixed(2)} €</span></div>
                   {descuento > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#4ADE80' }}>
@@ -532,8 +534,8 @@ export default function Carrito({ onPedidoCreado }) {
 
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
-                  fontWeight: 700, fontSize: 18, paddingTop: 14, marginBottom: 4,
-                  borderTop: '1px solid #262626', color: 'var(--c-text)',
+                  fontWeight: 700, fontSize: 18, paddingTop: 14, marginTop: 4, marginBottom: 4,
+                  color: 'var(--c-text)',
                   letterSpacing: '-0.01em',
                 }}>
                   <span>Total</span><span>{(total - descuento).toFixed(2)} €</span>
@@ -546,8 +548,8 @@ export default function Carrito({ onPedidoCreado }) {
                     value={notas} onChange={e => setNotas(e.target.value)}
                     placeholder="Ej: sin cebolla, piso 3.º izquierda..."
                     style={{
-                      width: '100%', padding: '12px 14px', borderRadius: 10,
-                      border: '1px solid #484847', background: '#1A1919',
+                      width: '100%', padding: '12px 14px', borderRadius: 14,
+                      border: 'none', background: '#262626',
                       fontSize: 13, fontFamily: 'inherit', color: 'var(--c-text)',
                       outline: 'none', boxSizing: 'border-box',
                     }}
@@ -654,9 +656,9 @@ export default function Carrito({ onPedidoCreado }) {
                             }}
                             placeholder="Buscar dirección..."
                             style={{
-                              width: '100%', padding: '10px 10px 10px 32px', borderRadius: 10,
-                              border: '1px solid #484847', fontSize: 13, fontFamily: 'inherit',
-                              background: '#1A1919', color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box',
+                              width: '100%', padding: '10px 10px 10px 32px', borderRadius: 14,
+                              border: 'none', fontSize: 13, fontFamily: 'inherit',
+                              background: '#262626', color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box',
                             }}
                           />
                         </div>
@@ -664,7 +666,7 @@ export default function Carrito({ onPedidoCreado }) {
                         {dirMsg && <div style={{ fontSize: 11, color: '#EF4444', textAlign: 'center', marginBottom: 4 }}>{dirMsg}</div>}
 
                         <button onClick={() => { setMostrarAddDir(false); setDirMsg(null) }} style={{
-                          width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #484847',
+                          width: '100%', padding: '8px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
                           background: 'transparent', color: 'var(--c-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
                         }}>Cancelar</button>
                       </div>

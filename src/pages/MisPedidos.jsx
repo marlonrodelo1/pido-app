@@ -63,7 +63,7 @@ export default function MisPedidos({ onTrack }) {
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#EF4444', marginBottom: 12 }}>{error}</div>
-          <button onClick={fetchPedidos} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #484847', background: '#1A1919', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)' }}>Reintentar</button>
+          <button onClick={fetchPedidos} style={{ padding: '8px 20px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)' }}>Reintentar</button>
         </div>
       )}
       {!loading && !error && pedidos.length === 0 && (
@@ -75,7 +75,7 @@ export default function MisPedidos({ onTrack }) {
       {pedidos.map(p => {
         const colors = ESTADO_COLORS[p.estado] || ESTADO_COLORS.nuevo
         return (
-          <div key={p.id} style={{ background: '#1A1919', borderRadius: 12, padding: '14px 16px', border: '1px solid #262626', marginBottom: 10 }}>
+          <div key={p.id} style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>{p.establecimientos?.nombre || 'Restaurante'}</span>
               <span style={{ background: colors.bg, color: colors.c, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, textTransform: 'capitalize' }}>{p.estado.replace('_', ' ')}</span>
@@ -90,16 +90,16 @@ export default function MisPedidos({ onTrack }) {
             </div>
             {['nuevo', 'aceptado', 'preparando', 'listo', 'en_camino', 'recogido'].includes(p.estado) && (
               <button onClick={() => onTrack(p)} style={{
-                width: '100%', marginTop: 10, padding: '9px 0', borderRadius: 8,
+                width: '100%', marginTop: 10, padding: '9px 0', borderRadius: 12,
                 border: 'none', background: 'var(--c-btn-gradient)', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit', color: '#fff',
               }}>Seguir pedido</button>
             )}
             {p.estado === 'entregado' && (
               <button onClick={() => repetirPedido(p)} style={{
-                width: '100%', marginTop: 10, padding: '9px 0', borderRadius: 8,
-                border: repetido === p.id ? '1px solid rgba(34,197,94,0.3)' : '1px solid #484847',
-                background: repetido === p.id ? 'rgba(34,197,94,0.08)' : '#262626',
+                width: '100%', marginTop: 10, padding: '9px 0', borderRadius: 12,
+                border: repetido === p.id ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.1)',
+                background: repetido === p.id ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 color: repetido === p.id ? '#4ADE80' : 'var(--c-text)',
               }}>{repetido === p.id ? 'Añadido al carrito!' : 'Repetir pedido'}</button>

@@ -204,7 +204,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           {pedido.motivo_cancelacion && (
             <div style={{
               fontSize: 14, color: 'var(--c-text)', marginBottom: 12, fontWeight: 600,
-              background: '#1A1919', borderRadius: 10, padding: '10px 14px', border: '1px solid #262626',
+              background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px', border: '1px solid rgba(255,255,255,0.1)',
             }}>{pedido.motivo_cancelacion}</div>
           )}
           <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 20 }}>
@@ -232,7 +232,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       </div>
 
       {/* Animación visual por bloques */}
-      <div style={{ borderRadius: 14, marginBottom: 16, overflow: 'hidden', border: '1px solid #262626' }}>
+      <div style={{ borderRadius: 22, marginBottom: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
 
         {/* ===== BLOQUE 1: COCINA - Preparando ===== */}
         {(etapa <= 1) && (
@@ -419,8 +419,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       {/* Info repartidor */}
       {socio && etapa >= 1 && etapa < 5 && (
         <div style={{
-          background: '#1A1919', borderRadius: 12, padding: '14px 16px',
-          border: '1px solid #262626', marginBottom: 16,
+          background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 12, padding: '14px 16px',
+          border: '1px solid rgba(255,255,255,0.1)', marginBottom: 16,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <div style={{
@@ -453,15 +453,15 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div style={{
                 width: 34, height: 34, borderRadius: 10,
-                background: i <= etapa ? 'var(--c-primary)' : '#262626',
-                border: i <= etapa ? 'none' : '1px solid #484847',
+                background: i <= etapa ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
+                border: i <= etapa ? 'none' : '1px solid rgba(255,255,255,0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, transition: 'all 0.3s',
                 animation: i === 0 && etapa === 0 ? 'pulse 2s ease-in-out infinite' : 'none',
               }}>
                 {i <= etapa ? e.icon : ''}
               </div>
-              {i < 4 && <div style={{ width: 2, height: 24, background: i < etapa ? 'var(--c-primary)' : '#262626' }} />}
+              {i < 4 && <div style={{ width: 2, height: 24, background: i < etapa ? 'var(--c-primary)' : 'rgba(255,255,255,0.06)' }} />}
             </div>
             <div style={{ paddingTop: 5, paddingBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: i <= etapa ? 'var(--c-text)' : '#767575' }}>{e.label}</div>
@@ -473,7 +473,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
       {/* Valoracion al entregar */}
       {etapa === 4 && (
-        <div style={{ background: '#1A1919', borderRadius: 14, padding: 20, border: '1px solid #262626' }}>
+        <div style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14, padding: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
           {yaValorado || resenaEnviada ? (
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
@@ -487,8 +487,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                 {[1, 2, 3, 4, 5].map(i => (
                   <button key={i} onClick={() => setValoracion(i)} style={{
                     width: 40, height: 40, borderRadius: 10,
-                    border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid #484847',
-                    background: i <= valoracion ? 'var(--c-primary)' : '#262626',
+                    border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
+                    background: i <= valoracion ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
                     cursor: 'pointer', fontSize: 18,
                     color: i <= valoracion ? '#fff' : '#767575',
                     transition: 'all 0.15s',
@@ -498,7 +498,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               {valoracion > 0 && (
                 <>
                   <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuéntanos más sobre tu experiencia (opcional)..." rows={3} style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #484847',
+                    width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none',
                     fontSize: 13, fontFamily: 'inherit', background: '#262626',
                     color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12,
                   }} />

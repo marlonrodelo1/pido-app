@@ -58,21 +58,23 @@ export default function PWAInstallPrompt() {
     >
       <div style={{
         width: '100%', maxWidth: 440,
-        background: '#131313',
+        background: 'rgba(20,20,20,0.95)',
         borderRadius: '20px 20px 0 0',
         padding: '20px 20px 28px',
-        border: '1px solid #262626', borderBottom: 'none',
+        border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        boxShadow: '0 -8px 32px rgba(255,107,44,0.06)',
         animation: 'slideUp 0.35s ease',
         position: 'relative',
       }}>
         {/* Handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: '#484847', margin: '0 auto 16px' }} />
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 16px' }} />
 
         {/* Cierre */}
         <button onClick={dismiss} style={{
           position: 'absolute', top: 16, right: 16,
-          width: 30, height: 30, borderRadius: 8,
-          background: '#262626', border: 'none',
+          width: 30, height: 30, borderRadius: 12,
+          background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: 'none',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <X size={14} strokeWidth={2.5} color="var(--c-muted)" />
@@ -93,8 +95,8 @@ export default function PWAInstallPrompt() {
         {platform === 'android' && (
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={dismiss} style={{
-              flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid #484847',
-              background: '#1A1919', color: '#767575',
+              flex: 1, padding: '12px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', color: '#767575',
               fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
             }}>
               Ahora no
@@ -112,9 +114,9 @@ export default function PWAInstallPrompt() {
         {platform === 'ios' && (
           <>
             <div style={{
-              background: '#1A1919', borderRadius: 10,
+              background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 10,
               padding: '12px 14px', marginBottom: 14,
-              border: '1px solid #262626',
+              border: '1px solid rgba(255,255,255,0.1)',
               display: 'flex', flexDirection: 'column', gap: 10,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -123,7 +125,7 @@ export default function PWAInstallPrompt() {
                   Toca <span style={{ color: '#007AFF', fontWeight: 700 }}>⬆</span> en Safari
                 </span>
               </div>
-              <div style={{ height: 1, background: '#262626' }} />
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--c-primary)', width: 20, textAlign: 'center' }}>2</span>
                 <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>
@@ -132,8 +134,8 @@ export default function PWAInstallPrompt() {
               </div>
             </div>
             <button onClick={handleIOSDismiss} style={{
-              width: '100%', padding: '10px 0', borderRadius: 10, border: '1px solid #484847',
-              background: '#1A1919', color: '#767575',
+              width: '100%', padding: '10px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', color: '#767575',
               fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
             }}>
               Ahora no

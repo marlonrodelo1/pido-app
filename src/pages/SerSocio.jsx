@@ -84,7 +84,7 @@ export default function SerSocio({ onClose }) {
       <h2 style={styles.sectionTitle}>Requisitos</h2>
       <div style={{ ...styles.card, marginBottom: 28 }}>
         {requisitos.map((r, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < requisitos.length - 1 ? '1px solid #262626' : 'none' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
             <div style={{ width: 20, height: 20, borderRadius: 6, background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#4ADE80' }}>✓</div>
             <span style={{ fontSize: 13, color: 'var(--c-text)' }}>{r}</span>
           </div>
@@ -107,7 +107,7 @@ export default function SerSocio({ onClose }) {
           { icon: '🔗', titulo: 'Comparte tu tienda', desc: 'Tienes tu propia tienda online. Cada pedido que entre por tu link te genera ganancias extra.' },
           { icon: '💸', titulo: 'Recibe propinas', desc: 'Las propinas del cliente van 100% a tu bolsillo, sin comisiones.' },
         ].map((item, i) => (
-          <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < 2 ? '1px solid var(--c-border)' : 'none' }}>
+          <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0' }}>
             <span style={{ fontSize: 24, flexShrink: 0 }}>{item.icon}</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 2 }}>{item.titulo}</div>
@@ -134,7 +134,7 @@ export default function SerSocio({ onClose }) {
 
 const styles = {
   container: { animation: 'fadeIn 0.3s ease' },
-  backBtn: { width: 36, height: 36, borderRadius: 10, background: '#262626', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   hero: { textAlign: 'center', marginBottom: 24 },
   earningsCard: {
     background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 14, padding: '20px 24px',
@@ -142,12 +142,12 @@ const styles = {
   },
   sectionTitle: { fontSize: 16, fontWeight: 700, color: 'var(--c-text)', marginBottom: 12, letterSpacing: '-0.01em' },
   beneficioCard: {
-    background: '#1A1919', borderRadius: 12, padding: '16px 14px',
-    border: '1px solid #262626',
+    background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 12, padding: '16px 14px',
+    border: '1px solid rgba(255,255,255,0.1)',
   },
   pasoCard: {
-    display: 'flex', alignItems: 'center', gap: 14, background: '#1A1919',
-    borderRadius: 12, padding: '14px 16px', border: '1px solid #262626',
+    display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.1)',
   },
   pasoNum: {
     width: 32, height: 32, borderRadius: 10, background: 'var(--c-primary)',
@@ -155,8 +155,8 @@ const styles = {
     fontSize: 14, fontWeight: 700, flexShrink: 0,
   },
   card: {
-    background: '#1A1919', borderRadius: 12, padding: '14px 18px',
-    border: '1px solid #262626',
+    background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 12, padding: '14px 18px',
+    border: '1px solid rgba(255,255,255,0.1)',
   },
   ctaBtn: {
     width: '100%', padding: '16px', borderRadius: 12, border: 'none',
@@ -164,6 +164,6 @@ const styles = {
     fontSize: 15, fontWeight: 700, letterSpacing: '0.01em',
     cursor: 'pointer', fontFamily: 'var(--font)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 8px 24px rgba(255,107,44,0.25)',
+    boxShadow: '0 8px 32px rgba(255,107,44,0.06)',
   },
 }

@@ -43,9 +43,10 @@ export default function Notificaciones() {
       )}
       {notifs.map(n => (
         <div key={n.id} onClick={() => !n.leida && marcarLeida(n.id)} style={{
-          background: n.leida ? '#1A1919' : 'rgba(255,107,44,0.08)',
-          borderRadius: 12, padding: '14px 16px',
-          border: n.leida ? '1px solid #262626' : '1px solid rgba(255,107,44,0.2)',
+          background: n.leida ? 'rgba(255,255,255,0.08)' : 'rgba(255,107,44,0.08)',
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+          borderRadius: 14, padding: '14px 16px',
+          border: n.leida ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,107,44,0.2)',
           marginBottom: 8, cursor: 'pointer',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
