@@ -279,6 +279,16 @@ export default function Carrito({ onPedidoCreado }) {
     onPedidoCreado(pedido)
   }
 
+  // Crea pedido con estado 'nuevo' + stripe_payment_id, luego finaliza
+  async function crearPedidoYFinalizar(stripePaymentId) {
+    const pedido = await insertarPedidoEnBD('nuevo')
+    if (!pedido) return
+    if (stripePaymentId) {
+      await supabase.from('pedidos').update({ stripe_payment_id: stripePaymentId }).eq('id', pedido.id)
+    }
+    finalizarPedido(pedido)
+  }
+
   async function iniciarPago() {
     if (isPaying.current) return
     if (modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
@@ -288,33 +298,33 @@ export default function Carrito({ onPedidoCreado }) {
     try {
       const totalConDescuento = Math.max(0, total - descuento)
       if (metodoPago === 'tarjeta') {
-        const pedido = await insertarPedidoEnBD('pendiente_pago')
-        if (!pedido) { setLoading(false); return }
+        // Generar código sin insertar pedido en BD todavía
+        const codigo = codigoPedido || await generarCodigo()
+        setCodigoPedido(codigo)
+
         if (tarjetaSel && tarjetasGuardadas.length > 0) {
-          try {
-            const result = await pagarConTarjetaGuardada({
-              paymentMethodId: tarjetaSel, amount: totalConDescuento,
-              pedidoCodigo: pedido.codigo, customerEmail: user?.email, userId: user?.id,
-            })
-            if (result.status === 'succeeded') { await confirmarPago(pedido, result.paymentIntentId); return }
-          } catch (e) {
-            await supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedido.id)
-            setCodigoPedido(null)
-            throw e
+          // Tarjeta guardada: cobrar primero, crear pedido DESPUÉS
+          const result = await pagarConTarjetaGuardada({
+            paymentMethodId: tarjetaSel, amount: totalConDescuento,
+            pedidoCodigo: codigo, customerEmail: user?.email, userId: user?.id,
+          })
+          if (result.status === 'succeeded') {
+            await crearPedidoYFinalizar(result.paymentIntentId)
+            return
           }
         }
-        try {
-          const result = await crearPagoStripe({
-            amount: totalConDescuento, pedidoCodigo: pedido.codigo,
-            customerEmail: user?.email, userId: user?.id,
-          })
-          setPedidoPendiente(pedido); setClientSecret(result.clientSecret); setPasoTarjeta(true)
-        } catch (e) {
-          await supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedido.id)
-          setCodigoPedido(null)
-          throw e
-        }
+
+        // Tarjeta nueva: obtener clientSecret, mostrar formulario
+        // NO insertamos pedido aún — el restaurante NO debe verlo
+        const result = await crearPagoStripe({
+          amount: totalConDescuento, pedidoCodigo: codigo,
+          customerEmail: user?.email, userId: user?.id,
+        })
+        setClientSecret(result.clientSecret)
+        setPasoTarjeta(true)
+        // El pedido se creará en onSuccess del FormularioPago
       } else {
+        // Efectivo: crear pedido directamente como 'nuevo'
         const pedido = await insertarPedidoEnBD('nuevo')
         if (!pedido) { setLoading(false); return }
         finalizarPedido(pedido)
@@ -364,7 +374,6 @@ export default function Carrito({ onPedidoCreado }) {
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={() => {
-            if (pedidoPendiente) supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedidoPendiente.id)
             setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
             setCodigoPedido(null); setClientSecret(null)
           }}
@@ -392,9 +401,12 @@ export default function Carrito({ onPedidoCreado }) {
                 <FormularioPago
                   clientSecret={clientSecret}
                   total={Math.max(0, total - descuento)}
-                  onSuccess={(paymentId) => confirmarPago(pedidoPendiente, paymentId)}
+                  onSuccess={async (paymentId) => {
+                    // Pago confirmado por Stripe → AHORA crear el pedido en BD
+                    await crearPedidoYFinalizar(paymentId)
+                  }}
                   onCancel={() => {
-                    if (pedidoPendiente) supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedidoPendiente.id)
+                    // No hay pedido en BD que marcar como fallido
                     setPasoTarjeta(false); setPedidoPendiente(null)
                     setCodigoPedido(null); setClientSecret(null)
                   }}
