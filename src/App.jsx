@@ -115,7 +115,7 @@ function AppContent() {
   const catLabel = categoriaPadre === 'comida' ? 'Comida' : categoriaPadre === 'farmacia' ? 'Farmacia' : 'Market'
 
   return (
-    <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(74px + env(safe-area-inset-bottom, 0px))' }}>
+    <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(24px + 72px + 20px + env(safe-area-inset-bottom, 0px))' }}>
       <style>{globalCss}</style>
 
       <PWAInstallPrompt />

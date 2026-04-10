@@ -326,7 +326,7 @@ export default function Carrito({ onPedidoCreado }) {
       {/* ── Barra flotante ── */}
       <div onClick={() => setOpen(true)} style={{
         position: 'fixed',
-        bottom: 'calc(82px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(24px + 72px + 12px + env(safe-area-inset-bottom, 0px))',
         left: '50%', transform: 'translateX(-50%)',
         background: 'var(--c-btn-gradient)',
         color: '#fff', borderRadius: 14,
