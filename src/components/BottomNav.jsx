@@ -11,15 +11,19 @@ const NAV_ITEMS = [
 export default function BottomNav({ active, onChange }) {
   return (
     <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-      background: '#0E0E0E',
-      borderTop: '1px solid #262626',
+      position: 'fixed', bottom: 24, left: 0, right: 0, zIndex: 50,
+      display: 'flex', justifyContent: 'center',
     }}>
       <div style={{
-        width: '100%', maxWidth: 420, margin: '0 auto',
+        width: '92%', maxWidth: 448,
         display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-        padding: '10px 0 calc(10px + env(safe-area-inset-bottom, 0px))',
-        height: 60,
+        height: 72,
+        background: 'rgba(0,0,0,0.92)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: 22,
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         {NAV_ITEMS.map(n => {
           const isActive = active === n.id
@@ -29,17 +33,21 @@ export default function BottomNav({ active, onChange }) {
               onClick={() => onChange(n.id)}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: 4,
-                background: 'transparent',
+                justifyContent: 'center', gap: 4,
+                background: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
                 border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-                color: isActive ? '#FF9066' : '#ADAAAA',
-                fontSize: 10, fontWeight: isActive ? 600 : 400,
-                padding: 0, flex: 1,
-                transition: 'color 0.2s ease',
+                color: isActive ? '#FF6B2C' : 'rgba(255,255,255,0.45)',
+                padding: '8px 14px',
+                borderRadius: 16,
+                transition: 'all 0.2s ease',
               }}
             >
               <n.Icon size={22} strokeWidth={isActive ? 2.2 : 1.6} />
-              <span>{n.l}</span>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+              }}>{n.l}</span>
             </button>
           )
         })}
