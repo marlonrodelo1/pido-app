@@ -1,0 +1,94 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+body {
+  background: #0D0D0D;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+input, select, textarea, button {
+  font-size: 16px !important;
+}
+
+/* Safe areas for notch/dynamic island */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+@supports (height: 100dvh) {
+  #root { min-height: 100dvh; }
+}
+
+/* Responsive: full width siempre */
+#root {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Google Places Autocomplete dark theme */
+.pac-container {
+  background: #1A1A1A !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  margin-top: 4px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  z-index: 10000 !important;
+}
+.pac-item {
+  background: #1A1A1A !important;
+  color: #F5F5F5 !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+  padding: 10px 14px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+.pac-item:hover, .pac-item-selected {
+  background: rgba(255,107,44,0.12) !important;
+}
+.pac-item-query {
+  color: #F5F5F5 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+}
+.pac-matched {
+  color: #FF6B2C !important;
+  font-weight: 700 !important;
+}
+.pac-icon {
+  filter: invert(1) !important;
+  opacity: 0.5 !important;
+}
+.pac-logo::after {
+  display: none !important;
+}

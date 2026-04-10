@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pidoo</string>
+    <string name="title_activity_main">Pidoo</string>
+    <string name="package_name">com.pido.app</string>
+    <string name="custom_url_scheme">com.pido.app</string>
+    <string name="server_client_id">797553895667-gr3vsgvcp85k0bh0b3iafkblv529g8kt.apps.googleusercontent.com</string>
+</resources>

@@ -1,0 +1,35 @@
+{
+  "appId": "es.pidoo.app",
+  "appName": "Pidoo",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#FF6B2C",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP",
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0D0D0D"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#FF6B2C",
+      "sound": "alarm.wav"
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "205051798222-08khlnuken8job06okkuus0apctmuja6.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
