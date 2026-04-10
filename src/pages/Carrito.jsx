@@ -323,23 +323,32 @@ export default function Carrito({ onPedidoCreado }) {
 
   return (
     <>
-      {/* ── Barra flotante ── */}
-      <div onClick={() => setOpen(true)} style={{
+      {/* ── Floating cart icon (Stitch style) ── */}
+      <button onClick={() => setOpen(true)} style={{
         position: 'fixed',
-        bottom: 'calc(24px + 72px + 12px + env(safe-area-inset-bottom, 0px))',
-        left: '50%', transform: 'translateX(-50%)',
+        bottom: 'calc(24px + 72px + 16px + env(safe-area-inset-bottom, 0px))',
+        right: 16,
+        width: 52, height: 52, borderRadius: 16,
         background: 'var(--c-btn-gradient)',
-        color: '#fff', borderRadius: 14,
-        padding: '13px 22px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 16, minWidth: 300, maxWidth: 380, cursor: 'pointer',
-        boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
-        zIndex: 50, fontFamily: 'inherit',
+        border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 8px 24px rgba(255,107,44,0.25)',
+        zIndex: 50,
       }}>
-        <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 8, padding: '2px 10px', fontWeight: 700, fontSize: 14 }}>{totalItems}</span>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>Ver carrito</span>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>{total.toFixed(2)} €</span>
-      </div>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        {/* Badge */}
+        <span style={{
+          position: 'absolute', top: -4, right: -4,
+          background: '#fff', color: '#FF6B2C',
+          fontSize: 10, fontWeight: 800,
+          width: 20, height: 20, borderRadius: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {totalItems}
+        </span>
+      </button>
 
       {/* ── Modal carrito ── */}
       {open && (
