@@ -48,7 +48,7 @@ function ProductoCard({ p, onOpen, carrito, tamanos = [] }) {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-primary-light)' }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#FF6B2C' }}>
             {minPrecio !== null ? `Desde ${minPrecio.toFixed(2)} €` : `${p.precio.toFixed(2)} €`}
           </span>
           <button

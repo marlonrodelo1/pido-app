@@ -326,7 +326,7 @@ export default function Carrito({ onPedidoCreado }) {
       {/* ── Floating cart icon (Stitch style) ── */}
       <button onClick={() => setOpen(true)} style={{
         position: 'fixed',
-        bottom: 'calc(24px + 72px + 16px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(20px + 64px + 14px + env(safe-area-inset-bottom, 0px))',
         right: 16,
         width: 52, height: 52, borderRadius: 16,
         background: 'var(--c-btn-gradient)',
