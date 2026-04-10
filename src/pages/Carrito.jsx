@@ -298,7 +298,9 @@ export default function Carrito({ onPedidoCreado }) {
             })
             if (result.status === 'succeeded') { await confirmarPago(pedido, result.paymentIntentId); return }
           } catch (e) {
-            await supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedido.id); throw e
+            await supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedido.id)
+            setCodigoPedido(null)
+            throw e
           }
         }
         try {
@@ -308,14 +310,21 @@ export default function Carrito({ onPedidoCreado }) {
           })
           setPedidoPendiente(pedido); setClientSecret(result.clientSecret); setPasoTarjeta(true)
         } catch (e) {
-          await supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedido.id); throw e
+          await supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedido.id)
+          setCodigoPedido(null)
+          throw e
         }
       } else {
         const pedido = await insertarPedidoEnBD('nuevo')
         if (!pedido) { setLoading(false); return }
         finalizarPedido(pedido)
       }
-    } catch (err) { setErrorMsg(err.message || 'Error al procesar el pago') }
+    } catch (err) {
+      setErrorMsg(err.message || 'Error al procesar el pago')
+      setCodigoPedido(null)
+      setClientSecret(null)
+      setPedidoPendiente(null)
+    }
     finally { isPaying.current = false; setLoading(false) }
   }
 
@@ -354,7 +363,11 @@ export default function Carrito({ onPedidoCreado }) {
       {open && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          onClick={() => { setOpen(false); setPasoTarjeta(false) }}
+          onClick={() => {
+            if (pedidoPendiente) supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedidoPendiente.id)
+            setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
+            setCodigoPedido(null); setClientSecret(null)
+          }}
         >
           <div
             onClick={e => e.stopPropagation()}
@@ -383,6 +396,7 @@ export default function Carrito({ onPedidoCreado }) {
                   onCancel={() => {
                     if (pedidoPendiente) supabase.from('pedidos').update({ estado: 'fallido' }).eq('id', pedidoPendiente.id)
                     setPasoTarjeta(false); setPedidoPendiente(null)
+                    setCodigoPedido(null); setClientSecret(null)
                   }}
                 />
               </Elements>
