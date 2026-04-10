@@ -198,21 +198,21 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
           <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600 }}>{pedido.codigo}</span>
         </div>
-        <div style={{ background: 'rgba(239,68,68,0.1)', borderRadius: 16, padding: 28, textAlign: 'center', border: '1px solid rgba(239,68,68,0.2)' }}>
+        <div style={{ background: 'rgba(239,68,68,0.06)', borderRadius: 14, padding: 28, textAlign: 'center', border: '1px solid rgba(239,68,68,0.15)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>😔</div>
-          <div style={{ fontWeight: 800, fontSize: 18, color: '#EF4444', marginBottom: 8 }}>Pedido cancelado</div>
+          <div style={{ fontWeight: 700, fontSize: 18, color: '#EF4444', marginBottom: 8, letterSpacing: '-0.02em' }}>Pedido cancelado</div>
           {pedido.motivo_cancelacion && (
             <div style={{
               fontSize: 14, color: 'var(--c-text)', marginBottom: 12, fontWeight: 600,
-              background: 'rgba(239,68,68,0.08)', borderRadius: 10, padding: '10px 14px',
+              background: '#1A1919', borderRadius: 10, padding: '10px 14px', border: '1px solid #262626',
             }}>{pedido.motivo_cancelacion}</div>
           )}
           <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 20 }}>
             {pedido.metodo_pago === 'tarjeta' ? 'Si se realizo el cobro, el reembolso se procesara automaticamente.' : 'No se ha realizado ningun cobro.'}
           </div>
           <button onClick={onClose} style={{
-            padding: '12px 28px', borderRadius: 12, border: 'none',
-            background: 'var(--c-primary)', color: '#fff', fontSize: 14, fontWeight: 700,
+            padding: '12px 28px', borderRadius: 10, border: 'none',
+            background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700,
             cursor: 'pointer', fontFamily: 'inherit',
           }}>Entendido</button>
         </div>
@@ -224,15 +224,15 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: 0, letterSpacing: '-0.02em' }}>Tu pedido</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600 }}>{pedido.codigo}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--c-primary)', cursor: 'pointer', fontFamily: 'inherit' }}>Cerrar</button>
+          <span style={{ fontSize: 11, color: '#767575', fontWeight: 600 }}>{pedido.codigo}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>Cerrar</button>
         </div>
       </div>
 
       {/* Animación visual por bloques */}
-      <div style={{ borderRadius: 16, marginBottom: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ borderRadius: 14, marginBottom: 16, overflow: 'hidden', border: '1px solid #262626' }}>
 
         {/* ===== BLOQUE 1: COCINA - Preparando ===== */}
         {(etapa <= 1) && (
@@ -418,14 +418,28 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
       {/* Info repartidor */}
       {socio && etapa >= 1 && etapa < 5 && (
-        <div style={{ background: 'var(--c-surface)', borderRadius: 14, padding: '14px 16px', border: '1px solid var(--c-border)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--c-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🛵</div>
+        <div style={{
+          background: '#1A1919', borderRadius: 12, padding: '14px 16px',
+          border: '1px solid #262626', marginBottom: 16,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: 'var(--c-primary-glow)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+          }}>🛵</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>{socio.nombre}</div>
-            <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>★ {socio.rating} · Tu repartidor</div>
+            <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>
+              <span style={{ color: 'var(--c-primary-light)' }}>★ {socio.rating}</span> · Tu repartidor
+            </div>
           </div>
           {socio.telefono && (
-            <button onClick={() => window.open(`tel:${socio.telefono}`, '_self')} style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--c-primary-light)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={() => window.open(`tel:${socio.telefono}`, '_self')} style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: 'var(--c-primary-glow)', border: 'none',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <Phone size={16} strokeWidth={2} color="var(--c-primary)" />
             </button>
           )}
@@ -438,19 +452,20 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           <div key={i} style={{ display: 'flex', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div style={{
-                width: 32, height: 32, borderRadius: 10,
-                background: i <= etapa ? 'var(--c-primary)' : 'var(--c-surface2)',
+                width: 34, height: 34, borderRadius: 10,
+                background: i <= etapa ? 'var(--c-primary)' : '#262626',
+                border: i <= etapa ? 'none' : '1px solid #484847',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, transition: 'all 0.3s',
                 animation: i === 0 && etapa === 0 ? 'pulse 2s ease-in-out infinite' : 'none',
               }}>
                 {i <= etapa ? e.icon : ''}
               </div>
-              {i < 4 && <div style={{ width: 2, height: 24, background: i < etapa ? 'var(--c-primary)' : 'var(--c-border)' }} />}
+              {i < 4 && <div style={{ width: 2, height: 24, background: i < etapa ? 'var(--c-primary)' : '#262626' }} />}
             </div>
-            <div style={{ paddingTop: 4, paddingBottom: 12 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: i <= etapa ? 'var(--c-text)' : 'var(--c-muted)' }}>{e.label}</div>
-              <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>{e.desc}</div>
+            <div style={{ paddingTop: 5, paddingBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: i <= etapa ? 'var(--c-text)' : '#767575' }}>{e.label}</div>
+              <div style={{ fontSize: 11, color: '#767575' }}>{e.desc}</div>
             </div>
           </div>
         ))}
@@ -458,33 +473,33 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
       {/* Valoracion al entregar */}
       {etapa === 4 && (
-        <div style={{ background: 'var(--c-surface)', borderRadius: 14, padding: 20, border: '1px solid var(--c-border)' }}>
+        <div style={{ background: '#1A1919', borderRadius: 14, padding: 20, border: '1px solid #262626' }}>
           {yaValorado || resenaEnviada ? (
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-primary)' }}>Gracias por tu valoracion</div>
-              <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Tu opinion nos ayuda a mejorar</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-primary-light)' }}>Gracias por tu valoración</div>
+              <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Tu opinión nos ayuda a mejorar</div>
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, textAlign: 'center' }}>¿Como fue tu experiencia?</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, textAlign: 'center' }}>¿Cómo fue tu experiencia?</div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
                 {[1, 2, 3, 4, 5].map(i => (
                   <button key={i} onClick={() => setValoracion(i)} style={{
                     width: 40, height: 40, borderRadius: 10,
-                    border: i <= valoracion ? '2px solid var(--c-primary)' : '1px solid var(--c-border)',
-                    background: i <= valoracion ? 'var(--c-primary)' : 'var(--c-surface)',
+                    border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid #484847',
+                    background: i <= valoracion ? 'var(--c-primary)' : '#262626',
                     cursor: 'pointer', fontSize: 18,
-                    color: i <= valoracion ? '#fff' : 'var(--c-text)',
+                    color: i <= valoracion ? '#fff' : '#767575',
                     transition: 'all 0.15s',
                   }}>★</button>
                 ))}
               </div>
               {valoracion > 0 && (
                 <>
-                  <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuentanos mas sobre tu experiencia (opcional)..." rows={3} style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--c-border)',
-                    fontSize: 13, fontFamily: 'inherit', background: 'rgba(255,255,255,0.06)',
+                  <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuéntanos más sobre tu experiencia (opcional)..." rows={3} style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #484847',
+                    fontSize: 13, fontFamily: 'inherit', background: '#262626',
                     color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12,
                   }} />
                   {errorResena && (
@@ -494,10 +509,10 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   )}
                   <button onClick={enviarValoracion} style={{
                     width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
-                    background: 'var(--c-primary)', color: '#fff', fontSize: 14, fontWeight: 800,
-                    cursor: 'pointer', fontFamily: 'inherit',
+                    background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.01em',
                   }}>
-                    Enviar valoracion
+                    Enviar valoración
                   </button>
                 </>
               )}
@@ -507,7 +522,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       )}
 
       {/* Badge metodo pago */}
-      <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: 'var(--c-muted)' }}>
+      <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#767575' }}>
         {pedido.metodo_pago === 'tarjeta' ? '💳 Pagado con tarjeta' : '💵 Pago en efectivo'}
       </div>
     </div>

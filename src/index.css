@@ -1,3 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
+/* ─── Design Tokens ─────────────────────────────────────── */
+:root {
+  /* Brand */
+  --c-primary:        #FF6B2C;
+  --c-primary-dim:    #F76526;
+  --c-primary-light:  #FF9066;
+  --c-primary-glow:   rgba(255, 107, 44, 0.15);
+  --c-primary-shadow: rgba(255, 107, 44, 0.06);
+
+  /* Gradient botón principal (Liquid Amber) */
+  --c-btn-gradient:   linear-gradient(135deg, #FF6B2C 0%, #F76526 100%);
+
+  /* Superficies */
+  --c-bg:             #0D0D0D;
+  --c-surface:        #0E0E0E;
+  --c-surface-low:    #131313;
+  --c-surface-mid:    #1A1919;
+  --c-surface-high:   #201F1F;
+  --c-surface-glass:  rgba(255, 255, 255, 0.08);
+
+  /* Texto */
+  --c-text:           #FFFFFF;
+  --c-muted:          #ADAAAA;
+  --c-muted-soft:     rgba(255, 255, 255, 0.45);
+
+  /* Bordes */
+  --c-border:         rgba(255, 255, 255, 0.10);
+  --c-border-soft:    rgba(255, 255, 255, 0.06);
+
+  /* Glassmorphism */
+  --blur-sm:          blur(12px);
+  --blur-md:          blur(20px);
+  --blur-lg:          blur(24px);
+
+  /* Radio */
+  --r-xs:  4px;
+  --r-sm:  8px;
+  --r-md:  12px;
+  --r-lg:  16px;
+  --r-xl:  20px;
+  --r-2xl: 24px;
+  --r-pill: 999px;
+
+  /* Tipografía */
+  --font:  'Plus Jakarta Sans', sans-serif;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,9 +61,9 @@ html {
 }
 
 body {
-  background: #0D0D0D;
+  background: var(--c-bg);
   margin: 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font);
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
@@ -61,7 +110,7 @@ body {
   border-radius: 12px !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
   margin-top: 4px !important;
-  font-family: 'DM Sans', sans-serif !important;
+  font-family: var(--font) !important;
   z-index: 10000 !important;
 }
 .pac-item {

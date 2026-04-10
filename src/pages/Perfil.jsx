@@ -405,7 +405,7 @@ export default function Perfil() {
           <button key={i} onClick={item.action} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             width: '100%', padding: '14px 16px', border: 'none', background: 'transparent',
-            borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', fontFamily: 'inherit',
+            borderBottom: '1px solid #262626', cursor: 'pointer', fontFamily: 'inherit',
             fontSize: 14, fontWeight: 600, color: 'var(--c-text)', textAlign: 'left',
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -437,10 +437,10 @@ export default function Perfil() {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         }} onClick={e => e.target === e.currentTarget && setEditando(false)}>
           <div className="modal-sheet" style={{
-            width: '100%', maxWidth: 420, background: '#1A1A1A',
+            width: '100%', maxWidth: 420, background: '#131313',
             borderRadius: '20px 20px 0 0', padding: 24,
             animation: 'slideUp 0.3s ease',
-            border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
+            border: '1px solid #262626', borderBottom: 'none',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#F5F5F5' }}>Editar perfil</h3>
@@ -481,8 +481,8 @@ export default function Perfil() {
 
             <button onClick={handleGuardar} disabled={saving} style={{
               width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: saving ? 'rgba(255,255,255,0.2)' : 'var(--c-primary)', color: '#fff',
-              fontSize: 15, fontWeight: 800, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+              background: saving ? '#484847' : 'var(--c-btn-gradient)', color: '#fff',
+              fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
             }}>
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
@@ -537,18 +537,18 @@ function PromosSection() {
 }
 
 const glass = {
-  background: 'rgba(255,255,255,0.06)', borderRadius: 14,
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: '#1A1919', borderRadius: 14,
+  border: '1px solid #262626',
 }
 
 const inputDark = {
-  width: '100%', padding: '14px 16px', borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.15)', fontSize: 14, fontFamily: 'inherit',
-  background: 'rgba(255,255,255,0.08)', color: '#F5F5F5', outline: 'none',
+  width: '100%', padding: '14px 16px', borderRadius: 10,
+  border: '1px solid #484847', fontSize: 14, fontFamily: 'inherit',
+  background: '#262626', color: '#F5F5F5', outline: 'none',
   boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)',
-  marginBottom: 6, display: 'block',
+  fontSize: 11, fontWeight: 700, color: '#767575',
+  marginBottom: 6, display: 'block', letterSpacing: '0.04em', textTransform: 'uppercase',
 }

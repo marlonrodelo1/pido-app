@@ -50,7 +50,7 @@ export default function SerSocio({ onClose }) {
       {/* Ejemplo ganancias */}
       <div style={styles.earningsCard}>
         <div style={{ fontSize: 12, fontWeight: 600, color: '#16A34A', marginBottom: 4 }}>Ganancias estimadas</div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: '#111', letterSpacing: -1 }}>Hasta 2.000EUR</div>
+        <div style={{ fontSize: 32, fontWeight: 700, color: '#4ADE80', letterSpacing: '-0.02em' }}>Hasta 2.000€</div>
         <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>al mes como socio repartidor activo</div>
       </div>
 
@@ -84,8 +84,8 @@ export default function SerSocio({ onClose }) {
       <h2 style={styles.sectionTitle}>Requisitos</h2>
       <div style={{ ...styles.card, marginBottom: 28 }}>
         {requisitos.map((r, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < requisitos.length - 1 ? '1px solid var(--c-border)' : 'none' }}>
-            <div style={{ width: 20, height: 20, borderRadius: 6, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#16A34A' }}>✓</div>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < requisitos.length - 1 ? '1px solid #262626' : 'none' }}>
+            <div style={{ width: 20, height: 20, borderRadius: 6, background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#4ADE80' }}>✓</div>
             <span style={{ fontSize: 13, color: 'var(--c-text)' }}>{r}</span>
           </div>
         ))}
@@ -134,35 +134,36 @@ export default function SerSocio({ onClose }) {
 
 const styles = {
   container: { animation: 'fadeIn 0.3s ease' },
-  backBtn: { width: 36, height: 36, borderRadius: 10, background: 'var(--c-surface2)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, background: '#262626', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   hero: { textAlign: 'center', marginBottom: 24 },
   earningsCard: {
-    background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 16, padding: '20px 24px',
+    background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 14, padding: '20px 24px',
     textAlign: 'center', marginBottom: 28,
   },
-  sectionTitle: { fontSize: 16, fontWeight: 800, color: 'var(--c-text)', marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: 700, color: 'var(--c-text)', marginBottom: 12, letterSpacing: '-0.01em' },
   beneficioCard: {
-    background: 'var(--c-surface)', borderRadius: 14, padding: '16px 14px',
-    border: '1px solid var(--c-border)',
+    background: '#1A1919', borderRadius: 12, padding: '16px 14px',
+    border: '1px solid #262626',
   },
   pasoCard: {
-    display: 'flex', alignItems: 'center', gap: 14, background: 'var(--c-surface)',
-    borderRadius: 14, padding: '14px 16px', border: '1px solid var(--c-border)',
+    display: 'flex', alignItems: 'center', gap: 14, background: '#1A1919',
+    borderRadius: 12, padding: '14px 16px', border: '1px solid #262626',
   },
   pasoNum: {
     width: 32, height: 32, borderRadius: 10, background: 'var(--c-primary)',
     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 14, fontWeight: 800, flexShrink: 0,
+    fontSize: 14, fontWeight: 700, flexShrink: 0,
   },
   card: {
-    background: 'var(--c-surface)', borderRadius: 14, padding: '14px 18px',
-    border: '1px solid var(--c-border)',
+    background: '#1A1919', borderRadius: 12, padding: '14px 18px',
+    border: '1px solid #262626',
   },
   ctaBtn: {
-    width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-    background: 'var(--c-primary)', color: '#fff', fontSize: 16, fontWeight: 800,
-    cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+    width: '100%', padding: '16px', borderRadius: 12, border: 'none',
+    background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)', color: '#fff',
+    fontSize: 15, fontWeight: 700, letterSpacing: '0.01em',
+    cursor: 'pointer', fontFamily: 'var(--font)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 4px 14px rgba(255,107,44,0.3)',
+    boxShadow: '0 8px 24px rgba(255,107,44,0.25)',
   },
 }
