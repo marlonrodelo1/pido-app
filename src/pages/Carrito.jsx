@@ -245,7 +245,8 @@ export default function Carrito({ onPedidoCreado }) {
     }
     const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert({
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
-      socio_id: null, canal: 'pido', estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
+      socio_id: null, // TODO: Shipday handles rider assignment now
+      canal: 'pido', estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
       descuento: descuento > 0 ? descuento : null,
       promo_titulo: descuento > 0 && promoActiva ? promoActiva.titulo : null, notas,
@@ -276,6 +277,22 @@ export default function Carrito({ onPedidoCreado }) {
       title: 'Nuevo pedido', body: `Pedido ${pedido.codigo} - ${(Math.max(0, total - descuento)).toFixed(2)} €`,
       data: { pedido_id: pedido.id },
     })
+    // Fire-and-forget: notificar a Shipday (no bloquea el flujo del usuario)
+    ;(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        await fetch('https://rmrbxrabngdmpgpfmjbo.supabase.co/functions/v1/create-shipday-order', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ pedido_id: pedido.id }),
+        })
+      } catch (err) {
+        console.error('[Shipday] Error al crear order:', err)
+      }
+    })()
     onPedidoCreado(pedido)
   }
 
