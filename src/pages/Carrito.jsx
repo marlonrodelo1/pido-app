@@ -245,7 +245,6 @@ export default function Carrito({ onPedidoCreado }) {
     }
     const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert({
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
-      socio_id: null, // TODO: Shipday handles rider assignment now
       canal: 'pido', estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
       descuento: descuento > 0 ? descuento : null,

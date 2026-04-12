@@ -101,7 +101,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     const pollInterval = setInterval(async () => {
       const { data } = await supabase
         .from('pedidos')
-        .select('estado, socio_id, motivo_cancelacion, metodo_pago')
+        .select('estado, motivo_cancelacion, metodo_pago')
         .eq('id', pedido.id)
         .single()
       if (data) {
@@ -138,7 +138,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     const { error } = await supabase.from('resenas').insert({
       usuario_id: uid,
       establecimiento_id: pedido.establecimiento_id,
-      socio_id: pedido.socio_id,
       pedido_id: pedido.id,
       rating: valoracion,
       texto: textoResena.trim() || null,
