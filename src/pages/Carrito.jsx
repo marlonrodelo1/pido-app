@@ -277,22 +277,6 @@ export default function Carrito({ onPedidoCreado }) {
       title: 'Nuevo pedido', body: `Pedido ${pedido.codigo} - ${(Math.max(0, total - descuento)).toFixed(2)} €`,
       data: { pedido_id: pedido.id },
     })
-    // Fire-and-forget: notificar a Shipday (no bloquea el flujo del usuario)
-    ;(async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        await fetch('https://rmrbxrabngdmpgpfmjbo.supabase.co/functions/v1/create-shipday-order', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ pedido_id: pedido.id }),
-        })
-      } catch (err) {
-        console.error('[Shipday] Error al crear order:', err)
-      }
-    })()
     onPedidoCreado(pedido)
   }
 

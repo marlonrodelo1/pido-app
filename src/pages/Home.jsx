@@ -23,11 +23,10 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
+export default function Home({ onOpenRest, categoriaPadre }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
   const { perfil, updatePerfil, user } = useAuth()
   const [establecimientos, setEstablecimientos] = useState([])
-  const [ridersActivos, setRidersActivos] = useState({})
   const [busqueda, setBusqueda] = useState('')
   const [catActiva, setCatActiva] = useState(null)
   const [favoritos, setFavoritos] = useState(perfil?.favoritos || [])
@@ -137,36 +136,17 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
     if (data && data.length > 0) {
       const estIds = data.map(e => e.id)
 
-      // Cargar categorías + riders en paralelo
-      const [estCatsRes, relacionesRes] = await Promise.all([
-        supabase.from('establecimiento_categorias').select('establecimiento_id, categoria_id').in('establecimiento_id', estIds),
-        supabase.from('socio_establecimiento').select('establecimiento_id, socio_id').in('establecimiento_id', estIds).eq('estado', 'aceptado'),
-      ])
+      const { data: estCats } = await supabase
+        .from('establecimiento_categorias')
+        .select('establecimiento_id, categoria_id')
+        .in('establecimiento_id', estIds)
 
       const catMap = {}
-      for (const ec of (estCatsRes.data || [])) {
+      for (const ec of (estCats || [])) {
         if (!catMap[ec.establecimiento_id]) catMap[ec.establecimiento_id] = []
         catMap[ec.establecimiento_id].push(ec.categoria_id)
       }
       setEstablecimientos(data.map(e => ({ ...e, _catIds: catMap[e.id] || [] })))
-
-      const relaciones = relacionesRes.data
-      if (relaciones && relaciones.length > 0) {
-        const socioIds = [...new Set(relaciones.map(r => r.socio_id))]
-        const { data: sociosActivos } = await supabase
-          .from('socios')
-          .select('id')
-          .in('id', socioIds)
-          .eq('activo', true)
-          .eq('en_servicio', true)
-
-        const sociosActivosSet = new Set((sociosActivos || []).map(s => s.id))
-        const mapa = {}
-        relaciones.forEach(r => {
-          if (sociosActivosSet.has(r.socio_id)) mapa[r.establecimiento_id] = true
-        })
-        setRidersActivos(mapa)
-      }
     } else {
       setEstablecimientos(data || [])
     }
@@ -415,36 +395,6 @@ export default function Home({ onOpenRest, categoriaPadre, onSerSocio }) {
                 </div>
               )
             })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Gana dinero repartiendo (Liquid Amber gradient, 22px) ── */}
-      {!busqueda && !catActiva && onSerSocio && (
-        <div
-          onClick={onSerSocio}
-          style={{
-            background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
-            borderRadius: 22, padding: 24, marginBottom: 24, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            boxShadow: '0 25px 50px -12px rgba(255,144,102,0.2)',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#571a00', lineHeight: 1.25, textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
-              Gana dinero<br/>repartiendo
-            </div>
-            <div style={{ color: 'rgba(87,26,0,0.8)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4 }}>
-              Únete al equipo Pidoo hoy
-            </div>
-          </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(12px)',
-            padding: '8px 16px', borderRadius: 12,
-            fontSize: 12, fontWeight: 900, color: '#fff',
-            textTransform: 'uppercase', fontStyle: 'italic',
-          }}>
-            Aplicar
           </div>
         </div>
       )}

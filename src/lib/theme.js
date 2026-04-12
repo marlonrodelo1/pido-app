@@ -33,7 +33,6 @@ export const badge = (type) => {
     tarjeta: { bg: colors.primaryLight, color: colors.primary },
     efectivo: { bg: colors.successLight, color: colors.success },
     pido: { bg: colors.primaryLight, color: colors.primary },
-    pidogo: { bg: colors.successLight, color: colors.success },
     activo: { bg: colors.successLight, color: colors.success },
     inactivo: { bg: colors.errorLight, color: colors.error },
     nuevo: { bg: colors.primaryLight, color: colors.primary },

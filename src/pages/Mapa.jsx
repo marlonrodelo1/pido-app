@@ -21,10 +21,8 @@ const darkMapStyles = [
 export default function Mapa({ onOpenRest }) {
   const { perfil } = useAuth()
   const [establecimientos, setEstablecimientos] = useState([])
-  const [sociosActivos, setSociosActivos] = useState([])
   const [center, setCenter] = useState({ lat: 28.1235, lng: -15.4363 }) // Canarias por defecto
   const [selectedEst, setSelectedEst] = useState(null)
-  const [selectedRider, setSelectedRider] = useState(null)
   const [geoError, setGeoError] = useState(false)
   const [map, setMap] = useState(null)
 
@@ -44,40 +42,17 @@ export default function Mapa({ onOpenRest }) {
     }
   }, [])
 
-  // Realtime: posición de riders
-  useEffect(() => {
-    const channel = supabase.channel('mapa-riders')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'socios',
-      }, payload => {
-        setSociosActivos(prev =>
-          prev.map(s => s.id === payload.new.id
-            ? { ...s, latitud_actual: payload.new.latitud_actual, longitud_actual: payload.new.longitud_actual, en_servicio: payload.new.en_servicio }
-            : s
-          ).filter(s => s.en_servicio)
-        )
-      })
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
-  }, [])
-
   async function fetchData() {
     // Obtener centro actual para filtro geográfico (~0.5° ≈ 55km)
     const c = perfil?.latitud ? { lat: perfil.latitud, lng: perfil.longitud } : center
     const delta = 0.5
-    const [estRes, socRes] = await Promise.all([
-      supabase.from('establecimientos').select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km').eq('activo', true)
-        .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
-        .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta),
-      supabase.from('socios').select('id, nombre, latitud_actual, longitud_actual, rating, nombre_comercial').eq('en_servicio', true).not('latitud_actual', 'is', null)
-        .gte('latitud_actual', c.lat - delta).lte('latitud_actual', c.lat + delta)
-        .gte('longitud_actual', c.lng - delta).lte('longitud_actual', c.lng + delta),
-    ])
-    setEstablecimientos(estRes.data || [])
-    setSociosActivos(socRes.data || [])
+    const { data: estData } = await supabase
+      .from('establecimientos')
+      .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
+      .eq('activo', true)
+      .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
+      .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta)
+    setEstablecimientos(estData || [])
   }
 
   const onLoad = useCallback(m => setMap(m), [])
@@ -106,9 +81,6 @@ export default function Mapa({ onOpenRest }) {
         <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--c-border)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, color: 'var(--c-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>🍽️</span> {establecimientos.length} establecimientos
         </div>
-        <div style={{ background: 'rgba(255,107,44,0.12)', border: '1px solid rgba(255,107,44,0.25)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, color: 'var(--c-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 14 }}>🛵</span> {sociosActivos.length} riders activos
-        </div>
       </div>
 
       <GoogleMap
@@ -124,7 +96,7 @@ export default function Mapa({ onOpenRest }) {
           streetViewControl: false,
           fullscreenControl: false,
         }}
-        onClick={() => { setSelectedEst(null); setSelectedRider(null) }}
+        onClick={() => { setSelectedEst(null) }}
       >
         {/* Círculo de radio del restaurante seleccionado */}
         {selectedEst?.radio_cobertura_km && selectedEst.latitud && selectedEst.longitud && (
@@ -167,8 +139,8 @@ export default function Mapa({ onOpenRest }) {
               mapPaneName={OVERLAY_MOUSE_TARGET}
             >
               <div
-                onClick={(e) => { e.stopPropagation(); setSelectedEst(est); setSelectedRider(null) }}
-                onTouchEnd={(e) => { e.stopPropagation(); setSelectedEst(est); setSelectedRider(null) }}
+                onClick={(e) => { e.stopPropagation(); setSelectedEst(est) }}
+                onTouchEnd={(e) => { e.stopPropagation(); setSelectedEst(est) }}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
                   border: `2.5px solid ${selectedEst?.id === est.id ? '#fff' : '#FF6B2C'}`,
@@ -189,21 +161,6 @@ export default function Mapa({ onOpenRest }) {
                 }
               </div>
             </OverlayViewF>
-          )
-        ))}
-
-        {/* Riders activos */}
-        {sociosActivos.map(rider => (
-          rider.latitud_actual && rider.longitud_actual && (
-            <MarkerF
-              key={`rider-${rider.id}`}
-              position={{ lat: rider.latitud_actual, lng: rider.longitud_actual }}
-              onClick={() => { setSelectedRider(rider); setSelectedEst(null) }}
-              icon={{
-                url: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect x="2" y="2" width="36" height="36" rx="10" fill="#FF6B2C"/><text x="20" y="26" text-anchor="middle" font-size="18">🛵</text></svg>`)}`,
-                scaledSize: new window.google.maps.Size(40, 40),
-              }}
-            />
           )
         ))}
 
@@ -243,28 +200,6 @@ export default function Mapa({ onOpenRest }) {
           </InfoWindowF>
         )}
 
-        {/* InfoWindow rider */}
-        {selectedRider && (
-          <InfoWindowF
-            position={{ lat: selectedRider.latitud_actual, lng: selectedRider.longitud_actual }}
-            onCloseClick={() => setSelectedRider(null)}
-            options={{ pixelOffset: new window.google.maps.Size(0, -22) }}
-          >
-            <div style={{ fontFamily: "'DM Sans', sans-serif", padding: 4, minWidth: 140 }}>
-              <div style={{ fontWeight: 800, fontSize: 13, color: '#1A1A1A', marginBottom: 2 }}>
-                🛵 {selectedRider.nombre}
-              </div>
-              <div style={{ fontSize: 11, color: '#666' }}>
-                {selectedRider.nombre_comercial}
-              </div>
-              <div style={{ fontSize: 11, color: '#666', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                <span style={{ color: '#FBBF24' }}>★</span> {selectedRider.rating || '—'}
-                <span style={{ width: 6, height: 6, borderRadius: 3, background: '#16A34A', display: 'inline-block', marginLeft: 4 }} />
-                <span style={{ color: '#16A34A', fontWeight: 600 }}>Activo</span>
-              </div>
-            </div>
-          </InfoWindowF>
-        )}
       </GoogleMap>
     </div>
   )

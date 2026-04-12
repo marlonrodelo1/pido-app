@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Phone } from 'lucide-react'
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -35,9 +34,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const [pedido, setPedido] = useState(pedidoInicial)
   const [etapa, setEtapa] = useState(getEtapa(pedidoInicial.estado))
   const [riderPos, setRiderPos] = useState(0)
-  const [socio, setSocio] = useState(null)
-  const [riderLat, setRiderLat] = useState(null)
-  const [riderLng, setRiderLng] = useState(null)
+  // TODO: Use shipday_status for rider position tracking (Shipday integration)
   const [estCoords, setEstCoords] = useState(null) // {lat, lng} del establecimiento
   const [valoracion, setValoracion] = useState(0)
   const [textoResena, setTextoResena] = useState('')
@@ -60,14 +57,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       })
   }, [pedidoInicial.id])
 
-  // Fetch socio
-  useEffect(() => {
-    if (pedido.socio_id) {
-      supabase.from('socios').select('nombre, rating, telefono').eq('id', pedido.socio_id).single()
-        .then(({ data }) => { if (data) setSocio(data) })
-    }
-  }, [pedido.socio_id])
-
   // Fetch coordenadas del establecimiento para el mapa
   useEffect(() => {
     if (pedido.establecimiento_id) {
@@ -82,9 +71,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     const bounds = new window.google.maps.LatLngBounds()
     if (estCoords) bounds.extend(estCoords)
     if (pedido.lat_entrega && pedido.lng_entrega) bounds.extend({ lat: pedido.lat_entrega, lng: pedido.lng_entrega })
-    if (riderLat && riderLng) bounds.extend({ lat: riderLat, lng: riderLng })
     if (!bounds.isEmpty()) map.fitBounds(bounds, 50)
-  }, [estCoords, pedido.lat_entrega, pedido.lng_entrega, riderLat, riderLng])
+  }, [estCoords, pedido.lat_entrega, pedido.lng_entrega])
 
   // Comprobar si ya valoro
   useEffect(() => {
@@ -122,10 +110,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           const nuevaEtapa = getEtapa(data.estado)
           if (nuevaEtapa !== etapa) setEtapa(nuevaEtapa)
         }
-        if (data.socio_id && !socio) {
-          supabase.from('socios').select('nombre, rating, telefono').eq('id', data.socio_id).single()
-            .then(({ data: s }) => { if (s) setSocio(s) })
-        }
       }
     }, 4000)
 
@@ -134,28 +118,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       clearInterval(pollInterval)
     }
   }, [pedido.id])
-
-  // Real rider GPS tracking when en_camino or recogido
-  useEffect(() => {
-    if (!pedido.socio_id || (etapa !== 2 && etapa !== 3)) return
-    // Fetch initial position
-    supabase.from('socios').select('latitud_actual, longitud_actual').eq('id', pedido.socio_id).single()
-      .then(({ data }) => { if (data) { setRiderLat(data.latitud_actual); setRiderLng(data.longitud_actual) } })
-    // Subscribe to rider location updates
-    const ch = supabase.channel(`rider-gps-${pedido.socio_id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'socios', filter: `id=eq.${pedido.socio_id}` },
-        payload => {
-          if (payload.new.latitud_actual) setRiderLat(payload.new.latitud_actual)
-          if (payload.new.longitud_actual) setRiderLng(payload.new.longitud_actual)
-        })
-      .subscribe()
-    // Also poll every 10s as backup
-    const gpsInterval = setInterval(async () => {
-      const { data } = await supabase.from('socios').select('latitud_actual, longitud_actual').eq('id', pedido.socio_id).single()
-      if (data) { setRiderLat(data.latitud_actual); setRiderLng(data.longitud_actual) }
-    }, 10000)
-    return () => { supabase.removeChannel(ch); clearInterval(gpsInterval) }
-  }, [pedido.socio_id, etapa])
 
   // Animacion del rider (fallback visual)
   useEffect(() => {
@@ -348,11 +310,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   <MarkerF position={{ lat: pedido.lat_entrega, lng: pedido.lng_entrega }} label={{ text: '🏠', fontSize: '20px' }}
                     icon={{ url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'), anchor: { x: 0, y: 0 } }} />
                 )}
-                {/* Marker rider en tiempo real */}
-                {riderLat && riderLng && (
-                  <MarkerF position={{ lat: riderLat, lng: riderLng }} label={{ text: '🛵', fontSize: '22px' }}
-                    icon={{ url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'), anchor: { x: 0, y: 0 } }} />
-                )}
+                {/* TODO: Show rider position via Shipday shipday_status tracking */}
               </GoogleMap>
             ) : (
               // Fallback mientras carga
@@ -416,35 +374,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         @keyframes deliveredBounce { 0%{transform:translateX(-50%) translateY(-40px);opacity:0} 60%{transform:translateX(-50%) translateY(5px)} 100%{transform:translateX(-50%) translateY(0);opacity:1} }
       `}</style>
 
-      {/* Info repartidor */}
-      {socio && etapa >= 1 && etapa < 5 && (
-        <div style={{
-          background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 12, padding: '14px 16px',
-          border: '1px solid rgba(255,255,255,0.1)', marginBottom: 16,
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: 'var(--c-primary-glow)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-          }}>🛵</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>{socio.nombre}</div>
-            <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>
-              <span style={{ color: 'var(--c-primary-light)' }}>★ {socio.rating}</span> · Tu repartidor
-            </div>
-          </div>
-          {socio.telefono && (
-            <button onClick={() => window.open(`tel:${socio.telefono}`, '_self')} style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: 'var(--c-primary-glow)', border: 'none',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Phone size={16} strokeWidth={2} color="var(--c-primary)" />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Pasos */}
       <div style={{ marginBottom: 20 }}>

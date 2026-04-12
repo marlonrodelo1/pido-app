@@ -22,8 +22,6 @@ const Mapa = lazy(() => import('./pages/Mapa'))
 const MisPedidos = lazy(() => import('./pages/MisPedidos'))
 const Notificaciones = lazy(() => import('./pages/Notificaciones'))
 const Perfil = lazy(() => import('./pages/Perfil'))
-const SerSocio = lazy(() => import('./pages/SerSocio'))
-const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 
@@ -180,7 +178,7 @@ function AppContent() {
             : restOpen && seccion === 'home'
             ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} />
             : seccion === 'home'
-            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onSerSocio={() => setSeccion('ser-socio')} />
+            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} />
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />
             : seccion === 'mapa'
@@ -191,8 +189,6 @@ function AppContent() {
             ? <Notificaciones />
             : seccion === 'perfil'
             ? <Perfil />
-            : seccion === 'ser-socio'
-            ? <SerSocio onClose={() => setSeccion('home')} />
             : null
           }
         </Suspense>
@@ -245,7 +241,6 @@ body{background:#0D0D0D;margin:0}
   .bottom-nav-wrap{max-width:560px!important}
   .modal-sheet{max-width:560px!important}
   .login-form{max-width:400px!important}
-  .ser-socio-grid{grid-template-columns:repeat(3,1fr)!important}
   .legal-content{max-width:700px!important}
 }
 @media(min-width:1024px){
@@ -267,7 +262,6 @@ body{background:#0D0D0D;margin:0}
 
 function TiendaDetector() {
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('pido_splash_shown'))
-  const [slugTienda, setSlugTienda] = useState(null)
   const [checking, setChecking] = useState(true)
   const [emailConfirmado, setEmailConfirmado] = useState(false)
   const [paginaLegal, setPaginaLegal] = useState(null)
@@ -351,16 +345,7 @@ function TiendaDetector() {
       setChecking(false)
       return
     }
-    if (path && path !== '') {
-      import('./lib/supabase').then(({ supabase }) => {
-        supabase.from('socios').select('slug').eq('slug', path).single().then(({ data }) => {
-          if (data) setSlugTienda(path)
-          setChecking(false)
-        }).catch(() => setChecking(false))
-      })
-    } else {
-      setChecking(false)
-    }
+    setChecking(false)
   }, [])
 
   if (showSplash) {
@@ -418,19 +403,6 @@ function TiendaDetector() {
           <PaginaLegal slug={paginaLegal} onBack={() => window.history.back()} />
         </Suspense>
       </div>
-    )
-  }
-
-  if (slugTienda) {
-    return (
-      <AuthProvider>
-        <div style={{ ...shellStyle, minHeight: '100vh' }}>
-          <style>{globalCss}</style>
-          <Suspense fallback={SuspenseFallback}>
-            <TiendaSocio slug={slugTienda} />
-          </Suspense>
-        </div>
-      </AuthProvider>
     )
   }
 
