@@ -24,3 +24,9 @@ Keystorepath
 
 # Firebase config
 **/google-services.json
+
+# Claude Code
+.claude/
+
+# Stitch
+stitch-home.html
