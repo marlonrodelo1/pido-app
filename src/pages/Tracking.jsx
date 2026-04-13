@@ -291,8 +291,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </div>
       )}
 
-      {/* Botón tracking Shipday */}
-      {pedido.shipday_tracking_url ? (
+      {/* Botón tracking Shipday — solo cuando el rider ha aceptado */}
+      {pedido.shipday_tracking_url && pedido.shipday_status && !['NOT_ASSIGNED','NOT_ACCEPTED'].includes(pedido.shipday_status?.toUpperCase()) ? (
         <button onClick={abrirTracking} style={{ width: '100%', padding: '16px 0', borderRadius: 14, border: 'none', background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <span>📍</span> Ver repartidor en tiempo real
         </button>
