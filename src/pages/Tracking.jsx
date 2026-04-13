@@ -29,6 +29,17 @@ function getEtapa(estado) {
   return map[estado] ?? 0
 }
 
+// Mapea shipday_status al número de etapa como fallback/complemento
+function getEtapaFromShipday(shipday_status) {
+  if (!shipday_status) return 0
+  const s = shipday_status.toUpperCase()
+  if (s.includes('DELIVER') || s.includes('COMPLET') || s.includes('ARRIVED_AT_DEL') || s === 'ARRIVED') return 4
+  if (s.includes('ON_THE_WAY') || s.includes('STARTED') || s.includes('HEADING') || s.includes('ENROUTE') || s.includes('EN_ROUTE')) return 3
+  if (s.includes('PICKED') || s.includes('COLLECTED') || s.includes('ARRIVED_AT_PICK')) return 2
+  if (s.includes('ASSIGN') || s.includes('ACCEPT')) return 1
+  return 0
+}
+
 export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const { user } = useAuth()
   const [pedido, setPedido] = useState(pedidoInicial)
@@ -93,7 +104,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         const nuevo = payload.new
         setPedido(prev => ({ ...prev, ...nuevo }))
         if (nuevo.estado !== 'cancelado' && nuevo.estado !== 'fallido') {
-          setEtapa(getEtapa(nuevo.estado))
+          setEtapa(Math.max(getEtapa(nuevo.estado), getEtapaFromShipday(nuevo.shipday_status)))
         }
       })
       .subscribe()
@@ -101,13 +112,13 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     const pollInterval = setInterval(async () => {
       const { data } = await supabase
         .from('pedidos')
-        .select('estado, motivo_cancelacion, metodo_pago')
+        .select('estado, motivo_cancelacion, metodo_pago, shipday_status')
         .eq('id', pedido.id)
         .single()
       if (data) {
         setPedido(prev => ({ ...prev, ...data }))
         if (data.estado !== 'cancelado' && data.estado !== 'fallido') {
-          const nuevaEtapa = getEtapa(data.estado)
+          const nuevaEtapa = Math.max(getEtapa(data.estado), getEtapaFromShipday(data.shipday_status))
           if (nuevaEtapa !== etapa) setEtapa(nuevaEtapa)
         }
       }
