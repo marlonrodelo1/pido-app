@@ -227,14 +227,69 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </div>
       </div>
 
-      {/* Badge de estado */}
-      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: '24px 20px', marginBottom: 20, border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-        <div style={{ fontSize: 52, marginBottom: 10 }}>{info.icon}</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: info.color }}>{info.label}</div>
-        {pedido.minutos_preparacion && pedido.estado === 'preparando' && (
-          <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 6 }}>~{pedido.minutos_preparacion} min estimados</div>
-        )}
-      </div>
+      {/* Animaciones CSS */}
+      <style>{`
+        @keyframes pulse2 { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.12);opacity:0.7} }
+        @keyframes chopChop { 0%{transform:rotate(0deg)} 100%{transform:rotate(-22deg)} }
+        @keyframes chopChop2 { 0%{transform:rotate(0deg) scaleX(-1)} 100%{transform:rotate(22deg) scaleX(-1)} }
+        @keyframes steamRise { 0%{opacity:0.6;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-22px) scale(1.4)} }
+        @keyframes sizzle { 0%{opacity:0.3;transform:scale(0.8)} 100%{opacity:1;transform:scale(1.3)} }
+        @keyframes floatPan { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+      `}</style>
+
+      {/* Bloque animado según estado */}
+      {(pedido.estado === 'nuevo' || pedido.estado === 'aceptado') && (
+        <div style={{ borderRadius: 16, marginBottom: 20, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e2a3a 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          {/* Estrellas parpadeantes */}
+          {[...Array(8)].map((_, i) => (
+            <div key={i} style={{ position: 'absolute', top: 8 + (i * 11) % 60, left: `${8 + (i * 19) % 84}%`, width: 2, height: 2, borderRadius: '50%', background: '#fff', opacity: 0.25 + (i % 3) * 0.15, animation: `pulse2 ${1.8 + i * 0.4}s ease-in-out infinite ${i * 0.3}s` }} />
+          ))}
+          <div style={{ fontSize: 44, animation: 'pulse2 2s ease-in-out infinite' }}>⏳</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Esperando al restaurante...</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>Te avisaremos cuando acepten tu pedido</div>
+        </div>
+      )}
+
+      {(pedido.estado === 'preparando' || pedido.estado === 'listo') && (
+        <div style={{ borderRadius: 16, marginBottom: 20, overflow: 'hidden', background: 'linear-gradient(135deg, #1a1207 0%, #2d1f0e 50%, #1a1207 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative' }}>
+          {/* Pared azulejos cocina */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%),repeating-linear-gradient(0deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%)', backgroundSize: '22px 22px' }} />
+          {/* Encimera */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg,#5C4033,#4A3428)', borderTop: '3px solid #6B4F3A' }} />
+          {/* Sartén flotando */}
+          <div style={{ position: 'absolute', bottom: '40%', left: '10%', animation: 'floatPan 2s ease-in-out infinite' }}>
+            <span style={{ fontSize: 36 }}>🍳</span>
+            {/* Chispas sartén */}
+            <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', animation: 'sizzle 0.35s ease-in-out infinite alternate', fontSize: 9, color: '#FFD700' }}>✦</div>
+          </div>
+          {/* Vapor */}
+          <div style={{ position: 'absolute', bottom: '70%', left: '18%', fontSize: 13, opacity: 0.5, animation: 'steamRise 2s ease-out infinite' }}>💨</div>
+          <div style={{ position: 'absolute', bottom: '72%', left: '25%', fontSize: 10, opacity: 0.35, animation: 'steamRise 2.4s ease-out infinite 0.6s' }}>💨</div>
+          {/* Cuchillo izquierda */}
+          <div style={{ position: 'absolute', bottom: '40%', left: '42%', animation: 'chopChop 0.38s ease-in-out infinite', transformOrigin: 'bottom right' }}>
+            <span style={{ fontSize: 28 }}>🔪</span>
+          </div>
+          {/* Cuchillo derecha (espejado) */}
+          <div style={{ position: 'absolute', bottom: '40%', left: '56%', animation: 'chopChop2 0.38s ease-in-out infinite 0.19s', transformOrigin: 'bottom left', display: 'inline-block' }}>
+            <span style={{ fontSize: 28 }}>🔪</span>
+          </div>
+          {/* Ingredientes */}
+          <div style={{ position: 'absolute', bottom: '40%', right: '8%', display: 'flex', gap: 4 }}>
+            <span style={{ fontSize: 20 }}>🍅</span>
+            <span style={{ fontSize: 18 }}>🧅</span>
+          </div>
+          {/* Label */}
+          <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 10, padding: '7px 13px', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 15 }}>👨‍🍳</span>
+              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Preparando tu pedido...</span>
+            </div>
+            {pedido.minutos_preparacion && (
+              <div style={{ background: 'rgba(0,0,0,0.65)', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#FFD700' }}>~{pedido.minutos_preparacion} min</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Botón rastrear */}
       {pedido.shipday_tracking_url ? (
