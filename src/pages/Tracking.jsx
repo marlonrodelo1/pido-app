@@ -291,17 +291,16 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </div>
       )}
 
-      {/* Botón rastrear */}
+      {/* Mapa de tracking Shipday */}
       {pedido.shipday_tracking_url ? (
-        <button onClick={abrirTracking} style={{
-          width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
-          background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 15, fontWeight: 700,
-          cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', gap: 10, marginBottom: 16,
-          boxShadow: '0 4px 20px rgba(255,107,44,0.35)',
-        }}>
-          <span style={{ fontSize: 20 }}>📍</span> Rastrear mi pedido
-        </button>
+        <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(255,255,255,0.08)', position: 'relative' }}>
+          <iframe
+            src={pedido.shipday_tracking_url}
+            style={{ width: '100%', height: 420, border: 'none', display: 'block' }}
+            allow="geolocation"
+            title="Rastrear pedido"
+          />
+        </div>
       ) : (
         <div style={{ borderRadius: 14, padding: '14px 20px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>El seguimiento estará disponible cuando se asigne un repartidor</div>
