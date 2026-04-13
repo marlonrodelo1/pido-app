@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 const darkMapStyles = [
   { elementType: 'geometry', stylers: [{ color: '#1d1d1d' }] },
@@ -109,6 +112,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       })
       .subscribe()
 
+    // Polling BD cada 4s
     const pollInterval = setInterval(async () => {
       const { data } = await supabase
         .from('pedidos')
@@ -124,9 +128,23 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       }
     }, 4000)
 
+    // Polling Shipday API cada 8s para forzar sincronización de estado del rider
+    const shipdaySyncInterval = setInterval(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token || SUPABASE_ANON_KEY
+        await fetch(`${SUPABASE_URL}/functions/v1/sync-shipday-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ pedido_id: pedido.id }),
+        })
+      } catch (_) { /* non-blocking */ }
+    }, 8000)
+
     return () => {
       supabase.removeChannel(channel)
       clearInterval(pollInterval)
+      clearInterval(shipdaySyncInterval)
     }
   }, [pedido.id])
 
