@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -116,7 +117,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     const pollInterval = setInterval(async () => {
       const { data } = await supabase
         .from('pedidos')
-        .select('estado, motivo_cancelacion, metodo_pago, shipday_status')
+        .select('estado, motivo_cancelacion, metodo_pago, shipday_status, shipday_tracking_url')
         .eq('id', pedido.id)
         .single()
       if (data) {
@@ -155,6 +156,17 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       return () => clearInterval(i)
     }
   }, [etapa])
+
+  async function abrirTrackingShipday() {
+    const url = pedido.shipday_tracking_url
+    if (!url) return
+    if (Capacitor.isNativePlatform()) {
+      const { Browser } = await import('@capacitor/browser')
+      await Browser.open({ url })
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   async function enviarValoracion() {
     if (!valoracion || yaValorado || resenaEnviada) return
@@ -319,37 +331,51 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         )}
 
-        {/* ===== BLOQUE 3: EN CAMINO - Mapa Google Maps real ===== */}
+        {/* ===== BLOQUE 3: EN CAMINO ===== */}
         {etapa === 3 && (
           <div style={{ height: 220, position: 'relative', borderRadius: 16, overflow: 'hidden', animation: 'fadeIn 0.5s ease' }}>
-            {isLoaded && (estCoords || (pedido.lat_entrega && pedido.lng_entrega)) ? (
+            {pedido.shipday_tracking_url ? (
+              /* Shipday live tracking disponible */
+              <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+                <span style={{ fontSize: 48 }}>🛵</span>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Tu repartidor está en camino</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Sigue su posición en tiempo real</div>
+                </div>
+                <button onClick={abrirTrackingShipday} style={{
+                  padding: '12px 24px', borderRadius: 12, border: 'none',
+                  background: 'var(--c-primary)', color: '#fff', fontSize: 14, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8,
+                  boxShadow: '0 4px 16px rgba(255,107,44,0.4)',
+                }}>
+                  🗺️ Ver en mapa en tiempo real
+                </button>
+              </div>
+            ) : isLoaded && (estCoords || (pedido.lat_entrega && pedido.lng_entrega)) ? (
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 options={{ styles: darkMapStyles, disableDefaultUI: true, zoomControl: false, gestureHandling: 'greedy' }}
                 onLoad={onMapLoad}
               >
-                {/* Marker restaurante */}
                 {estCoords && (
                   <MarkerF position={estCoords} label={{ text: '🏪', fontSize: '20px' }}
                     icon={{ url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'), anchor: { x: 0, y: 0 } }} />
                 )}
-                {/* Marker cliente (destino) */}
                 {pedido.lat_entrega && pedido.lng_entrega && (
                   <MarkerF position={{ lat: pedido.lat_entrega, lng: pedido.lng_entrega }} label={{ text: '🏠', fontSize: '20px' }}
                     icon={{ url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'), anchor: { x: 0, y: 0 } }} />
                 )}
-                {/* TODO: Show rider position via Shipday shipday_status tracking */}
               </GoogleMap>
             ) : (
-              // Fallback mientras carga
               <div style={{ width: '100%', height: '100%', background: '#1d1d1d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 14, color: 'var(--c-muted)' }}>Cargando mapa...</span>
               </div>
             )}
-            {/* Tiempo badge */}
-            <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: '#FF6B2C', color: '#fff', borderRadius: 20, padding: '6px 16px', fontSize: 12, fontWeight: 800, boxShadow: '0 4px 12px rgba(255,107,44,0.4)', display: 'flex', alignItems: 'center', gap: 6, zIndex: 5 }}>
-              <span style={{ fontSize: 14 }}>🛵</span> En camino · ~{Math.max(3, Math.round((100 - riderPos) / 100 * 15))} min
-            </div>
+            {!pedido.shipday_tracking_url && (
+              <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', background: '#FF6B2C', color: '#fff', borderRadius: 20, padding: '6px 16px', fontSize: 12, fontWeight: 800, boxShadow: '0 4px 12px rgba(255,107,44,0.4)', display: 'flex', alignItems: 'center', gap: 6, zIndex: 5 }}>
+                <span style={{ fontSize: 14 }}>🛵</span> En camino · ~{Math.max(3, Math.round((100 - riderPos) / 100 * 15))} min
+              </div>
+            )}
           </div>
         )}
 
@@ -387,6 +413,18 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         )}
       </div>
+
+      {/* Botón tracking Shipday (etapa 1-2, antes de estar en camino) */}
+      {pedido.shipday_tracking_url && etapa >= 1 && etapa < 3 && (
+        <button onClick={abrirTrackingShipday} style={{
+          width: '100%', padding: '14px 0', borderRadius: 12, border: '1.5px solid var(--c-primary)',
+          background: 'rgba(255,107,44,0.08)', color: 'var(--c-primary)', fontSize: 14, fontWeight: 700,
+          cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: 8, marginBottom: 16,
+        }}>
+          🗺️ Seguir al repartidor en el mapa
+        </button>
+      )}
 
       {/* Tracking CSS animations */}
       <style>{`
