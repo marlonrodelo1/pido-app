@@ -10,10 +10,12 @@
 App móvil y PWA para el **cliente final** del ecosistema Pidoo. Permite:
 - Buscar restaurantes, farmacias y tiendas cercanos por geolocalización
 - Ver la carta, añadir al carrito, pagar (tarjeta Stripe o efectivo)
-- Seguir el pedido en tiempo real con mapa y posición del rider
+- Seguir el pedido en tiempo real (estado vía `shipday_status`)
 - Gestionar múltiples direcciones de entrega
 - Recibir notificaciones push del estado del pedido
 - Funciona como APK nativo Android Y como PWA instalable
+
+**Canal único:** todos los pedidos son canal `pido`. No existe canal "pidogo".
 
 ---
 
@@ -26,9 +28,11 @@ App móvil y PWA para el **cliente final** del ecosistema Pidoo. Permite:
 | Backend | Supabase (PostgreSQL + Realtime + Edge Functions + Auth) |
 | Pagos | Stripe (Payment Intents, tarjetas guardadas) |
 | Mapas | Google Maps JavaScript API |
+| Reparto | Shipday (plataforma externa de repartidores, auto-dispatch) |
 | Push nativo | Firebase Cloud Messaging + @capacitor/push-notifications |
 | Push web | Web Push API (VAPID) |
 | Geocoding | Nominatim (OpenStreetMap) |
+| Supabase proyecto | `rmrbxrabngdmpgpfmjbo` |
 | Color principal | `#FF6B2C` (naranja) · Fondo `#0D0D0D` · Font: DM Sans |
 
 ---
@@ -48,14 +52,12 @@ src/
 │   ├── Home.jsx            # Listado restaurantes + geolocalizacion auto + guardar dirección
 │   ├── RestDetalle.jsx     # Detalle restaurante + carta + extras/tamaños + promociones
 │   ├── Carrito.jsx         # Carrito + checkout + Stripe + validación dirección + radio entrega
-│   ├── Tracking.jsx        # Seguimiento pedido en tiempo real + Google Maps + rider
+│   ├── Tracking.jsx        # Seguimiento pedido en tiempo real (shipday_status + Google Maps)
 │   ├── Favoritos.jsx       # Restaurantes guardados
-│   ├── Mapa.jsx            # Mapa Google con restaurantes y riders en tiempo real
+│   ├── Mapa.jsx            # Mapa Google con restaurantes
 │   ├── MisPedidos.jsx      # Historial + repetir pedido
 │   ├── Notificaciones.jsx  # Centro notificaciones + badge Realtime
 │   ├── Perfil.jsx          # Datos + Mis direcciones + métodos de pago
-│   ├── SerSocio.jsx        # Landing captación riders
-│   ├── TiendaSocio.jsx     # Tienda pública del socio (pidoo.es/{slug})
 │   └── PaginaLegal.jsx     # Términos y privacidad
 ├── components/
 │   ├── AnimatedSplash.jsx  # Splash 1x por sesión (sessionStorage), bounce + glow naranja
@@ -85,10 +87,9 @@ src/
 ```
 index.html
   └─ main.jsx
-       └─ App.jsx → ErrorBoundary → TiendaDetector
+       └─ App.jsx → ErrorBoundary
             ├─ AnimatedSplash (1x por sesión)
             ├─ /reset-password  → ResetPassword (sin auth)
-            ├─ /{slug}          → TiendaSocio (sin auth)
             ├─ /terminos|/privacidad → PaginaLegal (sin auth)
             └─ AuthProvider + CartProvider → AppContent
                  ├─ loading → pantalla oscura
@@ -127,7 +128,7 @@ propina         — 0, 1, 2 o 3€
 metodoPago      — 'tarjeta' | 'efectivo'
 modoEntrega     — 'delivery' | 'recogida'
 subtotal / envio / total / totalItems
-calcularEnvio(lat, lng, canal, socioId?)
+calcularEnvio(lat, lng)
 ```
 - `tamano` = **string nombre** (ej: "Grande"), NO un ID
 - `extras` = **array de nombres** (ej: ["Sin cebolla"]), NO IDs
@@ -136,16 +137,21 @@ calcularEnvio(lat, lng, canal, socioId?)
 
 ---
 
-## 6. FLUJO DE PAGO (Carrito.jsx)
+## 6. FLUJO DE PEDIDO
 
 ```
 iniciarPago()
   1. isPaying.current = true  ← ref anti-doble-click
-  2. insertarPedidoEnBD('pendiente_pago')
+  2. insertarPedidoEnBD('pendiente_pago')  [canal='pido']
   3a. tarjeta guardada → pagarConTarjetaGuardada()
   3b. tarjeta nueva → crearPagoStripe() → setPasoTarjeta(true) → FormularioPago
   4. onSuccess(paymentIntentId) → confirmarPago() → estado='nuevo'
   5. finalizarPedido() → clearCart + sendPush al restaurante
+
+Restaurante acepta → estado='aceptado' → se dispara create-shipday-order
+Shipday asigna repartidor automáticamente (auto-dispatch)
+shipday-webhook actualiza shipday_status + timestamps (recogido_at, entregado_at)
+Cliente hace tracking vía pedidos.shipday_status en tiempo real
 ```
 
 **Validación dirección delivery:** requiere `perfil.latitud + perfil.longitud + perfil.direccion` (los tres).
@@ -153,7 +159,17 @@ iniciarPago()
 
 ---
 
-## 7. STRIPE (stripe.js)
+## 7. TRACKING (Tracking.jsx)
+
+El seguimiento del pedido lee `pedidos.shipday_status` en tiempo real via Realtime subscription sobre la tabla `pedidos`. No hay subscripción a posición de rider en tiempo real desde nuestra BD — el estado viene del webhook de Shipday que actualiza el campo `shipday_status`.
+
+**Estados de pedido:**
+`pendiente_pago → nuevo → aceptado → en_preparacion → listo → en_camino → entregado`
+Salida: `cancelado`, `fallido`, `rechazado`
+
+---
+
+## 8. STRIPE (stripe.js)
 
 ```js
 // SIEMPRE usa JWT del usuario, NO la anon key
@@ -168,7 +184,7 @@ Funciones:
 
 ---
 
-## 8. EDGE FUNCTIONS
+## 9. EDGE FUNCTIONS
 
 | Función | Descripción | Auth |
 |---|---|---|
@@ -176,9 +192,10 @@ Funciones:
 | `generar_codigo_pedido` | Código PD-XXXXX secuencial | verify_jwt=false |
 | `crear_pago_stripe` | PaymentIntent + rate limiting + validación precio | JWT usuario |
 | `enviar_push` | Push FCM (acepta JWT usuario O service role key) | Ambos |
-| `asignar_repartidor` | Busca rider más cercano disponible | JWT usuario |
-| `calcular_comisiones` | Comisiones plataforma/socio al entregar | JWT usuario |
+| `create-shipday-order` | Crea orden en Shipday al aceptar pedido (lo llama panel-restaurante) | Service role |
+| `shipday-webhook` | Recibe actualizaciones de Shipday → actualiza shipday_status | Público |
 | `crear_reembolso_stripe` | Reembolso para pedidos cancelados | JWT usuario |
+| `calcular_comisiones` | Comisiones plataforma al entregar | JWT usuario |
 
 **crear_pago_stripe protecciones:**
 1. JWT obligatorio
@@ -187,35 +204,30 @@ Funciones:
 
 ---
 
-## 9. REALTIME SUBSCRIPTIONS
+## 10. REALTIME SUBSCRIPTIONS
 
 ```
-pedidos (UPDATE)        WHERE id = {pedidoActivo.id}    → estado tracking
-socios (UPDATE)         WHERE id = {socio_id del pedido} → posición rider en mapa
+pedidos (UPDATE)        WHERE id = {pedidoActivo.id}    → estado + shipday_status tracking
 notificaciones (INSERT) WHERE usuario_id = {user.id}    → badge notificaciones
 ```
 
 ---
 
-## 10. BASE DE DATOS (tablas principales)
+## 11. BASE DE DATOS (tablas principales)
 
 - `usuarios` — clientes (nombre, apellido, telefono, direccion, latitud, longitud, favoritos UUID[], rol, stripe_customer_id)
 - `direcciones_usuario` — múltiples dirs por cliente (etiqueta, principal, lat, lng)
 - `establecimientos` — restaurantes (nombre, tipo, horario JSONB, activo, lat, lng, radio_cobertura_km)
-- `pedidos` — (estado, usuario_id, establecimiento_id, socio_id, canal, metodo_pago, modo_entrega, subtotal, coste_envio, propina, total, stripe_payment_id)
+- `pedidos` — (estado, shipday_status, shipday_order_id, usuario_id, establecimiento_id, canal='pido', metodo_pago, modo_entrega, subtotal, coste_envio, propina, total, stripe_payment_id, recogido_at, entregado_at)
 - `pedido_items` — (tamano = nombre string, extras = array nombres)
 - `productos` — menu (nombre, precio, disponible, imagen_url, categoria_id)
-- `push_subscriptions` — tokens FCM por usuario/socio/restaurante
+- `push_subscriptions` — tokens FCM por usuario/restaurante
 - `notificaciones` — notificaciones in-app (leida flag)
 - `promociones` — promos activas (descuento_porcentaje, descuento_fijo, 2x1)
 
-**Estados de pedido:**
-`pendiente_pago → nuevo → aceptado → en_preparacion → listo → en_camino → entregado`
-Salida: `cancelado`, `fallido`, `rechazado`
-
 ---
 
-## 11. PATRONES DE CÓDIGO
+## 12. PATRONES DE CÓDIGO
 
 ```js
 // Supabase .or() — usar + en lugar de template literals
@@ -233,7 +245,7 @@ element.innerHTML = '...'       // ❌
 
 ---
 
-## 12. PWA Y SAFE AREA
+## 13. PWA Y SAFE AREA
 
 ```css
 BottomNav wrapper:  position:fixed; bottom:0
@@ -244,7 +256,7 @@ Contenido App:      padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)
 
 ---
 
-## 13. BUILD ANDROID
+## 14. BUILD ANDROID
 
 ```bash
 npm run build
@@ -257,7 +269,7 @@ npx cap open android   # Android Studio → Generate Signed APK/AAB
 
 ---
 
-## 14. VARIABLES DE ENTORNO
+## 15. VARIABLES DE ENTORNO
 
 ```env
 VITE_SUPABASE_URL=
