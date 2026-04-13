@@ -37,10 +37,14 @@ function getEtapa(estado) {
 function getEtapaFromShipday(shipday_status) {
   if (!shipday_status) return 0
   const s = shipday_status.toUpperCase()
-  if (s.includes('DELIVER') || s.includes('COMPLET') || s.includes('ARRIVED_AT_DEL') || s === 'ARRIVED') return 4
-  if (s.includes('ON_THE_WAY') || s.includes('STARTED') || s.includes('HEADING') || s.includes('ENROUTE') || s.includes('EN_ROUTE')) return 3
+  // Entregado — excluir READY_TO_DELIVER que contiene DELIVER pero es "en camino"
+  if ((s.includes('DELIVER') && !s.includes('READY_TO_DELIVER') && !s.includes('FAILED')) || s.includes('COMPLET') || s.includes('ARRIVED_AT_DEL') || s === 'ARRIVED') return 4
+  // En camino al cliente
+  if (s === 'READY_TO_DELIVER' || s.includes('ON_THE_WAY') || s.includes('HEADING') || s.includes('ENROUTE') || s.includes('EN_ROUTE')) return 3
+  // Recogido en restaurante
   if (s.includes('PICKED') || s.includes('COLLECTED') || s.includes('ARRIVED_AT_PICK')) return 2
-  if (s.includes('ASSIGN') || s.includes('ACCEPT')) return 1
+  // Repartidor asignado / en camino al restaurante
+  if (s.includes('STARTED') || s.includes('ASSIGN') || s.includes('ACCEPT')) return 1
   return 0
 }
 
