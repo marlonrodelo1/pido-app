@@ -1,11 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { User, LogOut, Home, ClipboardList } from 'lucide-react'
+import { User, LogOut, Home, ClipboardList, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import Stars from '../components/Stars'
 import { estaAbierto } from '../lib/horario'
 
 const Login = lazy(() => import('./Login'))
+const Perfil = lazy(() => import('./Perfil'))
 
 // Glass — igual que Home.jsx
 const G = {
@@ -14,7 +14,7 @@ const G = {
   border: '1px solid rgba(255,255,255,0.1)',
 }
 
-// Variables CSS que Login.jsx necesita (--c-btn-gradient, --c-primary, etc.)
+// Variables CSS que Login.jsx y Perfil.jsx necesitan
 const shellVars = {
   '--c-primary':       '#FF6B2C',
   '--c-primary-light': 'rgba(255,107,44,0.6)',
@@ -44,14 +44,128 @@ body{background:#0D0D0D;margin:0}
 }
 `
 
+const ESTADO_LABELS = {
+  nuevo:          { label: 'Recibido',   color: '#FF5733' },
+  aceptado:       { label: 'Confirmado', color: '#22C55E' },
+  en_preparacion: { label: 'Preparando', color: '#F59E0B' },
+  listo:          { label: '¡Listo!',    color: '#10B981' },
+  en_camino:      { label: 'En camino',  color: '#3B82F6' },
+  entregado:      { label: 'Entregado',  color: '#6366F1' },
+  cancelado:      { label: 'Cancelado',  color: '#EF4444' },
+  rechazado:      { label: 'Rechazado',  color: '#EF4444' },
+}
+
+// ── Subvista: Pedidos de esta tienda ───────────────────────────────────────
+function VistaPedidos({ socioId, onLogin }) {
+  const { user } = useAuth()
+  const [pedidos, setPedidos] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) { setLoading(false); return }
+    supabase
+      .from('pedidos')
+      .select('id, codigo, estado, total, modo_entrega, created_at, establecimientos(nombre)')
+      .eq('socio_id', socioId)
+      .eq('usuario_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => { setPedidos(data || []); setLoading(false) })
+  }, [user, socioId])
+
+  if (!user) {
+    return (
+      <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>🧾</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#F5F5F5', marginBottom: 8 }}>
+          Tus pedidos
+        </div>
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 28, lineHeight: 1.5 }}>
+          Inicia sesión para ver el historial de pedidos que has hecho en esta tienda
+        </div>
+        <button onClick={onLogin} style={{
+          padding: '14px 32px', borderRadius: 14, border: 'none', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+          color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
+          boxShadow: '0 4px 24px rgba(255,107,44,0.4)',
+        }}>
+          Iniciar sesión
+        </button>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '60px 20px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+        Cargando pedidos...
+      </div>
+    )
+  }
+
+  if (pedidos.length === 0) {
+    return (
+      <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>🍽️</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#F5F5F5', marginBottom: 8 }}>
+          Sin pedidos aún
+        </div>
+        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+          Cuando hagas un pedido en esta tienda aparecerá aquí
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 900, color: '#fff', marginBottom: 8, letterSpacing: '-0.025em' }}>
+        Mis pedidos
+      </h2>
+      {pedidos.map(p => {
+        const est = ESTADO_LABELS[p.estado] || { label: p.estado, color: '#adaaaa' }
+        const fecha = new Date(p.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+        return (
+          <div key={p.id} style={{
+            borderRadius: 18, padding: '16px 18px', ...G,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#FF6B2C' }}>{p.codigo}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                  background: est.color + '22', color: est.color,
+                }}>
+                  {est.label}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: '#F5F5F5', fontWeight: 600, marginBottom: 2 }}>
+                {p.establecimientos?.nombre || '—'}
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+                {p.modo_entrega === 'delivery' ? '🛵 Delivery' : '🏪 Recogida'} · {fecha}
+              </div>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+              {p.total?.toFixed(2)} €
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Componente principal ───────────────────────────────────────────────────
 export default function TiendaSocio({ slug }) {
   const { user, perfil, loading: authLoading, logout } = useAuth()
   const [socio, setSocio] = useState(null)
   const [establecimientos, setEstablecimientos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [view, setView] = useState('tienda')   // 'tienda' | 'pedidos' | 'perfil'
   const [loginOpen, setLoginOpen] = useState(false)
-  const [perfilOpen, setPerfilOpen] = useState(false)
 
   useEffect(() => { cargar() }, [slug])
 
@@ -63,34 +177,25 @@ export default function TiendaSocio({ slug }) {
   async function cargar() {
     const { data: socioData, error: socioErr } = await supabase
       .from('socios')
-      .select('id, nombre_comercial, slug, logo_url, banner_url, rating, total_resenas, modo_entrega, redes, en_servicio')
+      .select('id, nombre_comercial, slug, logo_url, banner_url, rating, total_resenas, redes, en_servicio')
       .eq('slug', slug)
       .single()
 
-    if (socioErr || !socioData) {
-      setError('Tienda no encontrada')
-      setLoading(false)
-      return
-    }
+    if (socioErr || !socioData) { setError('Tienda no encontrada'); setLoading(false); return }
     setSocio(socioData)
 
-    // Solo restaurantes con estado='aceptado'
     const { data: relaciones } = await supabase
       .from('socio_establecimiento')
       .select('establecimiento_id, destacado, exclusivo')
       .eq('socio_id', socioData.id)
       .eq('estado', 'aceptado')
 
-    if (!relaciones || relaciones.length === 0) {
-      setEstablecimientos([])
-      setLoading(false)
-      return
-    }
+    if (!relaciones || relaciones.length === 0) { setEstablecimientos([]); setLoading(false); return }
 
     const estIds = relaciones.map(r => r.establecimiento_id)
     const { data: ests } = await supabase
       .from('establecimientos')
-      .select('id, nombre, descripcion, tipo, logo_url, banner_url, rating, total_resenas, horario, activo')
+      .select('id, nombre, tipo, banner_url, rating, total_resenas, horario, activo')
       .in('id', estIds)
       .eq('activo', true)
 
@@ -112,12 +217,11 @@ export default function TiendaSocio({ slug }) {
     paddingBottom: 'calc(20px + 64px + 20px + env(safe-area-inset-bottom, 0px))',
   }
 
-  // ── Pantalla de login ──────────────────────────────────────────────────────
+  // ── Login a pantalla completa ─────────────────────────────────────────────
   if (loginOpen) {
     return (
       <div style={{ ...shell, paddingBottom: 0 }}>
         <style>{globalCss}</style>
-        {/* Header con botón volver a la tienda */}
         <div style={{
           padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
           background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.06)',
@@ -159,10 +263,89 @@ export default function TiendaSocio({ slug }) {
 
   const destacados = establecimientos.filter(e => e.destacado)
   const redes = socio.redes || {}
-
-  // Inicial del nombre del usuario para el avatar
   const inicialUsuario = perfil?.nombre?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'
 
+  // ── Bottom nav ────────────────────────────────────────────────────────────
+  const NAV = [
+    { id: 'tienda',  label: 'Tienda',   Icon: Home },
+    { id: 'pedidos', label: 'Pedidos',  Icon: ClipboardList },
+    { id: 'perfil',  label: 'Perfil',   Icon: User },
+  ]
+
+  const bottomNav = (
+    <div style={{
+      position: 'fixed', bottom: 20, left: 0, right: 0, zIndex: 50,
+      display: 'flex', justifyContent: 'center', pointerEvents: 'none',
+    }}>
+      <div style={{
+        width: '80%', maxWidth: 320,
+        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+        height: 64,
+        background: 'rgba(0,0,0,0.92)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: 22,
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 12px 40px rgba(255,107,44,0.06)',
+        padding: '0 6px',
+        pointerEvents: 'auto',
+      }}>
+        {NAV.map(({ id, label, Icon }) => {
+          const isActive = view === id
+          return (
+            <button key={id}
+              onClick={() => {
+                if (id === 'perfil' && !user) { setLoginOpen(true); return }
+                setView(id)
+              }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 2, flex: 1,
+                background: isActive ? 'rgba(255,107,44,0.15)' : 'transparent',
+                border: 'none', cursor: 'pointer',
+                color: isActive ? '#FF6B2C' : 'rgba(255,255,255,0.4)',
+                padding: '6px 10px', borderRadius: 14,
+                fontFamily: "'DM Sans', sans-serif",
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.5} />
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                {id === 'perfil' && !user ? 'Entrar' : label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  // ── Vista Perfil ──────────────────────────────────────────────────────────
+  if (view === 'perfil') {
+    return (
+      <div style={shell}>
+        <style>{globalCss}</style>
+        <Suspense fallback={
+          <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Cargando perfil...</div>
+        }>
+          <Perfil />
+        </Suspense>
+        {bottomNav}
+      </div>
+    )
+  }
+
+  // ── Vista Pedidos ─────────────────────────────────────────────────────────
+  if (view === 'pedidos') {
+    return (
+      <div style={shell}>
+        <style>{globalCss}</style>
+        <VistaPedidos socioId={socio.id} onLogin={() => setLoginOpen(true)} />
+        {bottomNav}
+      </div>
+    )
+  }
+
+  // ── Vista Tienda (default) ────────────────────────────────────────────────
   return (
     <div style={shell}>
       <style>{globalCss}</style>
@@ -180,16 +363,16 @@ export default function TiendaSocio({ slug }) {
           {/* Botón usuario — top right del banner */}
           <div style={{ position: 'absolute', top: 14, right: 14 }}>
             {user ? (
-              <button onClick={() => setPerfilOpen(v => !v)} style={{
+              <button onClick={() => setView('perfil')} style={{
                 width: 38, height: 38, borderRadius: 12,
                 background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)',
                 border: '1.5px solid rgba(255,255,255,0.2)',
                 cursor: 'pointer', color: '#fff', fontFamily: 'inherit',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 15, fontWeight: 800,
+                fontSize: 15, fontWeight: 800, overflow: 'hidden',
               }}>
                 {perfil?.avatar_url
-                  ? <img src={perfil.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }} />
+                  ? <img src={perfil.avatar_url} alt="" style={{ width: 38, height: 38, objectFit: 'cover' }} />
                   : inicialUsuario
                 }
               </button>
@@ -205,49 +388,6 @@ export default function TiendaSocio({ slug }) {
                 <User size={14} strokeWidth={2} />
                 Entrar
               </button>
-            )}
-
-            {/* Dropdown perfil */}
-            {perfilOpen && user && (
-              <div style={{
-                position: 'absolute', top: 46, right: 0,
-                background: '#1E1E1E', borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                minWidth: 200, overflow: 'hidden', zIndex: 100,
-                animation: 'fadeIn 0.15s ease',
-              }}>
-                {/* Info usuario */}
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#F5F5F5', marginBottom: 2 }}>
-                    {perfil?.nombre || 'Usuario'}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                    {user.email}
-                  </div>
-                </div>
-                {/* Ir a pido-app */}
-                <button onClick={() => { window.location.href = '/' }} style={{
-                  width: '100%', padding: '12px 16px',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  textAlign: 'left', fontFamily: 'inherit',
-                  fontSize: 13, fontWeight: 600, color: '#F5F5F5',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  borderBottom: '1px solid rgba(255,255,255,0.07)',
-                }}>
-                  🏠 Ir a Pidoo
-                </button>
-                {/* Cerrar sesión */}
-                <button onClick={async () => { await logout(); setPerfilOpen(false) }} style={{
-                  width: '100%', padding: '12px 16px',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  textAlign: 'left', fontFamily: 'inherit',
-                  fontSize: 13, fontWeight: 600, color: '#EF4444',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                }}>
-                  <LogOut size={14} strokeWidth={2} /> Cerrar sesión
-                </button>
-              </div>
             )}
           </div>
         </div>
@@ -325,14 +465,13 @@ export default function TiendaSocio({ slug }) {
         )}
       </div>
 
-      {/* ── Contenido ── */}
-      <div className="ts-pad" style={{ padding: '0 20px', animation: 'fadeIn 0.3s ease' }}
-        onClick={() => perfilOpen && setPerfilOpen(false)}>
+      {/* ── Contenido restaurantes ── */}
+      <div className="ts-pad" style={{ padding: '0 20px', animation: 'fadeIn 0.3s ease' }}>
 
         {/* ── Destacados ── */}
         {destacados.length > 0 && (
           <div style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
+            <div style={{ marginBottom: 24, padding: '0 4px' }}>
               <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>Destacados</h2>
             </div>
             <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
@@ -388,8 +527,8 @@ export default function TiendaSocio({ slug }) {
           </div>
         )}
 
-        {/* ── Título ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
+        {/* ── Grid todos los restaurantes ── */}
+        <div style={{ marginBottom: 24, padding: '0 4px' }}>
           <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
             {establecimientos.length === 0 ? 'Sin restaurantes' : 'Restaurantes'}
           </h2>
@@ -402,7 +541,6 @@ export default function TiendaSocio({ slug }) {
           </div>
         )}
 
-        {/* ── Cards restaurantes (glass = Home.jsx) ── */}
         <div className="ts-grid" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 24 }}>
           {establecimientos.map(r => {
             const estado = estaAbierto(r)
@@ -451,55 +589,7 @@ export default function TiendaSocio({ slug }) {
         </div>
       </div>
 
-      {/* ── BottomNav de la tienda (solo acciones relevantes para este socio) ── */}
-      <div style={{
-        position: 'fixed', bottom: 20, left: 0, right: 0, zIndex: 50,
-        display: 'flex', justifyContent: 'center', pointerEvents: 'none',
-      }}>
-        <div style={{
-          width: '60%', maxWidth: 220,
-          display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-          height: 64,
-          background: 'rgba(0,0,0,0.92)',
-          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: 22,
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 12px 40px rgba(255,107,44,0.06)',
-          padding: '0 6px',
-          pointerEvents: 'auto',
-        }}>
-          {/* Tienda — siempre activo (ya estamos aquí) */}
-          <button style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: 2,
-            background: 'rgba(255,107,44,0.15)', border: 'none', cursor: 'default',
-            color: '#FF6B2C', padding: '6px 16px', borderRadius: 14,
-            fontFamily: "'DM Sans', sans-serif",
-          }}>
-            <Home size={20} strokeWidth={2.2} />
-            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em' }}>Tienda</span>
-          </button>
-
-          {/* Cuenta — abre login si no hay sesión, o perfil/dropdown si hay */}
-          <button
-            onClick={() => user ? setPerfilOpen(v => !v) : setLoginOpen(true)}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', gap: 2,
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: user ? '#FF6B2C' : 'rgba(255,255,255,0.4)',
-              padding: '6px 16px', borderRadius: 14,
-              fontFamily: "'DM Sans', sans-serif",
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <User size={20} strokeWidth={user ? 2.2 : 1.5} />
-            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em' }}>
-              {user ? (perfil?.nombre?.split(' ')[0] || 'Cuenta') : 'Entrar'}
-            </span>
-          </button>
-        </div>
-      </div>
+      {bottomNav}
     </div>
   )
 }
