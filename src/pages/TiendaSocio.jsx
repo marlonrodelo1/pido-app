@@ -8,6 +8,8 @@ const Login = lazy(() => import('./Login'))
 const Perfil = lazy(() => import('./Perfil'))
 const RestDetalle = lazy(() => import('./RestDetalle'))
 const Carrito = lazy(() => import('./Carrito'))
+const TrackingPedido = lazy(() => import('../components/TrackingPedido'))
+const EstadoPedido = lazy(() => import('../components/EstadoPedido'))
 
 // Glass — igual que Home.jsx
 const G = {
@@ -341,7 +343,13 @@ export default function TiendaSocio({ slug }) {
             socioId={socio.id}
             onPedidoCreado={(pedido) => {
               setRestauranteActivo(null)
-              setPedidoActivo({ pedidoId: pedido.id, codigo: pedido.codigo, modo_entrega: pedido.modo_entrega })
+              setPedidoActivo({
+                pedidoId: pedido.id,
+                codigo: pedido.codigo,
+                modo_entrega: pedido.modo_entrega,
+                establecimientoId: pedido.establecimiento_id,
+                socioId: socio.id,
+              })
             }}
           />
         </Suspense>
@@ -349,55 +357,34 @@ export default function TiendaSocio({ slug }) {
     )
   }
 
-  // ── Vista estado del pedido (tras confirmar) ───────────────────────────────
+  // ── Vista seguimiento del pedido (tiempo real tras confirmar) ─────────────
   if (pedidoActivo) {
+    const onVolver = () => setPedidoActivo(null)
     return (
-      <div style={shell}>
+      <div style={{ ...shell, paddingBottom: 0 }}>
         <style>{globalCss}</style>
-        <div style={{
-          padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-          background: '#111', borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <button onClick={() => setPedidoActivo(null)} style={{
-            background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
-            width: 36, height: 36, cursor: 'pointer', fontSize: 16, color: '#F5F5F5',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
-          }}>←</button>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 15, color: '#F5F5F5' }}>Estado del pedido</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              {pedidoActivo.modo_entrega === 'delivery' ? '🛵 Delivery' : '🏪 Recogida en tienda'}
-            </div>
+        <Suspense fallback={
+          <div style={{ padding: 60, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+            Cargando seguimiento...
           </div>
-        </div>
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#FF6B2C', marginBottom: 8 }}>
-            ¡Pedido confirmado!
-          </div>
-          <div style={{
-            background: '#1A1A1A', borderRadius: 20, padding: '24px',
-            border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20,
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>
-              Código del pedido
-            </div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: '#FF6B2C', letterSpacing: 2 }}>
-              {pedidoActivo.codigo}
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 6 }}>
-              {pedidoActivo.modo_entrega === 'recogida' ? 'Muestra este código en el restaurante' : 'El repartidor lleva tu pedido'}
-            </div>
-          </div>
-          <button onClick={() => { setPedidoActivo(null); setView('pedidos') }} style={{
-            width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
-            color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
-            boxShadow: '0 4px 24px rgba(255,107,44,0.4)',
-          }}>
-            Ver mis pedidos
-          </button>
-        </div>
+        }>
+          {pedidoActivo.modo_entrega === 'delivery' ? (
+            <TrackingPedido
+              pedidoId={pedidoActivo.pedidoId}
+              socioId={pedidoActivo.socioId}
+              establecimientoId={pedidoActivo.establecimientoId}
+              codigo={pedidoActivo.codigo}
+              onVolver={onVolver}
+            />
+          ) : (
+            <EstadoPedido
+              pedidoId={pedidoActivo.pedidoId}
+              codigo={pedidoActivo.codigo}
+              establecimientoId={pedidoActivo.establecimientoId}
+              onVolver={onVolver}
+            />
+          )}
+        </Suspense>
       </div>
     )
   }
