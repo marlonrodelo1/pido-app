@@ -27,10 +27,10 @@ function distanciaKm(lat1, lng1, lat2, lng2) {
 }
 
 const ETAPAS = [
-  { key: 'recibido',   label: 'Recibido',   icon: '📋', estados: ['nuevo', 'aceptado'] },
+  { key: 'esperando',  label: 'Esperando',  icon: '🕐', estados: ['nuevo'] },
+  { key: 'confirmado', label: 'Confirmado', icon: '✅', estados: ['aceptado'] },
   { key: 'preparando', label: 'Preparando', icon: '👨‍🍳', estados: ['en_preparacion'] },
-  { key: 'listo',      label: 'Listo',      icon: '✅', estados: ['listo'] },
-  { key: 'en_camino',  label: 'En camino',  icon: '🛵', estados: ['en_camino'] },
+  { key: 'en_camino',  label: 'En camino',  icon: '🛵', estados: ['listo', 'en_camino'] },
   { key: 'entregado',  label: 'Entregado',  icon: '🎉', estados: ['entregado'] },
 ]
 
@@ -426,21 +426,43 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
         )}
 
         {/* Estado actual texto */}
-        <div style={{
-          background: '#1A1A1A', borderRadius: 16, padding: '16px', border: '1px solid rgba(255,255,255,0.08)',
-          textAlign: 'center',
-        }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>{ETAPAS[etapaActual]?.icon}</div>
-          <div style={{ fontWeight: 800, fontSize: 16, color: '#F5F5F5' }}>{ETAPAS[etapaActual]?.label}</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-            {estado === 'nuevo' && 'Tu pedido ha sido recibido'}
-            {estado === 'aceptado' && 'El repartidor ha aceptado tu pedido'}
-            {estado === 'en_preparacion' && 'El restaurante está preparando tu pedido'}
-            {estado === 'listo' && 'Tu pedido está listo para recoger'}
-            {estado === 'en_camino' && 'Tu repartidor va de camino'}
-            {estado === 'entregado' && '¡Tu pedido ha sido entregado!'}
+        {estado === 'nuevo' ? (
+          <div style={{
+            background: 'rgba(255,87,51,0.08)', borderRadius: 16, padding: '20px 16px',
+            border: '1px solid rgba(255,87,51,0.2)', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 36, marginBottom: 8, animation: 'pulseRider 1.5s infinite' }}>🕐</div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#F5F5F5', marginBottom: 6 }}>Esperando confirmación</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              El restaurante está revisando tu pedido.<br />Te avisaremos cuando lo acepten.
+            </div>
           </div>
-        </div>
+        ) : estado === 'aceptado' ? (
+          <div style={{
+            background: 'rgba(34,197,94,0.08)', borderRadius: 16, padding: '20px 16px',
+            border: '1px solid rgba(34,197,94,0.25)', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#F5F5F5', marginBottom: 6 }}>¡El restaurante confirmó tu pedido!</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              El repartidor irá a recogerlo en cuanto esté listo.
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: '#1A1A1A', borderRadius: 16, padding: '16px', border: '1px solid rgba(255,255,255,0.08)',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>{ETAPAS[etapaActual]?.icon}</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: '#F5F5F5' }}>{ETAPAS[etapaActual]?.label}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+              {estado === 'en_preparacion' && 'El restaurante está preparando tu pedido'}
+              {estado === 'listo' && 'Tu pedido está listo, el repartidor va a recogerlo'}
+              {estado === 'en_camino' && 'Tu repartidor va de camino'}
+              {estado === 'entregado' && '¡Tu pedido ha sido entregado!'}
+            </div>
+          </div>
+        )}
 
         {/* Shipday tracking */}
         {shipdayListo ? (
