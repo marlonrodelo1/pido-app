@@ -6,6 +6,8 @@ import { estaAbierto } from '../lib/horario'
 
 const Login = lazy(() => import('./Login'))
 const Perfil = lazy(() => import('./Perfil'))
+const RestDetalle = lazy(() => import('./RestDetalle'))
+const Carrito = lazy(() => import('./Carrito'))
 
 // Glass — igual que Home.jsx
 const G = {
@@ -164,8 +166,10 @@ export default function TiendaSocio({ slug }) {
   const [establecimientos, setEstablecimientos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [view, setView] = useState('tienda')   // 'tienda' | 'pedidos' | 'perfil'
+  const [view, setView] = useState('tienda')        // 'tienda' | 'pedidos' | 'perfil'
   const [loginOpen, setLoginOpen] = useState(false)
+  const [restauranteActivo, setRestauranteActivo] = useState(null) // establecimiento completo
+  const [pedidoActivo, setPedidoActivo] = useState(null)           // { pedidoId, codigo, modo_entrega }
 
   useEffect(() => { cargar() }, [slug])
 
@@ -195,7 +199,7 @@ export default function TiendaSocio({ slug }) {
     const estIds = relaciones.map(r => r.establecimiento_id)
     const { data: ests } = await supabase
       .from('establecimientos')
-      .select('id, nombre, tipo, banner_url, rating, total_resenas, horario, activo')
+      .select('id, nombre, descripcion, tipo, logo_url, banner_url, rating, total_resenas, horario, activo, direccion, telefono')
       .in('id', estIds)
       .eq('activo', true)
 
@@ -318,6 +322,85 @@ export default function TiendaSocio({ slug }) {
       </div>
     </div>
   )
+
+  // ── Vista RestDetalle ─────────────────────────────────────────────────────
+  if (restauranteActivo) {
+    return (
+      <div style={shell}>
+        <style>{globalCss}</style>
+        <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>Cargando carta...</div>}>
+          <RestDetalle
+            establecimiento={restauranteActivo}
+            onBack={() => setRestauranteActivo(null)}
+          />
+        </Suspense>
+        {/* Carrito flotante — canal pidogo, socio de esta tienda */}
+        <Suspense fallback={null}>
+          <Carrito
+            canal="pidogo"
+            socioId={socio.id}
+            onPedidoCreado={(pedido) => {
+              setRestauranteActivo(null)
+              setPedidoActivo({ pedidoId: pedido.id, codigo: pedido.codigo, modo_entrega: pedido.modo_entrega })
+            }}
+          />
+        </Suspense>
+      </div>
+    )
+  }
+
+  // ── Vista estado del pedido (tras confirmar) ───────────────────────────────
+  if (pedidoActivo) {
+    return (
+      <div style={shell}>
+        <style>{globalCss}</style>
+        <div style={{
+          padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
+          background: '#111', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <button onClick={() => setPedidoActivo(null)} style={{
+            background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 10,
+            width: 36, height: 36, cursor: 'pointer', fontSize: 16, color: '#F5F5F5',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+          }}>←</button>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: '#F5F5F5' }}>Estado del pedido</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+              {pedidoActivo.modo_entrega === 'delivery' ? '🛵 Delivery' : '🏪 Recogida en tienda'}
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>🎉</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: '#FF6B2C', marginBottom: 8 }}>
+            ¡Pedido confirmado!
+          </div>
+          <div style={{
+            background: '#1A1A1A', borderRadius: 20, padding: '24px',
+            border: '1px solid rgba(255,255,255,0.08)', marginBottom: 20,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.35)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>
+              Código del pedido
+            </div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: '#FF6B2C', letterSpacing: 2 }}>
+              {pedidoActivo.codigo}
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 6 }}>
+              {pedidoActivo.modo_entrega === 'recogida' ? 'Muestra este código en el restaurante' : 'El repartidor lleva tu pedido'}
+            </div>
+          </div>
+          <button onClick={() => { setPedidoActivo(null); setView('pedidos') }} style={{
+            width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+            color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
+            boxShadow: '0 4px 24px rgba(255,107,44,0.4)',
+          }}>
+            Ver mis pedidos
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // ── Vista Perfil ──────────────────────────────────────────────────────────
   if (view === 'perfil') {
@@ -478,7 +561,7 @@ export default function TiendaSocio({ slug }) {
               {destacados.map(r => {
                 const est = estaAbierto(r)
                 return (
-                  <div key={r.id} className="ts-slider-card" style={{ minWidth: 240, flexShrink: 0, cursor: 'pointer' }}>
+                  <div key={r.id} className="ts-slider-card" onClick={() => setRestauranteActivo(r)} style={{ minWidth: 240, flexShrink: 0, cursor: 'pointer' }}>
                     <div style={{ position: 'relative', height: 176, borderRadius: 22, overflow: 'hidden', ...G, marginBottom: 16 }}>
                       <div style={{
                         width: '100%', height: '100%',
@@ -545,7 +628,7 @@ export default function TiendaSocio({ slug }) {
           {establecimientos.map(r => {
             const estado = estaAbierto(r)
             return (
-              <div key={r.id} style={{ borderRadius: 22, overflow: 'hidden', cursor: 'pointer', ...G, opacity: estado.abierto ? 1 : 0.65 }}>
+              <div key={r.id} onClick={() => setRestauranteActivo(r)} style={{ borderRadius: 22, overflow: 'hidden', cursor: 'pointer', ...G, opacity: estado.abierto ? 1 : 0.65 }}>
                 <div style={{ height: 192, position: 'relative' }}>
                   <div style={{
                     width: '100%', height: '100%',

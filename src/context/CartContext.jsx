@@ -45,7 +45,7 @@ export function CartProvider({ children }) {
     setDistanciaKm(null)
   }
 
-  const calcularEnvio = useCallback(async (latCliente, lngCliente) => {
+  const calcularEnvio = useCallback(async (latCliente, lngCliente, socioId = null) => {
     const cart = carritoRef.current
     if (cart.length === 0 || modoEntrega === 'recogida') {
       setEnvio(0)
@@ -59,9 +59,9 @@ export function CartProvider({ children }) {
     try {
       const { data, error } = await supabase.functions.invoke('calcular_envio', {
         body: {
-          canal: 'pido',
+          canal: socioId ? 'pidogo' : 'pido',
           establecimiento_id: cart[0].establecimiento_id,
-          socio_id: null,
+          socio_id: socioId || null,
           lat_cliente: latCliente,
           lng_cliente: lngCliente,
         },
