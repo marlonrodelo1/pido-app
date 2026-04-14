@@ -423,12 +423,14 @@ function TiendaDetector() {
     )
   }
 
-  // Tienda pública del socio — sin login requerido
+  // Tienda pública del socio — con AuthProvider para sesión compartida
   if (slugTienda) {
     return (
-      <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF5733', fontSize: 18, fontWeight: 800, fontFamily: "'DM Sans',sans-serif" }}>Cargando tienda...</div>}>
-        <TiendaSocio slug={slugTienda} />
-      </Suspense>
+      <AuthProvider>
+        <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF6B2C', fontSize: 18, fontWeight: 800, fontFamily: "'DM Sans',sans-serif" }}>Cargando tienda...</div>}>
+          <TiendaSocio slug={slugTienda} />
+        </Suspense>
+      </AuthProvider>
     )
   }
 
