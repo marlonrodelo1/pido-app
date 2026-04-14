@@ -29,7 +29,7 @@ function distanciaKm(lat1, lng1, lat2, lng2) {
 const ETAPAS = [
   { key: 'esperando',  label: 'Esperando',  icon: '🕐', estados: ['nuevo'] },
   { key: 'confirmado', label: 'Confirmado', icon: '✅', estados: ['aceptado'] },
-  { key: 'preparando', label: 'Preparando', icon: '👨‍🍳', estados: ['en_preparacion'] },
+  { key: 'preparando', label: 'Preparando', icon: '👨‍🍳', estados: ['preparando'] },
   { key: 'en_camino',  label: 'En camino',  icon: '🛵', estados: ['listo', 'en_camino'] },
   { key: 'entregado',  label: 'Entregado',  icon: '🎉', estados: ['entregado'] },
 ]
@@ -456,7 +456,7 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
             <div style={{ fontSize: 28, marginBottom: 6 }}>{ETAPAS[etapaActual]?.icon}</div>
             <div style={{ fontWeight: 800, fontSize: 16, color: '#F5F5F5' }}>{ETAPAS[etapaActual]?.label}</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-              {estado === 'en_preparacion' && 'El restaurante está preparando tu pedido'}
+              {estado === 'preparando' && 'El restaurante está preparando tu pedido'}
               {estado === 'listo' && 'Tu pedido está listo, el repartidor va a recogerlo'}
               {estado === 'en_camino' && 'Tu repartidor va de camino'}
               {estado === 'entregado' && '¡Tu pedido ha sido entregado!'}

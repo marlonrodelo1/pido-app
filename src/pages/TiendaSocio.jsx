@@ -51,7 +51,7 @@ body{background:#0D0D0D;margin:0}
 const ESTADO_LABELS = {
   nuevo:          { label: 'Recibido',   color: '#FF5733' },
   aceptado:       { label: 'Confirmado', color: '#22C55E' },
-  en_preparacion: { label: 'Preparando', color: '#F59E0B' },
+  preparando:     { label: 'Preparando', color: '#F59E0B' },
   listo:          { label: '¡Listo!',    color: '#10B981' },
   en_camino:      { label: 'En camino',  color: '#3B82F6' },
   entregado:      { label: 'Entregado',  color: '#6366F1' },
@@ -336,10 +336,10 @@ export default function TiendaSocio({ slug }) {
             onBack={() => setRestauranteActivo(null)}
           />
         </Suspense>
-        {/* Carrito flotante — canal pidogo, socio de esta tienda */}
+        {/* Carrito flotante — canal pido, socio de esta tienda */}
         <Suspense fallback={null}>
           <Carrito
-            canal="pidogo"
+            canal="pido"
             socioId={socio.id}
             onPedidoCreado={(pedido) => {
               setRestauranteActivo(null)

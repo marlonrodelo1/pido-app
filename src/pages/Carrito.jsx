@@ -128,6 +128,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
   const [loadingCards, setLoadingCards] = useState(false)
   const [pedidoPendiente, setPedidoPendiente] = useState(null)
   const isPaying = useRef(false)
+  const pagoEnviado = useRef(false)
   const [restCerrado, setRestCerrado] = useState(false)
   const [restCerradoMsg, setRestCerradoMsg] = useState('')
   const [promoActiva, setPromoActiva] = useState(null)
@@ -258,7 +259,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
       pedido_id: pedido.id, producto_id: item.producto_id, nombre_producto: item.nombre,
       tamano: item.tamano, extras: item.extras, precio_unitario: item.precio_unitario, cantidad: item.cantidad,
     }))
-    await supabase.from('pedido_items').insert(items)
+    const { error: itemsError } = await supabase.from('pedido_items').insert(items)
+    if (itemsError) throw itemsError
     return pedido
   }
 
@@ -294,7 +296,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
     if (modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
       setSinDireccion(true); setMostrarAddDir(true); return
     }
-    isPaying.current = true; setLoading(true); setErrorMsg(null)
+    isPaying.current = true; pagoEnviado.current = false; setLoading(true); setErrorMsg(null)
     try {
       const totalConDescuento = Math.max(0, total - descuento)
       if (metodoPago === 'tarjeta') {
@@ -309,6 +311,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
             pedidoCodigo: codigo, customerEmail: user?.email, userId: user?.id,
           })
           if (result.status === 'succeeded') {
+            pagoEnviado.current = true
             await crearPedidoYFinalizar(result.paymentIntentId)
             return
           }
@@ -320,6 +323,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
           amount: totalConDescuento, pedidoCodigo: codigo,
           customerEmail: user?.email, userId: user?.id,
         })
+        pagoEnviado.current = true
         setClientSecret(result.clientSecret)
         setPasoTarjeta(true)
         // El pedido se creará en onSuccess del FormularioPago
@@ -330,12 +334,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
         finalizarPedido(pedido)
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Error al procesar el pago')
+      // Si el pago llegó a Stripe pero falló la creación del pedido en BD
+      if (pagoEnviado.current && codigoPedido) {
+        setErrorMsg(`El pago se procesó correctamente pero hubo un problema al guardar el pedido. Por favor contacta con soporte con el código: ${codigoPedido}`)
+      } else {
+        setErrorMsg(err.message || 'Error al procesar el pago')
+      }
       setCodigoPedido(null)
       setClientSecret(null)
       setPedidoPendiente(null)
     }
-    finally { isPaying.current = false; setLoading(false) }
+    finally {
+      // Solo resetear isPaying si el pago NO fue enviado a Stripe (errores previos)
+      if (!pagoEnviado.current) {
+        isPaying.current = false
+      }
+      setLoading(false)
+    }
   }
 
   const isDisabled = loading || envioLoading || restCerrado || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
@@ -403,12 +418,24 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
                   total={Math.max(0, total - descuento)}
                   onSuccess={async (paymentId) => {
                     // Pago confirmado por Stripe → AHORA crear el pedido en BD
-                    await crearPedidoYFinalizar(paymentId)
+                    try {
+                      await crearPedidoYFinalizar(paymentId)
+                    } catch (err) {
+                      // Si el pago fue enviado pero falla la creación del pedido
+                      if (codigoPedido) {
+                        setErrorMsg(`El pago se procesó correctamente pero hubo un problema al guardar el pedido. Por favor contacta con soporte con el código: ${codigoPedido}`)
+                      } else {
+                        setErrorMsg(err.message || 'Error al crear el pedido')
+                      }
+                    } finally {
+                      isPaying.current = false
+                    }
                   }}
                   onCancel={() => {
                     // No hay pedido en BD que marcar como fallido
                     setPasoTarjeta(false); setPedidoPendiente(null)
                     setCodigoPedido(null); setClientSecret(null)
+                    isPaying.current = false; pagoEnviado.current = false
                   }}
                 />
               </Elements>

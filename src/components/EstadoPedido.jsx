@@ -4,12 +4,12 @@ import { supabase } from '../lib/supabase'
 const ESTADOS = [
   { key: 'nuevo',          label: 'Recibido',   icon: '📋', color: '#FF5733' },
   { key: 'aceptado',       label: 'Confirmado', icon: '✅', color: '#22C55E' },
-  { key: 'en_preparacion', label: 'Preparando', icon: '👨‍🍳', color: '#F59E0B' },
+  { key: 'preparando',     label: 'Preparando', icon: '👨‍🍳', color: '#F59E0B' },
   { key: 'listo',          label: '¡Listo!',    icon: '🎉', color: '#10B981' },
   { key: 'entregado',      label: 'Entregado',  icon: '📦', color: '#6366F1' },
 ]
 
-const ESTADOS_RECOGIDA = ['nuevo', 'aceptado', 'en_preparacion', 'listo', 'entregado']
+const ESTADOS_RECOGIDA = ['nuevo', 'aceptado', 'preparando', 'listo', 'entregado']
 
 function getProgreso(estado) {
   const idx = ESTADOS_RECOGIDA.indexOf(estado)
@@ -24,7 +24,7 @@ function getTextoEstado(estado) {
   const textos = {
     nuevo: 'Tu pedido ha llegado al restaurante',
     aceptado: 'El restaurante ha confirmado tu pedido',
-    en_preparacion: 'Están preparando tu pedido ahora mismo',
+    preparando: 'Están preparando tu pedido ahora mismo',
     listo: 'Tu pedido está listo para recoger',
     entregado: 'Pedido recogido — ¡buen provecho!',
     cancelado: 'El pedido ha sido cancelado',
@@ -92,7 +92,7 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
 
   // Countdown del tiempo estimado
   useEffect(() => {
-    if (estado !== 'nuevo' && estado !== 'en_preparacion') return
+    if (estado !== 'nuevo' && estado !== 'preparando') return
     if (tiempoRestante <= 0) return
     const t = setInterval(() => setTiempoRestante(prev => Math.max(0, prev - 1)), 60000)
     return () => clearInterval(t)
@@ -185,7 +185,7 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
         )}
 
         {/* Tiempo estimado */}
-        {(estado === 'nuevo' || estado === 'en_preparacion') && tiempoRestante > 0 && (
+        {(estado === 'nuevo' || estado === 'preparando') && tiempoRestante > 0 && (
           <div style={{
             background: 'rgba(245,158,11,0.1)', borderRadius: 14, padding: '14px 16px',
             marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12,

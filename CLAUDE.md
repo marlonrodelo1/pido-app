@@ -164,7 +164,7 @@ Cliente hace tracking vía pedidos.shipday_status en tiempo real
 El seguimiento del pedido lee `pedidos.shipday_status` en tiempo real via Realtime subscription sobre la tabla `pedidos`. No hay subscripción a posición de rider en tiempo real desde nuestra BD — el estado viene del webhook de Shipday que actualiza el campo `shipday_status`.
 
 **Estados de pedido:**
-`pendiente_pago → nuevo → aceptado → en_preparacion → listo → en_camino → entregado`
+`pendiente_pago → nuevo → aceptado → preparando → listo → en_camino → entregado`
 Salida: `cancelado`, `fallido`, `rechazado`
 
 ---
