@@ -12,6 +12,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import AnimatedSplash from './components/AnimatedSplash'
 
 // Lazy-loaded routes (code splitting)
+const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Home = lazy(() => import('./pages/Home'))
 const RestDetalle = lazy(() => import('./pages/RestDetalle'))
@@ -266,6 +267,7 @@ function TiendaDetector() {
   const [emailConfirmado, setEmailConfirmado] = useState(false)
   const [paginaLegal, setPaginaLegal] = useState(null)
   const [isResetPassword, setIsResetPassword] = useState(false)
+  const [slugTienda, setSlugTienda] = useState(null)
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -345,7 +347,22 @@ function TiendaDetector() {
       setChecking(false)
       return
     }
-    setChecking(false)
+    // Rutas internas de la app (sin slug externo)
+    if (!path || path === '#' || path.includes('/')) {
+      setChecking(false)
+      return
+    }
+    // Comprobar si el path es un slug de socio (tienda pública)
+    supabase
+      .from('socios')
+      .select('slug')
+      .eq('slug', path)
+      .eq('activo', true)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setSlugTienda(path)
+        setChecking(false)
+      })
   }, [])
 
   if (showSplash) {
@@ -403,6 +420,15 @@ function TiendaDetector() {
           <PaginaLegal slug={paginaLegal} onBack={() => window.history.back()} />
         </Suspense>
       </div>
+    )
+  }
+
+  // Tienda pública del socio — sin login requerido
+  if (slugTienda) {
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF5733', fontSize: 18, fontWeight: 800, fontFamily: "'DM Sans',sans-serif" }}>Cargando tienda...</div>}>
+        <TiendaSocio slug={slugTienda} />
+      </Suspense>
     )
   }
 
