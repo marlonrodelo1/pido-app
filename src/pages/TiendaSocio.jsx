@@ -1,70 +1,33 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Stars from '../components/Stars'
+import BottomNav from '../components/BottomNav'
+import { estaAbierto } from '../lib/horario'
 
-function HorarioBadge({ horario }) {
-  if (!horario) return null
-  const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
-  const hoy = dias[new Date().getDay()]
-  const h = horario[hoy]
-  if (!h || !h.abierto) return <span style={{ fontSize: 11, color: '#EF4444', fontWeight: 700 }}>Cerrado</span>
-  return <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 700 }}>Abierto · {h.desde}–{h.hasta}</span>
+// Glass — igual que Home.jsx
+const G = {
+  background: 'rgba(255,255,255,0.08)',
+  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.1)',
 }
 
-function RestCard({ est, onClick }) {
-  return (
-    <div onClick={() => onClick(est)} style={{
-      background: '#1A1A1A', borderRadius: 16, overflow: 'hidden',
-      border: est.exclusivo ? '1px solid rgba(255,87,51,0.3)' : '1px solid rgba(255,255,255,0.07)',
-      cursor: 'pointer', transition: 'transform 0.15s',
-    }}>
-      {/* Banner */}
-      <div style={{ height: 120, background: '#2A2A2A', position: 'relative', overflow: 'hidden' }}>
-        {est.banner_url
-          ? <img src={est.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#1e1e1e,#2a2a2a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🍽️</div>
-        }
-        {/* Logo */}
-        <div style={{
-          position: 'absolute', bottom: -20, left: 14,
-          width: 44, height: 44, borderRadius: 12, overflow: 'hidden',
-          background: '#111', border: '2px solid #1A1A1A',
-        }}>
-          {est.logo_url
-            ? <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🍽️</div>
-          }
-        </div>
-        {/* Badge exclusivo / cobertura */}
-        <div style={{
-          position: 'absolute', top: 10, left: 10,
-          background: est.exclusivo ? 'rgba(255,87,51,0.92)' : 'rgba(34,197,94,0.88)',
-          borderRadius: 8, padding: '3px 8px', fontSize: 10, fontWeight: 700, color: '#fff',
-        }}>
-          {est.exclusivo ? '🔒 Exclusivo' : '🛵 Cobertura garantizada'}
-        </div>
-      </div>
-
-      <div style={{ padding: '28px 14px 14px' }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color: '#F5F5F5', marginBottom: 4 }}>{est.nombre}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          {est.rating > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Stars rating={est.rating} size={11} />
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{est.rating?.toFixed(1)}</span>
-            </div>
-          )}
-          <HorarioBadge horario={est.horario} />
-        </div>
-        {est.descripcion && (
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-            {est.descripcion}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+const globalCss = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0D0D0D;margin:0}
+::-webkit-scrollbar{display:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:768px){
+  .ts-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:24px!important}
+  .ts-pad{padding:24px 32px!important}
+  .ts-slider-card{min-width:280px!important}
+  .bottom-nav-wrap{max-width:560px!important}
 }
+@media(min-width:1024px){
+  .ts-grid{grid-template-columns:repeat(3,1fr)!important}
+  .ts-pad{padding:28px 48px!important}
+}
+`
 
 export default function TiendaSocio({ slug }) {
   const [socio, setSocio] = useState(null)
@@ -75,10 +38,6 @@ export default function TiendaSocio({ slug }) {
   useEffect(() => { cargar() }, [slug])
 
   async function cargar() {
-    setLoading(true)
-    setError(null)
-
-    // 1. Cargar socio
     const { data: socioData, error: socioErr } = await supabase
       .from('socios')
       .select('id, nombre_comercial, slug, logo_url, banner_url, rating, total_resenas, modo_entrega, redes, en_servicio')
@@ -92,7 +51,7 @@ export default function TiendaSocio({ slug }) {
     }
     setSocio(socioData)
 
-    // 2. Cargar relaciones SOLO estado='aceptado'
+    // Solo restaurantes con estado='aceptado'
     const { data: relaciones } = await supabase
       .from('socio_establecimiento')
       .select('establecimiento_id, destacado, exclusivo')
@@ -105,29 +64,20 @@ export default function TiendaSocio({ slug }) {
       return
     }
 
-    // 3. Cargar establecimientos activos de esas relaciones
     const estIds = relaciones.map(r => r.establecimiento_id)
     const { data: ests } = await supabase
       .from('establecimientos')
-      .select('id, nombre, descripcion, logo_url, banner_url, rating, total_resenas, horario, activo')
+      .select('id, nombre, descripcion, tipo, logo_url, banner_url, rating, total_resenas, horario, activo')
       .in('id', estIds)
       .eq('activo', true)
 
-    // Marcar exclusivo / destacado desde la relación
     const conMeta = (ests || []).map(e => {
       const rel = relaciones.find(r => r.establecimiento_id === e.id)
       return { ...e, exclusivo: rel?.exclusivo ?? false, destacado: rel?.destacado ?? false }
-    }).sort((a, b) => (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0))
+    })
 
     setEstablecimientos(conMeta)
     setLoading(false)
-  }
-
-  function abrirRest(est) {
-    // Redirige a pido-app con el restaurante seleccionado dentro de la app
-    // El usuario tendrá que estar logueado para hacer pedido desde pido-app
-    // — o visitar pidoo.es/{slug} (pido-go-tienda) para pedir sin login
-    window.location.href = `/?tienda=${slug}&est=${est.id}`
   }
 
   const shell = {
@@ -135,12 +85,14 @@ export default function TiendaSocio({ slug }) {
     background: '#0D0D0D',
     fontFamily: "'DM Sans', sans-serif",
     color: '#F5F5F5',
+    paddingBottom: 'calc(20px + 64px + 20px + env(safe-area-inset-bottom, 0px))',
   }
 
   if (loading) {
     return (
       <div style={{ ...shell, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#FF5733' }}>Cargando tienda...</div>
+        <style>{globalCss}</style>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#FF6B2C' }}>Cargando tienda...</div>
       </div>
     )
   }
@@ -148,123 +100,250 @@ export default function TiendaSocio({ slug }) {
   if (error || !socio) {
     return (
       <div style={{ ...shell, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 }}>
+        <style>{globalCss}</style>
         <div style={{ fontSize: 48 }}>😕</div>
         <div style={{ fontSize: 18, fontWeight: 800 }}>Tienda no encontrada</div>
-        <a href="/" style={{ fontSize: 14, color: '#FF5733', textDecoration: 'none', fontWeight: 600 }}>← Volver a Pidoo</a>
       </div>
     )
   }
 
+  const destacados = establecimientos.filter(e => e.destacado)
   const redes = socio.redes || {}
 
   return (
     <div style={shell}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0D0D0D; }
-        ::-webkit-scrollbar { display: none; }
-      `}</style>
+      <style>{globalCss}</style>
 
-      {/* Banner */}
-      <div style={{ position: 'relative', height: 180, background: '#1A1A1A', overflow: 'hidden' }}>
-        {socio.banner_url
-          ? <img src={socio.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#1a1a1a,#2a2a2a)' }} />
-        }
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7))' }} />
+      {/* ── Banner + Logo (sin overflow hidden en el wrapper para que el logo no se corte) ── */}
+      <div style={{ position: 'relative', marginBottom: 48 }}>
+        {/* Banner */}
+        <div style={{ height: 180, overflow: 'hidden', position: 'relative' }}>
+          {socio.banner_url
+            ? <img src={socio.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)' }} />
+          }
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.65))' }} />
+        </div>
 
-        {/* Logo centrado */}
+        {/* Logo — fuera del div con overflow:hidden, se ve completo */}
         <div style={{
-          position: 'absolute', bottom: -28, left: '50%', transform: 'translateX(-50%)',
-          width: 72, height: 72, borderRadius: 20, overflow: 'hidden',
-          background: '#111', border: '3px solid #0D0D0D', boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          position: 'absolute', bottom: -36, left: '50%', transform: 'translateX(-50%)',
+          width: 80, height: 80, borderRadius: 22,
+          overflow: 'hidden',
+          background: '#1A1A1A',
+          border: '3px solid #0D0D0D',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
         }}>
           {socio.logo_url
             ? <img src={socio.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🛵</div>
+            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🛵</div>
           }
         </div>
-
-        {/* Botón volver */}
-        <a href="/" style={{
-          position: 'absolute', top: 14, left: 14,
-          width: 34, height: 34, borderRadius: 10,
-          background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.15)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: 16, textDecoration: 'none',
-          backdropFilter: 'blur(8px)',
-        }}>←</a>
       </div>
 
-      {/* Info socio */}
-      <div style={{ textAlign: 'center', paddingTop: 40, paddingBottom: 16, padding: '40px 20px 16px' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#F5F5F5', marginBottom: 6 }}>{socio.nombre_comercial}</h1>
+      {/* ── Info socio ── */}
+      <div style={{ textAlign: 'center', padding: '0 20px 24px' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#fff', marginBottom: 6, letterSpacing: '-0.025em' }}>
+          {socio.nombre_comercial}
+        </h1>
         {socio.rating > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
-            <Stars rating={socio.rating} size={13} />
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{socio.rating?.toFixed(1)} ({socio.total_resenas || 0})</span>
+            <span style={{ color: '#ff9066', fontSize: 14, fontWeight: 700 }}>★ {socio.rating?.toFixed(1)}</span>
+            <span style={{ color: '#adaaaa', fontSize: 12 }}>({socio.total_resenas || 0} reseñas)</span>
           </div>
         )}
 
-        {/* Estado servicio */}
+        {/* Estado en servicio */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '5px 12px', borderRadius: 20,
-          background: socio.en_servicio ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
-          border: `1px solid ${socio.en_servicio ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.1)'}`,
+          padding: '5px 14px', borderRadius: 20,
+          ...G,
           fontSize: 12, fontWeight: 700,
-          color: socio.en_servicio ? '#22C55E' : 'rgba(255,255,255,0.4)',
+          color: socio.en_servicio ? '#22C55E' : '#adaaaa',
           marginBottom: 14,
         }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: socio.en_servicio ? '#22C55E' : '#666', flexShrink: 0 }} />
-          {socio.en_servicio ? 'En servicio ahora' : 'Fuera de servicio'}
+          <span style={{
+            width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+            background: socio.en_servicio ? '#22C55E' : '#555',
+            boxShadow: socio.en_servicio ? '0 0 6px #22C55E' : 'none',
+          }} />
+          {socio.en_servicio ? 'En servicio' : 'Fuera de servicio'}
         </div>
 
         {/* Redes sociales */}
         {(redes.whatsapp || redes.instagram || redes.tiktok) && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
             {redes.whatsapp && (
               <a href={`https://wa.me/${redes.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)',
+                width: 38, height: 38, borderRadius: 12, ...G,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 18, textDecoration: 'none',
               }}>💬</a>
             )}
             {redes.instagram && (
               <a href={`https://instagram.com/${redes.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: 'rgba(255,87,51,0.12)', border: '1px solid rgba(255,87,51,0.25)',
+                width: 38, height: 38, borderRadius: 12, ...G,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 18, textDecoration: 'none',
               }}>📸</a>
+            )}
+            {redes.tiktok && (
+              <a href={`https://tiktok.com/@${redes.tiktok.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{
+                width: 38, height: 38, borderRadius: 12, ...G,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, textDecoration: 'none',
+              }}>🎵</a>
             )}
           </div>
         )}
       </div>
 
-      {/* Lista de restaurantes */}
-      <div style={{ padding: '0 16px 40px' }}>
-        {establecimientos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.35)' }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>🍽️</div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Esta tienda aún no tiene restaurantes</div>
-            <div style={{ fontSize: 13 }}>Vuelve pronto</div>
-          </div>
-        ) : (
-          <>
-            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#F5F5F5', marginBottom: 16, letterSpacing: -0.3 }}>
-              Restaurantes ({establecimientos.length})
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {establecimientos.map(est => (
-                <RestCard key={est.id} est={est} onClick={abrirRest} />
-              ))}
+      {/* ── Contenido (mismo padding que Home) ── */}
+      <div className="ts-pad" style={{ padding: '0 20px', animation: 'fadeIn 0.3s ease' }}>
+
+        {/* ── Destacados (slider igual que Home) ── */}
+        {destacados.length > 0 && (
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>Destacados</h2>
             </div>
-          </>
+            <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
+              {destacados.map(r => {
+                const est = estaAbierto(r)
+                return (
+                  <div key={r.id} className="ts-slider-card" style={{ minWidth: 240, flexShrink: 0, cursor: 'pointer' }}>
+                    <div style={{ position: 'relative', height: 176, borderRadius: 22, overflow: 'hidden', ...G, marginBottom: 16 }}>
+                      <div style={{
+                        width: '100%', height: '100%',
+                        background: r.banner_url ? `url(${r.banner_url}) center/cover` : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+                      }} />
+                      {/* Badge abierto/cerrado */}
+                      <div style={{
+                        position: 'absolute', top: 16, left: 16,
+                        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
+                        padding: '4px 12px', borderRadius: 9999,
+                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
+                        color: '#fff', display: 'flex', alignItems: 'center', gap: 4,
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: est.abierto ? '#22c55e' : '#ef4444' }} />
+                        {est.abierto ? 'Abierto' : 'Cerrado'}
+                      </div>
+                      {/* Badge exclusivo */}
+                      <div style={{
+                        position: 'absolute', top: 16, right: 16,
+                        background: r.exclusivo ? 'rgba(255,107,44,0.9)' : 'rgba(34,197,94,0.9)',
+                        backdropFilter: 'blur(8px)',
+                        padding: '3px 8px', borderRadius: 8,
+                        fontSize: 9, fontWeight: 700, color: '#fff',
+                      }}>
+                        {r.exclusivo ? '🔒 Exclusivo' : '🛵 Cobertura'}
+                      </div>
+                      {/* Rating */}
+                      {r.rating > 0 && (
+                        <div style={{
+                          position: 'absolute', bottom: 16, right: 16,
+                          background: 'rgba(255,144,102,0.9)', backdropFilter: 'blur(12px)',
+                          padding: '4px 8px', borderRadius: 8,
+                          fontSize: 12, fontWeight: 700, color: '#571a00',
+                          display: 'flex', alignItems: 'center', gap: 4,
+                        }}>
+                          <span style={{ fontSize: 14 }}>★</span> {r.rating?.toFixed(1)}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '0 4px' }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1.25 }}>{r.nombre}</div>
+                      <div style={{ fontSize: 10, color: '#adaaaa', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                        {r.tipo || 'Restaurante'}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         )}
+
+        {/* ── Título sección principal ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
+            {establecimientos.length === 0 ? 'Sin restaurantes' : 'Restaurantes'}
+          </h2>
+        </div>
+
+        {establecimientos.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#adaaaa' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🍽️</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Esta tienda aún no tiene restaurantes</div>
+          </div>
+        )}
+
+        {/* ── Lista restaurantes (glass cards = Home.jsx "Cerca de ti") ── */}
+        <div className="ts-grid" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 24 }}>
+          {establecimientos.map(r => {
+            const estado = estaAbierto(r)
+            return (
+              <div key={r.id} style={{
+                borderRadius: 22, overflow: 'hidden', cursor: 'pointer',
+                ...G,
+                opacity: estado.abierto ? 1 : 0.65,
+              }}>
+                {/* Imagen con overlay y texto encima — igual que Home */}
+                <div style={{ height: 192, position: 'relative' }}>
+                  <div style={{
+                    width: '100%', height: '100%',
+                    background: r.banner_url
+                      ? `url(${r.banner_url}) center/cover`
+                      : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+                  }} />
+                  {/* Gradient overlay */}
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.82), transparent)' }} />
+
+                  {/* Badge abierto/cerrado */}
+                  <div style={{
+                    position: 'absolute', top: 12, left: 12,
+                    background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
+                    padding: '3px 10px', borderRadius: 9999,
+                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
+                    color: '#fff', display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: estado.abierto ? '#22c55e' : '#ef4444' }} />
+                    {estado.abierto ? 'Abierto' : 'Cerrado'}
+                  </div>
+
+                  {/* Badge exclusivo */}
+                  <div style={{
+                    position: 'absolute', top: 12, right: 12,
+                    background: r.exclusivo ? 'rgba(255,107,44,0.88)' : 'rgba(34,197,94,0.88)',
+                    padding: '3px 8px', borderRadius: 8,
+                    fontSize: 9, fontWeight: 700, color: '#fff',
+                  }}>
+                    {r.exclusivo ? '🔒 Exclusivo' : '🛵 Cobertura garantizada'}
+                  </div>
+
+                  {/* Texto en la parte baja de la imagen */}
+                  <div style={{ position: 'absolute', bottom: 16, left: 24 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{r.nombre}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                      {r.rating > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ff9066', fontSize: 14, fontWeight: 700 }}>
+                          <span style={{ fontSize: 12 }}>★</span> {r.rating?.toFixed(1)}
+                        </div>
+                      )}
+                      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        {r.tipo || 'Restaurante'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
+
+      {/* ── BottomNav idéntico al de pido-app ── */}
+      <BottomNav active="home" onChange={() => { window.location.href = '/' }} />
     </div>
   )
 }
