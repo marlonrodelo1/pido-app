@@ -115,7 +115,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
 const brandIcon = { visa: '💳', mastercard: '💳', amex: '💳' }
 
-export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null }) {
+export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
   const { user, perfil, updatePerfil } = useAuth()
   const { carrito, removeItem, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm } = useCart()
   const [open, setOpen] = useState(false)
@@ -142,6 +142,19 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
   const [nuevaDir, setNuevaDir] = useState('')
   const [geoLoading, setGeoLoading] = useState(false)
   const [dirMsg, setDirMsg] = useState(null)
+  const [tieneDelivery, setTieneDelivery] = useState(true)
+
+  // Comprobar si el restaurante tiene Shipday configurado
+  useEffect(() => {
+    if (!open || carrito.length === 0) return
+    const estId = carrito[0].establecimiento_id
+    supabase.from('establecimientos').select('tiene_delivery').eq('id', estId).single()
+      .then(({ data }) => {
+        const td = data?.tiene_delivery ?? true
+        setTieneDelivery(td)
+        if (!td) setModoEntrega('recogida')
+      })
+  }, [open, carrito.length > 0 ? carrito[0]?.establecimiento_id : null])
 
   useEffect(() => {
     if (!open || carrito.length === 0) return
@@ -200,7 +213,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
       const lat = perfil?.latitud, lng = perfil?.longitud
       const hayDir = !!(lat && lng && perfil?.direccion)
       setSinDireccion(!hayDir); setFueraDeRadio(false)
-      if (hayDir) calcularEnvio(lat, lng, socioId).catch(err => { if (err?.fuera_de_radio) setFueraDeRadio(true) })
+      if (hayDir) calcularEnvio(lat, lng).catch(err => { if (err?.fuera_de_radio) setFueraDeRadio(true) })
     }
   }, [open, modoEntrega, carrito.length, perfil?.latitud, perfil?.longitud, perfil?.direccion])
 
@@ -246,7 +259,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
     }
     const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert({
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
-      canal, socio_id: socioId || null, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
+      canal, socio_id: null, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
       descuento: descuento > 0 ? descuento : null,
       promo_titulo: descuento > 0 && promoActiva ? promoActiva.titulo : null, notas,
@@ -483,8 +496,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', socioId = null
                 {/* Tipo de entrega */}
                 <div style={{ marginBottom: 16 }}>
                   <div style={S.label}>Tipo de entrega</div>
+                  {!tieneDelivery && (
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
+                      Este restaurante solo ofrece recogida en local
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {['delivery', 'recogida'].map(m => (
+                    {(tieneDelivery ? ['delivery', 'recogida'] : ['recogida']).map(m => (
                       <button key={m} onClick={() => setModoEntrega(m)} style={S.selBtn(modoEntrega === m)}>
                         <span style={{ fontSize: 16 }}>{m === 'delivery' ? '🛵' : '🏪'}</span>
                         {m === 'delivery' ? 'Delivery' : 'Recogida'}

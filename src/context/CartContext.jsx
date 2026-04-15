@@ -59,7 +59,7 @@ export function CartProvider({ children }) {
     try {
       const { data, error } = await supabase.functions.invoke('calcular_envio', {
         body: {
-          canal: socioId ? 'pidogo' : 'pido',
+          canal: 'pido',
           establecimiento_id: cart[0].establecimiento_id,
           socio_id: socioId || null,
           lat_cliente: latCliente,

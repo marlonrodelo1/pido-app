@@ -12,7 +12,6 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import AnimatedSplash from './components/AnimatedSplash'
 
 // Lazy-loaded routes (code splitting)
-const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Home = lazy(() => import('./pages/Home'))
 const RestDetalle = lazy(() => import('./pages/RestDetalle'))
@@ -77,7 +76,7 @@ function AppContent() {
     supabase.from('notificaciones').select('id', { count: 'exact', head: true })
       .eq('usuario_id', user.id).eq('leida', false)
       .then(({ count }) => setNotifsNoLeidas(count || 0))
-    const ch = supabase.channel('notifs-badge')
+    const ch = supabase.channel('notifs-badge-' + user.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: `usuario_id=eq.${user.id}` },
         () => setNotifsNoLeidas(prev => prev + 1))
       .subscribe()
@@ -267,7 +266,6 @@ function TiendaDetector() {
   const [emailConfirmado, setEmailConfirmado] = useState(false)
   const [paginaLegal, setPaginaLegal] = useState(null)
   const [isResetPassword, setIsResetPassword] = useState(false)
-  const [slugTienda, setSlugTienda] = useState(null)
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -348,21 +346,7 @@ function TiendaDetector() {
       return
     }
     // Rutas internas de la app (sin slug externo)
-    if (!path || path === '#' || path.includes('/')) {
-      setChecking(false)
-      return
-    }
-    // Comprobar si el path es un slug de socio (tienda pública)
-    supabase
-      .from('socios')
-      .select('slug')
-      .eq('slug', path)
-      .eq('activo', true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setSlugTienda(path)
-        setChecking(false)
-      })
+    setChecking(false)
   }, [])
 
   if (showSplash) {
@@ -420,19 +404,6 @@ function TiendaDetector() {
           <PaginaLegal slug={paginaLegal} onBack={() => window.history.back()} />
         </Suspense>
       </div>
-    )
-  }
-
-  // Tienda pública del socio — con AuthProvider + CartProvider para sesión y carrito compartidos
-  if (slugTienda) {
-    return (
-      <AuthProvider>
-        <CartProvider>
-          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FF6B2C', fontSize: 18, fontWeight: 800, fontFamily: "'DM Sans',sans-serif" }}>Cargando tienda...</div>}>
-            <TiendaSocio slug={slugTienda} />
-          </Suspense>
-        </CartProvider>
-      </AuthProvider>
     )
   }
 

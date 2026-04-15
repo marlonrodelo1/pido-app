@@ -9,12 +9,16 @@ async function callStripe(body) {
 
   let res
   try {
+    // Generar una clave de idempotencia única para evitar cargos dobles
+    const idempotencyKey = crypto.randomUUID()
+
     res = await fetch(`${SUPABASE_URL}/functions/v1/crear_pago_stripe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
         'apikey': SUPABASE_ANON_KEY,
+        'Idempotency-Key': idempotencyKey,
       },
       body: JSON.stringify(body),
     })
