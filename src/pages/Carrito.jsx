@@ -8,6 +8,7 @@ import { crearPagoStripe, listarTarjetas, pagarConTarjetaGuardada } from '../lib
 import { sendPush } from '../lib/webPush'
 import { estaAbierto } from '../lib/horario'
 import { getCurrentPosition } from '../lib/geolocation'
+import { useDriversOnline } from '../lib/driversStatus'
 import { CreditCard, Lock, X, ArrowLeft, Check, Navigation, MapPin } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
 
@@ -63,7 +64,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
       <button onClick={onCancel} style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        background: 'none', border: 'none', color: 'var(--c-primary-light)',
+        background: 'none', border: 'none', color: 'var(--c-text)',
         fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
         marginBottom: 20, padding: 0,
       }}>
@@ -137,6 +138,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
   const [geoLoading, setGeoLoading] = useState(false)
   const [dirMsg, setDirMsg] = useState(null)
   const [tieneDelivery, setTieneDelivery] = useState(true)
+  const establecimientoCarritoId = carrito.length > 0 ? carrito[0].establecimiento_id : null
+  const { online: driversOnline, loading: driversLoading } = useDriversOnline(establecimientoCarritoId)
+  const deliveryDisponible = tieneDelivery && (driversLoading || driversOnline > 0)
 
   // Comprobar si el restaurante tiene Shipday configurado
   useEffect(() => {
@@ -149,6 +153,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
         if (!td) setModoEntrega('recogida')
       })
   }, [open, carrito.length > 0 ? carrito[0]?.establecimiento_id : null])
+
+  // Forzar recogida si no hay repartidores en línea
+  useEffect(() => {
+    if (!driversLoading && driversOnline === 0 && modoEntrega === 'delivery') {
+      setModoEntrega('recogida')
+    }
+  }, [driversLoading, driversOnline, modoEntrega])
 
   useEffect(() => {
     if (!open || carrito.length === 0) return
@@ -545,8 +556,18 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
                       Este restaurante solo ofrece recogida en local
                     </div>
                   )}
+                  {tieneDelivery && !driversLoading && driversOnline === 0 && (
+                    <div style={{
+                      fontSize: 12, color: '#F5F5F5', marginBottom: 8,
+                      padding: '10px 12px', borderRadius: 10,
+                      background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
+                      fontWeight: 600,
+                    }}>
+                      No hay repartidores disponibles ahora mismo. Puedes pedir para recogida.
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {(tieneDelivery ? ['delivery', 'recogida'] : ['recogida']).map(m => (
+                    {(deliveryDisponible ? ['delivery', 'recogida'] : ['recogida']).map(m => (
                       <button key={m} onClick={() => setModoEntrega(m)} style={S.selBtn(modoEntrega === m)}>
                         {m === 'delivery' ? 'Delivery' : 'Recogida'}
                       </button>
