@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-const STEP_ORDER = ['confirmado', 'preparando', 'en_camino', 'entregado']
+const AUTO_CLOSE_SECONDS = 8
 
 function estadoToStep(estado) {
   if (estado === 'nuevo' || estado === 'aceptado') return 0
@@ -30,6 +30,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const [yaValorado, setYaValorado] = useState(false)
   const [errorResena, setErrorResena] = useState(null)
   const [iframeError, setIframeError] = useState(false)
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_SECONDS)
+  const [autoCloseCancelled, setAutoCloseCancelled] = useState(false)
 
   const esTerminado = pedido.estado === 'entregado' || pedido.estado === 'cancelado' || pedido.estado === 'fallido'
   const esDelivery = pedido.modo_entrega === 'delivery'
@@ -87,6 +89,20 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     }
   }, [pedido.id, esTerminado])
 
+  // Auto-cierre cuando pasa a entregado
+  useEffect(() => {
+    if (pedido.estado !== 'entregado') return
+    if (autoCloseCancelled) return
+    if (yaValorado || resenaEnviada) return
+
+    if (secondsLeft <= 0) {
+      onClose()
+      return
+    }
+    const t = setTimeout(() => setSecondsLeft(s => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [pedido.estado, secondsLeft, autoCloseCancelled, yaValorado, resenaEnviada, onClose])
+
   async function abrirTrackingExterno() {
     const url = pedido.shipday_tracking_url
     if (!url) return
@@ -116,7 +132,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     if (!error) {
       setResenaEnviada(true)
       setYaValorado(true)
-      setTimeout(() => onClose(), 1500)
+      setTimeout(() => onClose(), 1200)
     } else {
       setErrorResena('No se pudo enviar la valoración. Inténtalo de nuevo.')
     }
@@ -153,8 +169,15 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
   // ==================== ENTREGADO ====================
   if (pedido.estado === 'entregado') {
+    const mostrarContador = !autoCloseCancelled && !yaValorado && !resenaEnviada
+
     return (
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
+        <style>{`
+          @keyframes popCheck { 0%{transform:scale(0.3);opacity:0} 60%{transform:scale(1.15);opacity:1} 100%{transform:scale(1);opacity:1} }
+          @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(280px) rotate(720deg);opacity:0} }
+        `}</style>
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -163,48 +186,81 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', padding: '28px 0 20px', borderRadius: 14, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', marginBottom: 20 }}>
-          <div style={{ fontSize: 52, marginBottom: 8 }}>🎉</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#10B981' }}>¡Pedido entregado!</div>
-          <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Disfruta tu comida</div>
+        {/* Celebración */}
+        <div style={{ position: 'relative', textAlign: 'center', padding: '32px 0 22px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 18, overflow: 'hidden' }}>
+          {/* Confetti */}
+          {['#10B981','#FBBF24','#FF6B2C','#60A5FA','#A78BFA','#F472B6'].map((c, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              top: -10,
+              left: `${10 + i * 15}%`,
+              width: 6, height: 10,
+              background: c,
+              animation: `confettiFall ${2 + i * 0.3}s linear ${i * 0.15}s infinite`,
+              borderRadius: 1,
+            }} />
+          ))}
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%',
+            background: 'rgba(16,185,129,0.15)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 10, animation: 'popCheck 0.6s ease-out',
+          }}>
+            <span style={{ fontSize: 40 }}>✓</span>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#10B981', marginBottom: 4 }}>¡Pedido entregado!</div>
+          <div style={{ fontSize: 13, color: 'var(--c-muted)' }}>Esperamos que lo disfrutes 🎉</div>
         </div>
 
-        <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
-          {yaValorado || resenaEnviada ? (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-primary-light)' }}>Gracias por tu valoración</div>
-              <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Tu opinión nos ayuda a mejorar</div>
-            </div>
-          ) : (
-            <>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, textAlign: 'center' }}>¿Cómo fue tu experiencia?</div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
-                {[1, 2, 3, 4, 5].map(i => (
-                  <button key={i} onClick={() => setValoracion(i)} style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-                    background: i <= valoracion ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
-                    cursor: 'pointer', fontSize: 18, color: i <= valoracion ? '#fff' : '#767575', transition: 'all 0.15s',
-                  }}>★</button>
-                ))}
+        {/* Contador auto-cierre */}
+        {mostrarContador && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 16 }}>
+            <span style={{ fontSize: 11, color: 'var(--c-muted)' }}>Cerrando en {secondsLeft}s...</span>
+            <button onClick={() => setAutoCloseCancelled(true)} style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>
+              Dejar valoración
+            </button>
+          </div>
+        )}
+
+        {/* Formulario valoración (solo si el usuario cancela el cierre o ya interactuó) */}
+        {(autoCloseCancelled || yaValorado || resenaEnviada) && (
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
+            {yaValorado || resenaEnviada ? (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-primary-light)' }}>Gracias por tu valoración</div>
+                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Tu opinión nos ayuda a mejorar</div>
               </div>
-              {valoracion > 0 && (
-                <>
-                  <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuéntanos más sobre tu experiencia (opcional)..." rows={3} style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none',
-                    fontSize: 13, fontFamily: 'inherit', background: '#262626',
-                    color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12,
-                  }} />
-                  {errorResena && <div style={{ fontSize: 12, color: '#EF4444', textAlign: 'center', marginBottom: 10, fontWeight: 600 }}>{errorResena}</div>}
-                  <button onClick={enviarValoracion} style={{ width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Enviar valoración
-                  </button>
-                </>
-              )}
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, textAlign: 'center' }}>¿Cómo fue tu experiencia?</div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <button key={i} onClick={() => setValoracion(i)} style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
+                      background: i <= valoracion ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
+                      cursor: 'pointer', fontSize: 18, color: i <= valoracion ? '#fff' : '#767575', transition: 'all 0.15s',
+                    }}>★</button>
+                  ))}
+                </div>
+                {valoracion > 0 && (
+                  <>
+                    <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuéntanos más sobre tu experiencia (opcional)..." rows={3} style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none',
+                      fontSize: 13, fontFamily: 'inherit', background: '#262626',
+                      color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12,
+                    }} />
+                    {errorResena && <div style={{ fontSize: 12, color: '#EF4444', textAlign: 'center', marginBottom: 10, fontWeight: 600 }}>{errorResena}</div>}
+                    <button onClick={enviarValoracion} style={{ width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      Enviar valoración
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#767575' }}>
           {pedido.metodo_pago === 'tarjeta' ? '💳 Pagado con tarjeta' : '💵 Pago en efectivo'}
@@ -217,7 +273,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const currentStep = estadoToStep(pedido.estado)
   const riderOk = riderAsignado(pedido)
 
-  // Etiquetas del stepper adaptadas a delivery vs pickup
   const stepLabels = esPickup
     ? ['Confirmado', 'Preparando', 'Listo', 'Recogido']
     : ['Confirmado', 'Preparando', 'En camino', 'Entregado']
@@ -243,7 +298,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         @keyframes moto { 0%{transform:translateX(-10px)} 100%{transform:translateX(10px)} }
       `}</style>
 
-      {/* ========== STEPPER DE PROGRESO ========== */}
+      {/* STEPPER */}
       <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 22, padding: '0 4px' }}>
         {stepLabels.map((label, idx) => {
           const done = idx < currentStep
@@ -253,7 +308,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           const textColor = future ? '#767575' : '#fff'
           return (
             <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-              {/* línea conectora */}
               {idx < stepLabels.length - 1 && (
                 <div style={{
                   position: 'absolute', top: 12, left: '55%', right: '-45%', height: 2,
@@ -261,7 +315,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   zIndex: 0,
                 }} />
               )}
-              {/* círculo */}
               <div style={{
                 width: 26, height: 26, borderRadius: '50%', background: bg,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -271,7 +324,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               }}>
                 {done ? '✓' : idx + 1}
               </div>
-              {/* label */}
               <div style={{
                 fontSize: 10, fontWeight: 700, color: textColor,
                 marginTop: 6, textAlign: 'center', lineHeight: 1.2,
@@ -280,8 +332,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           )
         })}
       </div>
-
-      {/* ========== BLOQUE VISUAL SEGÚN ESTADO ========== */}
 
       {/* Estado 0: Esperando al restaurante */}
       {(pedido.estado === 'nuevo' || pedido.estado === 'aceptado') && (
@@ -330,7 +380,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             </div>
           </div>
 
-          {/* Info extra solo para delivery: esperando rider */}
           {esDelivery && !riderOk && (
             <div style={{ borderRadius: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>🛵</span>
@@ -344,10 +393,9 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </>
       )}
 
-      {/* Estado 2: En camino — mapa Shipday embebido */}
+      {/* Estado 2: Recogido / En camino */}
       {(pedido.estado === 'recogido' || pedido.estado === 'en_camino') && esDelivery && (
         <div style={{ marginBottom: 16 }}>
-          {/* Banner rider */}
           <div style={{ borderRadius: 14, padding: '14px 16px', background: 'linear-gradient(135deg, rgba(255,107,44,0.15), rgba(255,107,44,0.05))', border: '1px solid rgba(255,107,44,0.2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ fontSize: 32, animation: 'moto 0.9s ease-in-out infinite alternate' }}>🛵</div>
             <div style={{ flex: 1 }}>
@@ -356,44 +404,32 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             </div>
           </div>
 
-          {/* Mapa Shipday */}
           {pedido.shipday_tracking_url ? (
             <>
               {Capacitor.isNativePlatform() ? (
-                // App móvil → botón grande que abre in-app browser
-                <button
-                  onClick={abrirTrackingExterno}
-                  style={{
-                    width: '100%', padding: '18px 20px', borderRadius: 14, border: 'none',
-                    background: 'var(--c-btn-gradient)', color: '#fff',
-                    fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    boxShadow: '0 4px 16px rgba(255,107,44,0.3)',
-                  }}
-                >
+                <button onClick={abrirTrackingExterno} style={{
+                  width: '100%', padding: '18px 20px', borderRadius: 14, border: 'none',
+                  background: 'var(--c-btn-gradient)', color: '#fff',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  boxShadow: '0 4px 16px rgba(255,107,44,0.3)',
+                }}>
                   <span style={{ fontSize: 20 }}>📍</span>
                   Ver ubicación en tiempo real
                 </button>
               ) : iframeError ? (
-                // Web pero el iframe falló → botón fallback
                 <div style={{ borderRadius: 14, padding: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 14 }}>
-                    Abre el seguimiento en una nueva pestaña
-                  </div>
-                  <button
-                    onClick={abrirTrackingExterno}
-                    style={{
-                      padding: '14px 26px', borderRadius: 12, border: 'none',
-                      background: 'var(--c-btn-gradient)', color: '#fff',
-                      fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                      display: 'inline-flex', alignItems: 'center', gap: 8,
-                    }}
-                  >
+                  <div style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 14 }}>Abre el seguimiento en una nueva pestaña</div>
+                  <button onClick={abrirTrackingExterno} style={{
+                    padding: '14px 26px', borderRadius: 12, border: 'none',
+                    background: 'var(--c-btn-gradient)', color: '#fff',
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                  }}>
                     <span>📍</span> Ver tracking
                   </button>
                 </div>
               ) : (
-                // Web → iframe embebido
                 <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#1a1a1a' }}>
                   <iframe
                     src={pedido.shipday_tracking_url}
@@ -402,17 +438,14 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                     onError={() => setIframeError(true)}
                     allow="geolocation"
                   />
-                  <button
-                    onClick={abrirTrackingExterno}
-                    style={{
-                      position: 'absolute', top: 10, right: 10,
-                      padding: '7px 12px', borderRadius: 8, border: 'none',
-                      background: 'rgba(0,0,0,0.72)', color: '#fff',
-                      fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                      backdropFilter: 'blur(8px)',
-                      display: 'flex', alignItems: 'center', gap: 5,
-                    }}
-                  >
+                  <button onClick={abrirTrackingExterno} style={{
+                    position: 'absolute', top: 10, right: 10,
+                    padding: '7px 12px', borderRadius: 8, border: 'none',
+                    background: 'rgba(0,0,0,0.72)', color: '#fff',
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
                     <span>⤢</span> Abrir
                   </button>
                 </div>
@@ -426,7 +459,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </div>
       )}
 
-      {/* Pickup listo */}
       {pedido.estado === 'listo' && esPickup && (
         <div style={{ borderRadius: 14, padding: '16px 18px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 16, textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 6 }}>📦</div>
