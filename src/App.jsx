@@ -3,9 +3,9 @@ import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './lib/supabase'
-import { Bell, Share2 } from 'lucide-react'
+import { Bell, Share2, ShoppingBag } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { CartProvider } from './context/CartContext'
+import { CartProvider, useCart } from './context/CartContext'
 import Login from './pages/Login'
 import BottomNav from './components/BottomNav'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
@@ -69,6 +69,8 @@ function AppContent() {
   const [restOpen, setRestOpen] = useState(null)
   const [pedidoActivo, setPedidoActivo] = useState(null)
   const [notifsNoLeidas, setNotifsNoLeidas] = useState(0)
+  const [carritoOpen, setCarritoOpen] = useState(false)
+  const { totalItems } = useCart()
 
   // Cargar y escuchar notificaciones no leídas en tiempo real
   useEffect(() => {
@@ -125,7 +127,6 @@ function AppContent() {
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontWeight: 800, fontSize: 24, color: 'var(--c-primary)', letterSpacing: -1 }}>pidoo</div>
           <button onClick={() => setOnboarded(false)} style={{
             display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
             borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
@@ -167,6 +168,16 @@ function AppContent() {
           }}>
             <Share2 size={18} strokeWidth={1.8} color="var(--c-text)" />
           </button>
+          <button onClick={() => setCarritoOpen(true)} style={{
+            width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
+            border: 'none', cursor: 'pointer', position: 'relative',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ShoppingBag size={18} strokeWidth={1.8} color="var(--c-text)" />
+            {totalItems > 0 && (
+              <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#FF6B2C', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{totalItems}</span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -195,7 +206,7 @@ function AppContent() {
       </div>
 
       <Suspense fallback={null}>
-        <Carrito onPedidoCreado={handlePedidoCreado} />
+        <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} />
       </Suspense>
       <BottomNav active={seccion} onChange={s => {
         setSeccion(s)

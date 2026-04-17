@@ -110,10 +110,12 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
 const brandIcon = { visa: '💳', mastercard: '💳', amex: '💳' }
 
-export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
+export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp }) {
   const { user, perfil, updatePerfil } = useAuth()
   const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm } = useCart()
-  const [open, setOpen] = useState(false)
+  const [openInternal, setOpenInternal] = useState(false)
+  const open = openProp !== undefined ? openProp : openInternal
+  const setOpen = setOpenProp || setOpenInternal
   const [loading, setLoading] = useState(false)
   const [pasoTarjeta, setPasoTarjeta] = useState(false)
   const [clientSecret, setClientSecret] = useState(null)
@@ -375,52 +377,6 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
 
   return (
     <>
-      {/* ── Barra flotante VER CARRITO (solo si hay items) ── */}
-      {totalItems > 0 && !open && (
-        <div style={{
-          position: 'fixed',
-          bottom: 'calc(20px + 64px + 14px + env(safe-area-inset-bottom, 0px))',
-          left: 0, right: 0,
-          display: 'flex', justifyContent: 'center',
-          padding: '0 16px',
-          zIndex: 50,
-          pointerEvents: 'none',
-        }}>
-          <button onClick={() => setOpen(true)} style={{
-            pointerEvents: 'auto',
-            width: '100%', maxWidth: 420,
-            padding: '14px 18px', borderRadius: 16,
-            background: 'var(--c-primary)',
-            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 12,
-            boxShadow: '0 10px 28px rgba(255,107,44,0.35)',
-          }}>
-            <span style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.25)', color: '#fff',
-              fontSize: 13, fontWeight: 800,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              {totalItems}
-            </span>
-            <span style={{
-              color: '#fff', fontSize: 14, fontWeight: 800,
-              letterSpacing: '0.04em', textTransform: 'uppercase',
-              flex: 1, textAlign: 'center',
-            }}>
-              Ver carrito
-            </span>
-            <span style={{
-              color: '#fff', fontSize: 15, fontWeight: 800,
-              flexShrink: 0,
-            }}>
-              {subtotal.toFixed(2)} €
-            </span>
-          </button>
-        </div>
-      )}
-
       {/* ── Modal carrito ── */}
       {open && (
         <div
