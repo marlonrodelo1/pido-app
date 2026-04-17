@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -12,13 +12,6 @@ import { CreditCard, Lock, X, ArrowLeft, Check, Navigation, MapPin } from 'lucid
 import AddressInput from '../components/AddressInput'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
-
-const cardStyle = {
-  style: {
-    base: { fontSize: '16px', fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#F5F5F5', '::placeholder': { color: '#767575' } },
-    invalid: { color: '#EF4444' },
-  },
-}
 
 /* ─── Estilos reutilizables ──────────────────────────────── */
 const S = {
@@ -44,15 +37,26 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
   const handlePagar = async () => {
     if (!stripe || !elements) return
     setLoading(true); setError(null)
-    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: { card: elements.getElement(CardElement) },
+    const { error: submitError } = await elements.submit()
+    if (submitError) {
+      setError(submitError.message || 'Completa los datos del método de pago')
+      setLoading(false)
+      return
+    }
+    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      redirect: 'if_required',
     })
     if (stripeError) {
-      setError(stripeError.message === 'Your card number is incomplete.' ? 'Completa los datos de tu tarjeta' : stripeError.message)
+      setError(stripeError.message || 'Error al procesar el pago')
       setLoading(false)
-    } else if (paymentIntent.status === 'succeeded') {
+    } else if (paymentIntent && paymentIntent.status === 'succeeded') {
       onSuccess(paymentIntent.id)
-    } else { setError('El pago no se pudo completar'); setLoading(false) }
+    } else {
+      setError('El pago no se pudo completar')
+      setLoading(false)
+    }
   }
 
   return (
@@ -66,31 +70,21 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
         <ArrowLeft size={16} strokeWidth={2.5} /> Volver al carrito
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <div style={{
-          width: 42, height: 42, borderRadius: 12,
-          background: 'var(--c-primary-glow)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <CreditCard size={20} strokeWidth={1.8} color="var(--c-primary)" />
-        </div>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text)' }}>Nueva tarjeta</div>
-          <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>Se guardará para próximos pedidos</div>
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--c-text)', marginBottom: 4 }}>Elige cómo pagar</div>
+        <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>Tarjeta, Apple Pay, Google Pay o Link</div>
       </div>
 
-      <div style={{
-        background: '#262626', borderRadius: 14,
-        border: 'none',
-        padding: '16px 14px', marginBottom: 16,
-      }}>
-        <CardElement options={cardStyle} />
+      <div style={{ marginBottom: 16 }}>
+        <PaymentElement options={{
+          layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: true },
+          wallets: { applePay: 'auto', googlePay: 'auto' },
+        }} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, justifyContent: 'center' }}>
         <Lock size={12} strokeWidth={2} color="var(--c-muted)" />
-        <span style={{ fontSize: 11, color: 'var(--c-muted)' }}>Pago seguro · Tu tarjeta se guardará</span>
+        <span style={{ fontSize: 11, color: 'var(--c-muted)' }}>Pago seguro con cifrado SSL</span>
       </div>
 
       {error && (
@@ -444,7 +438,20 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 16px' }} />
 
             {pasoTarjeta && clientSecret ? (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <Elements stripe={stripePromise} options={{
+                clientSecret,
+                appearance: {
+                  theme: 'night',
+                  variables: {
+                    colorPrimary: '#FF6B2C',
+                    colorBackground: '#262626',
+                    colorText: '#F5F5F5',
+                    colorDanger: '#EF4444',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    borderRadius: '12px',
+                  },
+                },
+              }}>
                 <FormularioPago
                   clientSecret={clientSecret}
                   total={Math.max(0, total - descuento)}
