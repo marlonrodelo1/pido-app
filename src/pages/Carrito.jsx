@@ -139,7 +139,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
   const [dirMsg, setDirMsg] = useState(null)
   const [tieneDelivery, setTieneDelivery] = useState(true)
   const establecimientoCarritoId = carrito.length > 0 ? carrito[0].establecimiento_id : null
-  const { online: driversOnline, loading: driversLoading } = useDriversOnline(establecimientoCarritoId)
+  const { online: driversOnline, loading: driversLoading } = useDriversOnline(establecimientoCarritoId, { enabled: open, refreshIntervalMs: 30000 })
   const deliveryDisponible = tieneDelivery && (driversLoading || driversOnline > 0)
 
   // Comprobar si el restaurante tiene Shipday configurado
