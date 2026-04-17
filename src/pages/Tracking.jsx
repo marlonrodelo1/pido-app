@@ -6,16 +6,19 @@ import { useAuth } from '../context/AuthContext'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-const ESTADO_INFO = {
-  nuevo:      { icon: '⏳', label: 'Esperando confirmación', color: '#F59E0B' },
-  aceptado:   { icon: '✅', label: 'Repartidor asignado',    color: '#10B981' },
-  preparando: { icon: '👨‍🍳', label: 'Preparando tu pedido',  color: '#FF6B2C' },
-  listo:      { icon: '📦', label: 'Listo para recoger',     color: '#FF6B2C' },
-  recogido:   { icon: '🏍️', label: 'Pedido recogido',        color: '#FF6B2C' },
-  en_camino:  { icon: '🛵', label: 'En camino',              color: '#FF6B2C' },
-  entregado:  { icon: '🎉', label: 'Pedido entregado',       color: '#10B981' },
-  cancelado:  { icon: '❌', label: 'Pedido cancelado',       color: '#EF4444' },
-  fallido:    { icon: '⚠️', label: 'Entrega fallida',        color: '#EF4444' },
+const STEP_ORDER = ['confirmado', 'preparando', 'en_camino', 'entregado']
+
+function estadoToStep(estado) {
+  if (estado === 'nuevo' || estado === 'aceptado') return 0
+  if (estado === 'preparando' || estado === 'listo') return 1
+  if (estado === 'recogido' || estado === 'en_camino') return 2
+  if (estado === 'entregado') return 3
+  return 0
+}
+
+function riderAsignado(pedido) {
+  const st = (pedido.shipday_status || '').toUpperCase()
+  return !!pedido.shipday_tracking_url && !['', 'NOT_ASSIGNED', 'NOT_ACCEPTED', 'CREATED'].includes(st)
 }
 
 export default function Tracking({ pedido: pedidoInicial, onClose }) {
@@ -26,16 +29,17 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const [resenaEnviada, setResenaEnviada] = useState(false)
   const [yaValorado, setYaValorado] = useState(false)
   const [errorResena, setErrorResena] = useState(null)
+  const [iframeError, setIframeError] = useState(false)
 
   const esTerminado = pedido.estado === 'entregado' || pedido.estado === 'cancelado' || pedido.estado === 'fallido'
+  const esDelivery = pedido.modo_entrega === 'delivery'
+  const esPickup = pedido.modo_entrega === 'pickup' || pedido.modo_entrega === 'recogida'
 
-  // Fetch estado actual al montar
   useEffect(() => {
     supabase.from('pedidos').select('*').eq('id', pedidoInicial.id).single()
       .then(({ data }) => { if (data) setPedido(data) })
   }, [pedidoInicial.id])
 
-  // Comprobar si ya valoró
   useEffect(() => {
     const uid = user?.id || pedido.usuario_id
     if (pedido.id && uid) {
@@ -44,7 +48,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     }
   }, [pedido.id, user?.id])
 
-  // Realtime + polling BD + polling Shipday
   useEffect(() => {
     const channel = supabase.channel(`tracking-${pedido.id}`)
       .on('postgres_changes', {
@@ -55,17 +58,15 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       })
       .subscribe()
 
-    // Polling BD cada 4s
     const pollInterval = setInterval(async () => {
       const { data } = await supabase
         .from('pedidos')
-        .select('estado, motivo_cancelacion, metodo_pago, shipday_status, shipday_tracking_url')
+        .select('estado, motivo_cancelacion, metodo_pago, shipday_status, shipday_tracking_url, minutos_preparacion, modo_entrega')
         .eq('id', pedido.id)
         .single()
       if (data) setPedido(prev => ({ ...prev, ...data }))
     }, 4000)
 
-    // Polling Shipday API cada 8s (sincroniza estado + guarda trackingUrl)
     const shipdaySyncInterval = setInterval(async () => {
       if (esTerminado) return
       try {
@@ -86,12 +87,12 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     }
   }, [pedido.id, esTerminado])
 
-  async function abrirTracking() {
+  async function abrirTrackingExterno() {
     const url = pedido.shipday_tracking_url
     if (!url) return
     if (Capacitor.isNativePlatform()) {
       const { Browser } = await import('@capacitor/browser')
-      await Browser.open({ url })
+      await Browser.open({ url, presentationStyle: 'popover' })
     } else {
       window.open(url, '_blank', 'noopener,noreferrer')
     }
@@ -121,8 +122,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     }
   }
 
-  const info = ESTADO_INFO[pedido.estado] || ESTADO_INFO.nuevo
-
   // ==================== CANCELADO / FALLIDO ====================
   if (pedido.estado === 'cancelado' || pedido.estado === 'fallido') {
     return (
@@ -132,7 +131,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600 }}>{pedido.codigo}</span>
         </div>
         <div style={{ background: 'rgba(239,68,68,0.06)', borderRadius: 14, padding: 28, textAlign: 'center', border: '1px solid rgba(239,68,68,0.15)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>{info.icon}</div>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>{pedido.estado === 'cancelado' ? '❌' : '⚠️'}</div>
           <div style={{ fontWeight: 700, fontSize: 18, color: '#EF4444', marginBottom: 8 }}>
             {pedido.estado === 'cancelado' ? 'Pedido cancelado' : 'Entrega fallida'}
           </div>
@@ -164,14 +163,12 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         </div>
 
-        {/* Badge entregado */}
         <div style={{ textAlign: 'center', padding: '28px 0 20px', borderRadius: 14, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', marginBottom: 20 }}>
           <div style={{ fontSize: 52, marginBottom: 8 }}>🎉</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#10B981' }}>¡Pedido entregado!</div>
           <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Disfruta tu comida</div>
         </div>
 
-        {/* Valoración */}
         <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
           {yaValorado || resenaEnviada ? (
             <div style={{ textAlign: 'center' }}>
@@ -217,6 +214,14 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   }
 
   // ==================== EN CURSO ====================
+  const currentStep = estadoToStep(pedido.estado)
+  const riderOk = riderAsignado(pedido)
+
+  // Etiquetas del stepper adaptadas a delivery vs pickup
+  const stepLabels = esPickup
+    ? ['Confirmado', 'Preparando', 'Listo', 'Recogido']
+    : ['Confirmado', 'Preparando', 'En camino', 'Entregado']
+
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -227,20 +232,60 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </div>
       </div>
 
-      {/* Animaciones CSS */}
       <style>{`
+        @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse2 { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.12);opacity:0.7} }
         @keyframes chopChop { 0%{transform:rotate(0deg)} 100%{transform:rotate(-22deg)} }
         @keyframes chopChop2 { 0%{transform:rotate(0deg) scaleX(-1)} 100%{transform:rotate(22deg) scaleX(-1)} }
         @keyframes steamRise { 0%{opacity:0.6;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-22px) scale(1.4)} }
         @keyframes sizzle { 0%{opacity:0.3;transform:scale(0.8)} 100%{opacity:1;transform:scale(1.3)} }
         @keyframes floatPan { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes moto { 0%{transform:translateX(-10px)} 100%{transform:translateX(10px)} }
       `}</style>
 
-      {/* Bloque animado según estado */}
+      {/* ========== STEPPER DE PROGRESO ========== */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 22, padding: '0 4px' }}>
+        {stepLabels.map((label, idx) => {
+          const done = idx < currentStep
+          const active = idx === currentStep
+          const future = idx > currentStep
+          const bg = done ? '#10B981' : active ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)'
+          const textColor = future ? '#767575' : '#fff'
+          return (
+            <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              {/* línea conectora */}
+              {idx < stepLabels.length - 1 && (
+                <div style={{
+                  position: 'absolute', top: 12, left: '55%', right: '-45%', height: 2,
+                  background: done ? '#10B981' : 'rgba(255,255,255,0.08)',
+                  zIndex: 0,
+                }} />
+              )}
+              {/* círculo */}
+              <div style={{
+                width: 26, height: 26, borderRadius: '50%', background: bg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: textColor, fontWeight: 700, fontSize: 12, zIndex: 1,
+                boxShadow: active ? '0 0 0 4px rgba(255,107,44,0.2)' : 'none',
+                transition: 'all 0.2s ease',
+              }}>
+                {done ? '✓' : idx + 1}
+              </div>
+              {/* label */}
+              <div style={{
+                fontSize: 10, fontWeight: 700, color: textColor,
+                marginTop: 6, textAlign: 'center', lineHeight: 1.2,
+              }}>{label}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ========== BLOQUE VISUAL SEGÚN ESTADO ========== */}
+
+      {/* Estado 0: Esperando al restaurante */}
       {(pedido.estado === 'nuevo' || pedido.estado === 'aceptado') && (
-        <div style={{ borderRadius: 16, marginBottom: 20, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e2a3a 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          {/* Estrellas parpadeantes */}
+        <div style={{ borderRadius: 16, marginBottom: 16, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e2a3a 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           {[...Array(8)].map((_, i) => (
             <div key={i} style={{ position: 'absolute', top: 8 + (i * 11) % 60, left: `${8 + (i * 19) % 84}%`, width: 2, height: 2, borderRadius: '50%', background: '#fff', opacity: 0.25 + (i % 3) * 0.15, animation: `pulse2 ${1.8 + i * 0.4}s ease-in-out infinite ${i * 0.3}s` }} />
           ))}
@@ -250,55 +295,143 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </div>
       )}
 
+      {/* Estado 1: Preparando / Listo */}
       {(pedido.estado === 'preparando' || pedido.estado === 'listo') && (
-        <div style={{ borderRadius: 16, marginBottom: 20, overflow: 'hidden', background: 'linear-gradient(135deg, #1a1207 0%, #2d1f0e 50%, #1a1207 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative' }}>
-          {/* Pared azulejos cocina */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%),repeating-linear-gradient(0deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%)', backgroundSize: '22px 22px' }} />
-          {/* Encimera */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg,#5C4033,#4A3428)', borderTop: '3px solid #6B4F3A' }} />
-          {/* Sartén flotando */}
-          <div style={{ position: 'absolute', bottom: '40%', left: '10%', animation: 'floatPan 2s ease-in-out infinite' }}>
-            <span style={{ fontSize: 36 }}>🍳</span>
-            {/* Chispas sartén */}
-            <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', animation: 'sizzle 0.35s ease-in-out infinite alternate', fontSize: 9, color: '#FFD700' }}>✦</div>
-          </div>
-          {/* Vapor */}
-          <div style={{ position: 'absolute', bottom: '70%', left: '18%', fontSize: 13, opacity: 0.5, animation: 'steamRise 2s ease-out infinite' }}>💨</div>
-          <div style={{ position: 'absolute', bottom: '72%', left: '25%', fontSize: 10, opacity: 0.35, animation: 'steamRise 2.4s ease-out infinite 0.6s' }}>💨</div>
-          {/* Cuchillo izquierda */}
-          <div style={{ position: 'absolute', bottom: '40%', left: '42%', animation: 'chopChop 0.38s ease-in-out infinite', transformOrigin: 'bottom right' }}>
-            <span style={{ fontSize: 28 }}>🔪</span>
-          </div>
-          {/* Cuchillo derecha (espejado) */}
-          <div style={{ position: 'absolute', bottom: '40%', left: '56%', animation: 'chopChop2 0.38s ease-in-out infinite 0.19s', transformOrigin: 'bottom left', display: 'inline-block' }}>
-            <span style={{ fontSize: 28 }}>🔪</span>
-          </div>
-          {/* Ingredientes */}
-          <div style={{ position: 'absolute', bottom: '40%', right: '8%', display: 'flex', gap: 4 }}>
-            <span style={{ fontSize: 20 }}>🍅</span>
-            <span style={{ fontSize: 18 }}>🧅</span>
-          </div>
-          {/* Label */}
-          <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 10, padding: '7px 13px', display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span style={{ fontSize: 15 }}>👨‍🍳</span>
-              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Preparando tu pedido...</span>
+        <>
+          <div style={{ borderRadius: 16, marginBottom: 12, overflow: 'hidden', background: 'linear-gradient(135deg, #1a1207 0%, #2d1f0e 50%, #1a1207 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%),repeating-linear-gradient(0deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%)', backgroundSize: '22px 22px' }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg,#5C4033,#4A3428)', borderTop: '3px solid #6B4F3A' }} />
+            <div style={{ position: 'absolute', bottom: '40%', left: '10%', animation: 'floatPan 2s ease-in-out infinite' }}>
+              <span style={{ fontSize: 36 }}>🍳</span>
+              <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', animation: 'sizzle 0.35s ease-in-out infinite alternate', fontSize: 9, color: '#FFD700' }}>✦</div>
             </div>
-            {pedido.minutos_preparacion && (
-              <div style={{ background: 'rgba(0,0,0,0.65)', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#FFD700' }}>~{pedido.minutos_preparacion} min</div>
-            )}
+            <div style={{ position: 'absolute', bottom: '70%', left: '18%', fontSize: 13, opacity: 0.5, animation: 'steamRise 2s ease-out infinite' }}>💨</div>
+            <div style={{ position: 'absolute', bottom: '72%', left: '25%', fontSize: 10, opacity: 0.35, animation: 'steamRise 2.4s ease-out infinite 0.6s' }}>💨</div>
+            <div style={{ position: 'absolute', bottom: '40%', left: '42%', animation: 'chopChop 0.38s ease-in-out infinite', transformOrigin: 'bottom right' }}>
+              <span style={{ fontSize: 28 }}>🔪</span>
+            </div>
+            <div style={{ position: 'absolute', bottom: '40%', left: '56%', animation: 'chopChop2 0.38s ease-in-out infinite 0.19s', transformOrigin: 'bottom left', display: 'inline-block' }}>
+              <span style={{ fontSize: 28 }}>🔪</span>
+            </div>
+            <div style={{ position: 'absolute', bottom: '40%', right: '8%', display: 'flex', gap: 4 }}>
+              <span style={{ fontSize: 20 }}>🍅</span>
+              <span style={{ fontSize: 18 }}>🧅</span>
+            </div>
+            <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 10, padding: '7px 13px', display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ fontSize: 15 }}>👨‍🍳</span>
+                <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>
+                  {pedido.estado === 'listo' ? 'Pedido listo' : 'Preparando tu pedido...'}
+                </span>
+              </div>
+              {pedido.minutos_preparacion && pedido.estado === 'preparando' && (
+                <div style={{ background: 'rgba(0,0,0,0.65)', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#FFD700' }}>~{pedido.minutos_preparacion} min</div>
+              )}
+            </div>
           </div>
+
+          {/* Info extra solo para delivery: esperando rider */}
+          {esDelivery && !riderOk && (
+            <div style={{ borderRadius: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>🛵</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)' }}>Buscando repartidor...</div>
+                <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>Te avisaremos en cuanto uno acepte tu pedido</div>
+              </div>
+              <span style={{ fontSize: 14, animation: 'pulse2 1.5s ease-in-out infinite' }}>🔍</span>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Estado 2: En camino — mapa Shipday embebido */}
+      {(pedido.estado === 'recogido' || pedido.estado === 'en_camino') && esDelivery && (
+        <div style={{ marginBottom: 16 }}>
+          {/* Banner rider */}
+          <div style={{ borderRadius: 14, padding: '14px 16px', background: 'linear-gradient(135deg, rgba(255,107,44,0.15), rgba(255,107,44,0.05))', border: '1px solid rgba(255,107,44,0.2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ fontSize: 32, animation: 'moto 0.9s ease-in-out infinite alternate' }}>🛵</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--c-text)' }}>¡Tu pedido está en camino!</div>
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>Sigue al repartidor en tiempo real</div>
+            </div>
+          </div>
+
+          {/* Mapa Shipday */}
+          {pedido.shipday_tracking_url ? (
+            <>
+              {Capacitor.isNativePlatform() ? (
+                // App móvil → botón grande que abre in-app browser
+                <button
+                  onClick={abrirTrackingExterno}
+                  style={{
+                    width: '100%', padding: '18px 20px', borderRadius: 14, border: 'none',
+                    background: 'var(--c-btn-gradient)', color: '#fff',
+                    fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    boxShadow: '0 4px 16px rgba(255,107,44,0.3)',
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>📍</span>
+                  Ver ubicación en tiempo real
+                </button>
+              ) : iframeError ? (
+                // Web pero el iframe falló → botón fallback
+                <div style={{ borderRadius: 14, padding: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 14 }}>
+                    Abre el seguimiento en una nueva pestaña
+                  </div>
+                  <button
+                    onClick={abrirTrackingExterno}
+                    style={{
+                      padding: '14px 26px', borderRadius: 12, border: 'none',
+                      background: 'var(--c-btn-gradient)', color: '#fff',
+                      fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                    }}
+                  >
+                    <span>📍</span> Ver tracking
+                  </button>
+                </div>
+              ) : (
+                // Web → iframe embebido
+                <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#1a1a1a' }}>
+                  <iframe
+                    src={pedido.shipday_tracking_url}
+                    title="Seguimiento del repartidor"
+                    style={{ width: '100%', height: 460, border: 0, display: 'block' }}
+                    onError={() => setIframeError(true)}
+                    allow="geolocation"
+                  />
+                  <button
+                    onClick={abrirTrackingExterno}
+                    style={{
+                      position: 'absolute', top: 10, right: 10,
+                      padding: '7px 12px', borderRadius: 8, border: 'none',
+                      background: 'rgba(0,0,0,0.72)', color: '#fff',
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      backdropFilter: 'blur(8px)',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}
+                  >
+                    <span>⤢</span> Abrir
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ borderRadius: 14, padding: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: 'var(--c-muted)' }}>Preparando el seguimiento en tiempo real...</div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Botón tracking Shipday — solo cuando el rider ha aceptado */}
-      {pedido.shipday_tracking_url && pedido.shipday_status && !['NOT_ASSIGNED','NOT_ACCEPTED'].includes(pedido.shipday_status?.toUpperCase()) ? (
-        <button onClick={abrirTracking} style={{ width: '100%', padding: '16px 0', borderRadius: 14, border: 'none', background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <span>📍</span> Ver repartidor en tiempo real
-        </button>
-      ) : (
-        <div style={{ borderRadius: 14, padding: '14px 20px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>El seguimiento estará disponible cuando se asigne un repartidor</div>
+      {/* Pickup listo */}
+      {pedido.estado === 'listo' && esPickup && (
+        <div style={{ borderRadius: 14, padding: '16px 18px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 6 }}>📦</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#10B981' }}>¡Tu pedido está listo!</div>
+          <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Puedes pasar a recogerlo cuando quieras</div>
         </div>
       )}
 
