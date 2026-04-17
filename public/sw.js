@@ -67,10 +67,25 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close()
+  var data = event.notification.data || {}
+  var target = '/'
+  if (data.pedido_id) {
+    target = '/pedido/' + data.pedido_id
+  } else if (data.url) {
+    target = data.url
+  } else if (data.pedido_codigo) {
+    target = '/pedido?codigo=' + data.pedido_codigo
+  }
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(function(clientList) {
-      if (clientList.length > 0) return clientList[0].focus()
-      return clients.openWindow('/')
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var c = clientList[i]
+        if ('focus' in c) {
+          c.postMessage({ type: 'navigate', target: target })
+          return c.focus()
+        }
+      }
+      return clients.openWindow(target)
     })
   )
 })

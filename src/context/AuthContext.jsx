@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
-import { registerWebPush } from '../lib/webPush'
-import { registerPushNotifications } from '../lib/pushNotifications'
+import { registerWebPush, unregisterWebPush } from '../lib/webPush'
+import { registerPushNotifications, unregisterPushNotifications } from '../lib/pushNotifications'
 
 const AuthContext = createContext({})
 
@@ -155,6 +155,11 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    // Limpiar tokens push antes de cerrar sesión (si hay usuario)
+    if (user?.id) {
+      try { await unregisterWebPush('cliente', { user_id: user.id }) } catch {}
+      try { await unregisterPushNotifications() } catch {}
+    }
     await supabase.auth.signOut()
     setUser(null)
     setPerfil(null)
