@@ -275,10 +275,22 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       direccion_entrega: dirEntrega,
     }).select().single()
     if (pedidoError) throw pedidoError
-    const items = carrito.map(item => ({
-      pedido_id: pedido.id, producto_id: item.producto_id, nombre_producto: item.nombre,
-      tamano: item.tamano, extras: item.extras, precio_unitario: item.precio_unitario, cantidad: item.cantidad,
-    }))
+    const items = carrito.map(item => {
+      let extrasFlat = null
+      if (item.extras && item.extras.length > 0) {
+        if (typeof item.extras[0] === 'object' && item.extras[0] !== null && 'opciones' in item.extras[0]) {
+          extrasFlat = item.extras.flatMap(g =>
+            (g.opciones || []).map(o => o.precio > 0 ? `${o.nombre} (+${o.precio.toFixed(2)}€)` : o.nombre)
+          )
+        } else {
+          extrasFlat = item.extras
+        }
+      }
+      return {
+        pedido_id: pedido.id, producto_id: item.producto_id, nombre_producto: item.nombre,
+        tamano: item.tamano, extras: extrasFlat, precio_unitario: item.precio_unitario, cantidad: item.cantidad,
+      }
+    })
     const { error: itemsError } = await supabase.from('pedido_items').insert(items)
     if (itemsError) throw itemsError
     return pedido
@@ -472,7 +484,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)', lineHeight: 1.3 }}>{item.nombre}</div>
                         {item.tamano && <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 3 }}>{item.tamano}</div>}
-                        {item.extras?.length > 0 && <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>{item.extras.join(', ')}</div>}
+                        {item.extras?.length > 0 && (
+                          <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.45 }}>
+                            {typeof item.extras[0] === 'object' && item.extras[0] !== null && 'opciones' in item.extras[0]
+                              ? item.extras.map(g => (g.opciones || []).map(o => o.nombre).join(', ')).filter(Boolean).join(' · ')
+                              : item.extras.join(', ')}
+                          </div>
+                        )}
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginTop: 6 }}>
                           {(item.precio_unitario * item.cantidad).toFixed(2)} €
                         </div>

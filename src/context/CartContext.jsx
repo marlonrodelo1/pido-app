@@ -22,6 +22,20 @@ export function CartProvider({ children }) {
     try { localStorage.setItem('pido_cart', JSON.stringify(carrito)) } catch (e) { console.warn('Error guardando carrito:', e) }
   }, [carrito])
 
+  function extrasSignature(extras) {
+    if (!extras || extras.length === 0) return ''
+    try {
+      // Si es estructura rica [{grupo_id, opciones:[{id}]}]
+      if (typeof extras[0] === 'object' && extras[0] !== null && 'opciones' in extras[0]) {
+        return extras
+          .map(g => `${g.grupo_id}:${(g.opciones || []).map(o => o.id).sort().join(',')}`)
+          .sort().join('|')
+      }
+      // Estructura antigua (array de strings)
+      return [...extras].sort().join(',')
+    } catch { return '' }
+  }
+
   function addItem(item) {
     if (carrito.length > 0 && carrito[0].establecimiento_id !== item.establecimiento_id) {
       if (!window.confirm('Tienes productos de otro restaurante. ¿Quieres vaciar el carrito y añadir este?')) return
@@ -30,7 +44,18 @@ export function CartProvider({ children }) {
       setDistanciaKm(null)
       return
     }
-    setCarrito(prev => [...prev, item])
+    const sig = extrasSignature(item.extras)
+    const idx = carrito.findIndex(i =>
+      i.producto_id === item.producto_id &&
+      (i.tamano || null) === (item.tamano || null) &&
+      extrasSignature(i.extras) === sig &&
+      Math.abs((i.precio_unitario || 0) - (item.precio_unitario || 0)) < 0.001
+    )
+    if (idx >= 0) {
+      setCarrito(prev => prev.map((it, i) => i === idx ? { ...it, cantidad: it.cantidad + (item.cantidad || 1) } : it))
+    } else {
+      setCarrito(prev => [...prev, item])
+    }
   }
 
   function removeItem(index) {

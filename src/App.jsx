@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './lib/supabase'
-import { Bell, Share2, ShoppingBag } from 'lucide-react'
+import { Bell, Share2, ShoppingBag, CircleUser } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CartProvider, useCart } from './context/CartContext'
 import Login from './pages/Login'
@@ -168,15 +168,12 @@ function AppContent() {
           }}>
             <Share2 size={18} strokeWidth={1.8} color="var(--c-text)" />
           </button>
-          <button onClick={() => setCarritoOpen(true)} style={{
+          <button onClick={() => { setSeccion('perfil'); setRestOpen(null) }} style={{
             width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
-            border: 'none', cursor: 'pointer', position: 'relative',
+            border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <ShoppingBag size={18} strokeWidth={1.8} color="var(--c-text)" />
-            {totalItems > 0 && (
-              <span style={{ position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#FF6B2C', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{totalItems}</span>
-            )}
+            <CircleUser size={18} strokeWidth={1.8} color="var(--c-text)" />
           </button>
         </div>
       </div>
@@ -208,7 +205,11 @@ function AppContent() {
       <Suspense fallback={null}>
         <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} />
       </Suspense>
-      <BottomNav active={seccion} onChange={s => {
+      <BottomNav active={seccion} totalItems={totalItems} onChange={s => {
+        if (s === 'carrito') {
+          setCarritoOpen(true)
+          return
+        }
         setSeccion(s)
         setRestOpen(null)
         if (s === 'notificaciones') setNotifsNoLeidas(0)

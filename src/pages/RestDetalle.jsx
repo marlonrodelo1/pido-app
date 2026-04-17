@@ -4,18 +4,16 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 
 /* ─── ProductoCard ────────────────────────────────────────── */
-function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [] }) {
+function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [], tieneExtras = false }) {
   const enCarritoIdx = carrito.findIndex(i => i.producto_id === p.id)
   const enCarrito = enCarritoIdx >= 0 ? carrito[enCarritoIdx] : null
   const minPrecio = tamanos.length > 0 ? Math.min(...tamanos.map(t => t.precio)) : null
-  const tieneConfig = tamanos.length > 0
+  const tieneConfig = tamanos.length > 0 || tieneExtras
 
   function handleIncrementar(e) {
     e.stopPropagation()
     if (enCarrito && !tieneConfig) {
       updateCantidad(enCarritoIdx, enCarrito.cantidad + 1)
-    } else if (enCarrito && tieneConfig) {
-      onOpen()
     } else if (tieneConfig) {
       onOpen()
     } else {
@@ -132,6 +130,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
   const [loading, setLoading] = useState(true)
   const [catFiltro, setCatFiltro] = useState(null)
   const [prodTamanosMap, setProdTamanosMap] = useState({})
+  const [prodExtrasSet, setProdExtrasSet] = useState(new Set())
 
   const est = establecimiento
 
@@ -152,13 +151,17 @@ export default function RestDetalle({ establecimiento, onBack }) {
 
     const ids = (prodRes.data || []).map(p => p.id)
     if (ids.length > 0) {
-      const { data: tams } = await supabase.from('producto_tamanos').select('producto_id, precio').in('producto_id', ids)
+      const [{ data: tams }, { data: pexs }] = await Promise.all([
+        supabase.from('producto_tamanos').select('producto_id, precio').in('producto_id', ids),
+        supabase.from('producto_extras').select('producto_id').in('producto_id', ids),
+      ])
       const map = {}
       for (const t of (tams || [])) {
         if (!map[t.producto_id]) map[t.producto_id] = []
         map[t.producto_id].push(t)
       }
       setProdTamanosMap(map)
+      setProdExtrasSet(new Set((pexs || []).map(pe => pe.producto_id)))
     }
     setLoading(false)
   }
@@ -172,7 +175,11 @@ export default function RestDetalle({ establecimiento, onBack }) {
     if (prodExtras && prodExtras.length > 0) {
       const grupoIds = prodExtras.map(pe => pe.grupo_id)
       const { data: grupos } = await supabase.from('grupos_extras').select('*, extras_opciones(*)').in('id', grupoIds)
-      setGruposExtras(grupos || [])
+      const grs = (grupos || []).map(g => ({
+        ...g,
+        extras_opciones: [...(g.extras_opciones || [])].sort((a, b) => (a.orden || 0) - (b.orden || 0) || a.nombre.localeCompare(b.nombre)),
+      })).sort((a, b) => a.nombre.localeCompare(b.nombre))
+      setGruposExtras(grs)
     } else {
       setGruposExtras([])
     }
@@ -185,11 +192,22 @@ export default function RestDetalle({ establecimiento, onBack }) {
   }
 
   function confirmarItem() {
+    if (!puedeConfirmar) return
+    // Agrupar opciones seleccionadas por grupo
+    const extrasRich = gruposExtras
+      .map(g => {
+        const opciones = exSel
+          .filter(e => e.grupo_id === g.id)
+          .map(e => ({ id: e.id, nombre: e.nombre, precio: e.precio }))
+        if (opciones.length === 0) return null
+        return { grupo_id: g.id, grupo_nombre: g.nombre, opciones }
+      })
+      .filter(Boolean)
     addItem({
       producto_id: modal.id,
       nombre: modal.nombre,
       tamano: tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].nombre : null,
-      extras: exSel.map(e => e.nombre),
+      extras: extrasRich,
       precio_unitario: precioTotal() / cant,
       cantidad: cant,
       establecimiento_id: est.id,
@@ -213,13 +231,31 @@ export default function RestDetalle({ establecimiento, onBack }) {
     })
   }
 
-  function toggleExtra(op, max) {
+  function toggleExtra(op, grupo) {
+    const opWithGrupo = { ...op, grupo_id: grupo.id }
     setExSel(prev => {
-      if (prev.find(e => e.id === op.id)) return prev.filter(e => e.id !== op.id)
-      if (prev.length >= max) return prev
-      return [...prev, op]
+      if (grupo.tipo === 'unico') {
+        // Radio: reemplaza cualquier opción previa de este grupo
+        const sinEsteGrupo = prev.filter(e => e.grupo_id !== grupo.id)
+        const yaSel = prev.find(e => e.grupo_id === grupo.id && e.id === op.id)
+        if (yaSel) return sinEsteGrupo // deseleccionar tapping igual (aunque es obligatorio al confirmar)
+        return [...sinEsteGrupo, opWithGrupo]
+      }
+      // multiple (checkboxes)
+      const existe = prev.find(e => e.grupo_id === grupo.id && e.id === op.id)
+      if (existe) return prev.filter(e => !(e.grupo_id === grupo.id && e.id === op.id))
+      const enGrupo = prev.filter(e => e.grupo_id === grupo.id)
+      const max = grupo.max_selecciones || 99
+      if (enGrupo.length >= max) return prev
+      return [...prev, opWithGrupo]
     })
   }
+
+  function grupoValido(g) {
+    if (g.tipo === 'unico') return exSel.some(e => e.grupo_id === g.id)
+    return true
+  }
+  const puedeConfirmar = gruposExtras.every(grupoValido)
 
   // ¿Hay items del carrito que pertenecen a ESTE restaurante? (para mostrar botón "Ver carrito")
   const itemsDeEsteResto = carrito.filter(i => i.establecimiento_id === est.id)
@@ -408,6 +444,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                         carrito={carrito}
                         updateCantidad={updateCantidad}
                         tamanos={prodTamanosMap[p.id] || []}
+                        tieneExtras={prodExtrasSet.has(p.id)}
                       />
                     ))}
                   </div>
@@ -425,6 +462,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                   carrito={carrito}
                   updateCantidad={updateCantidad}
                   tamanos={prodTamanosMap[p.id] || []}
+                  tieneExtras={prodExtrasSet.has(p.id)}
                 />
               ))}
           </>
@@ -523,52 +561,64 @@ export default function RestDetalle({ establecimiento, onBack }) {
               </div>
             )}
 
-            {gruposExtras.map(g => (
+            {gruposExtras.map(g => {
+              const esUnico = g.tipo === 'unico' || g.tipo === 'single'
+              const enGrupo = exSel.filter(e => e.grupo_id === g.id)
+              const max = g.max_selecciones || 99
+              const alcanzadoMax = !esUnico && enGrupo.length >= max
+              return (
               <div key={g.id} style={{ marginBottom: 20 }}>
                 <div style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    {g.nombre}
+                    {g.nombre} {esUnico && <span style={{ color: '#FF6B2C' }}>*</span>}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>
-                    {g.tipo === 'single' ? 'Elige 1' : `Máx. ${g.max_selecciones}`}
+                    {esUnico ? 'Elige 1 (obligatorio)' : `Máx. ${max}`}
                   </div>
                 </div>
                 {(g.extras_opciones || []).map(op => {
-                  const sel = exSel.find(e => e.id === op.id)
+                  const sel = exSel.find(e => e.grupo_id === g.id && e.id === op.id)
+                  const bloqueado = !sel && alcanzadoMax
                   return (
                     <button
                       key={op.id}
-                      onClick={() => toggleExtra(op, g.max_selecciones)}
+                      onClick={() => !bloqueado && toggleExtra(op, g)}
+                      disabled={bloqueado}
                       style={{
                         display: 'flex', justifyContent: 'space-between',
                         width: '100%', padding: '13px 16px',
                         borderRadius: 14, marginBottom: 8,
                         border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
                         background: sel ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
-                        cursor: 'pointer', fontFamily: 'inherit',
+                        cursor: bloqueado ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit',
+                        opacity: bloqueado ? 0.45 : 1,
                         transition: 'all 0.15s ease',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
-                          width: 20, height: 20, borderRadius: 6,
+                          width: 20, height: 20, borderRadius: esUnico ? 10 : 6,
                           border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.12)',
                           background: sel ? 'var(--c-primary)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0, transition: 'all 0.15s ease',
                         }}>
-                          {sel && <span style={{ color: '#fff', fontSize: 11, fontWeight: 800 }}>✓</span>}
+                          {sel && (esUnico
+                            ? <span style={{ width: 8, height: 8, borderRadius: 4, background: '#fff' }} />
+                            : <span style={{ color: '#fff', fontSize: 11, fontWeight: 800 }}>✓</span>
+                          )}
                         </div>
                         <span style={{ fontSize: 14, color: 'var(--c-text)', fontWeight: 500 }}>{op.nombre}</span>
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>
-                        +{op.precio.toFixed(2)} €
+                        {op.precio > 0 ? `+${op.precio.toFixed(2)} €` : 'Gratis'}
                       </span>
                     </button>
                   )
                 })}
               </div>
-            ))}
+            )})}
 
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -605,16 +655,21 @@ export default function RestDetalle({ establecimiento, onBack }) {
 
             <button
               onClick={confirmarItem}
+              disabled={!puedeConfirmar}
               style={{
                 width: '100%', padding: '16px 0',
                 borderRadius: 12, border: 'none',
-                background: 'var(--c-primary)',
-                color: '#fff', fontSize: 15, fontWeight: 800,
-                cursor: 'pointer', fontFamily: 'inherit',
+                background: puedeConfirmar ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
+                color: puedeConfirmar ? '#fff' : 'rgba(255,255,255,0.4)',
+                fontSize: 15, fontWeight: 800,
+                cursor: puedeConfirmar ? 'pointer' : 'not-allowed',
+                fontFamily: 'inherit',
                 letterSpacing: '0.01em',
               }}
             >
-              Añadir al carrito — {precioTotal().toFixed(2)} €
+              {puedeConfirmar
+                ? `Añadir al carrito — ${precioTotal().toFixed(2)} €`
+                : 'Selecciona las opciones obligatorias'}
             </button>
           </div>
         </div>
