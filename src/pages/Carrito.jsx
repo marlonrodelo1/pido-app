@@ -77,7 +77,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
       <div style={{ marginBottom: 16 }}>
         <PaymentElement options={{
-          layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: true },
+          layout: { type: 'accordion', defaultCollapsed: false, radios: 'always', spacedAccordionItems: true },
           wallets: { applePay: 'auto', googlePay: 'auto' },
         }} />
       </div>
