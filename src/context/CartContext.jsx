@@ -37,6 +37,14 @@ export function CartProvider({ children }) {
     setCarrito(prev => prev.filter((_, i) => i !== index))
   }
 
+  function updateCantidad(index, nuevaCantidad) {
+    if (nuevaCantidad <= 0) {
+      setCarrito(prev => prev.filter((_, i) => i !== index))
+      return
+    }
+    setCarrito(prev => prev.map((item, i) => i === index ? { ...item, cantidad: nuevaCantidad } : item))
+  }
+
   function clearCart() {
     setCarrito([])
     setPropina(0)
@@ -100,7 +108,7 @@ export function CartProvider({ children }) {
   const total = subtotal + envioFinal + propina
 
   const contextValue = useMemo(() => ({
-    carrito, addItem, removeItem, clearCart,
+    carrito, addItem, removeItem, updateCantidad, clearCart,
     propina, setPropina, metodoPago, setMetodoPago,
     modoEntrega, setModoEntrega,
     totalItems, subtotal, envio: envioFinal, total,

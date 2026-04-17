@@ -1,71 +1,116 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, MapPin, Star } from 'lucide-react'
+import { ArrowLeft, MapPin } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
-import Stars from '../components/Stars'
 
 /* ─── ProductoCard ────────────────────────────────────────── */
-function ProductoCard({ p, onOpen, carrito, tamanos = [] }) {
-  const enCarrito = carrito.find(i => i.producto_id === p.id)
+function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [] }) {
+  const enCarritoIdx = carrito.findIndex(i => i.producto_id === p.id)
+  const enCarrito = enCarritoIdx >= 0 ? carrito[enCarritoIdx] : null
   const minPrecio = tamanos.length > 0 ? Math.min(...tamanos.map(t => t.precio)) : null
+  const tieneConfig = tamanos.length > 0
+
+  function handleIncrementar(e) {
+    e.stopPropagation()
+    if (enCarrito && !tieneConfig) {
+      updateCantidad(enCarritoIdx, enCarrito.cantidad + 1)
+    } else if (enCarrito && tieneConfig) {
+      onOpen()
+    } else if (tieneConfig) {
+      onOpen()
+    } else {
+      onAddSimple(p)
+    }
+  }
+
+  function handleDecrementar(e) {
+    e.stopPropagation()
+    if (!enCarrito) return
+    updateCantidad(enCarritoIdx, enCarrito.cantidad - 1)
+  }
 
   return (
     <div style={{
-      display: 'flex', gap: 14,
-      padding: '16px', marginBottom: 12,
-      background: 'rgba(255,255,255,0.08)',
-      backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+      display: 'flex', gap: 14, alignItems: 'stretch',
+      padding: '12px', marginBottom: 10,
+      background: 'rgba(255,255,255,0.04)',
       borderRadius: 14,
-      border: '1px solid rgba(255,255,255,0.1)',
-    }}>
-      {/* Imagen */}
+      border: '1px solid rgba(255,255,255,0.06)',
+      cursor: 'pointer',
+    }} onClick={onOpen}>
       {p.imagen_url && (
         <img
           src={p.imagen_url}
           alt=""
           style={{
-            width: 90, height: 90,
+            width: 86, height: 86,
             borderRadius: 12, objectFit: 'cover', flexShrink: 0,
           }}
         />
       )}
 
-      {/* Info */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--c-text)', marginBottom: 4 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)', marginBottom: 4, lineHeight: 1.25 }}>
             {p.nombre}
           </div>
           {p.descripcion && (
             <div style={{
-              fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.45,
+              fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.4,
               overflow: 'hidden', textOverflow: 'ellipsis',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-              marginBottom: 8,
             }}>
               {p.descripcion}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: '#FF6B2C' }}>
-            {minPrecio !== null ? `Desde ${minPrecio.toFixed(2)} €` : `${p.precio.toFixed(2)} €`}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <span style={{ fontWeight: 800, fontSize: 16, color: '#FF6B2C' }}>
+            {minPrecio !== null ? `${minPrecio.toFixed(2)} €` : `${p.precio.toFixed(2)} €`}
           </span>
-          <button
-            onClick={onOpen}
-            style={{
-              width: 36, height: 36, borderRadius: 12, border: 'none',
-              background: enCarrito
-                ? 'var(--c-btn-gradient)'
-                : 'var(--c-btn-gradient)',
-              color: '#fff',
-              fontSize: 18, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'inherit', flexShrink: 0,
-            }}
-          >
-            {enCarrito ? enCarrito.cantidad : '+'}
-          </button>
+
+          {enCarrito ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={handleDecrementar}
+                aria-label="Restar"
+                style={{
+                  width: 34, height: 34, borderRadius: 10, border: 'none',
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'var(--c-text)', fontSize: 20, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >−</button>
+              <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: 15, color: 'var(--c-text)' }}>
+                {enCarrito.cantidad}
+              </span>
+              <button
+                onClick={handleIncrementar}
+                aria-label="Sumar"
+                style={{
+                  width: 34, height: 34, borderRadius: 10, border: 'none',
+                  background: 'var(--c-primary)',
+                  color: '#fff', fontSize: 20, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >+</button>
+            </div>
+          ) : (
+            <button
+              onClick={handleIncrementar}
+              aria-label="Añadir"
+              style={{
+                width: 36, height: 36, borderRadius: 11, border: 'none',
+                background: 'var(--c-primary)',
+                color: '#fff', fontSize: 22, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >+</button>
+          )}
         </div>
       </div>
     </div>
@@ -74,7 +119,7 @@ function ProductoCard({ p, onOpen, carrito, tamanos = [] }) {
 
 /* ─── RestDetalle ─────────────────────────────────────────── */
 export default function RestDetalle({ establecimiento, onBack }) {
-  const { addItem, carrito } = useCart()
+  const { addItem, carrito, updateCantidad, totalItems, subtotal } = useCart()
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])
   const [promociones, setPromociones] = useState([])
@@ -154,6 +199,20 @@ export default function RestDetalle({ establecimiento, onBack }) {
     setModal(null)
   }
 
+  function addItemSimple(p) {
+    addItem({
+      producto_id: p.id,
+      nombre: p.nombre,
+      tamano: null,
+      extras: [],
+      precio_unitario: p.precio,
+      cantidad: 1,
+      establecimiento_id: est.id,
+      establecimiento_nombre: est.nombre,
+      coste_envio: 0,
+    })
+  }
+
   function toggleExtra(op, max) {
     setExSel(prev => {
       if (prev.find(e => e.id === op.id)) return prev.filter(e => e.id !== op.id)
@@ -162,8 +221,13 @@ export default function RestDetalle({ establecimiento, onBack }) {
     })
   }
 
+  // ¿Hay items del carrito que pertenecen a ESTE restaurante? (para mostrar botón "Ver carrito")
+  const itemsDeEsteResto = carrito.filter(i => i.establecimiento_id === est.id)
+  const totalDeEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.precio_unitario * i.cantidad, 0)
+  const cantDeEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.cantidad, 0)
+
   return (
-    <div style={{ animation: 'slideIn 0.3s ease' }}>
+    <div style={{ animation: 'slideIn 0.3s ease', paddingBottom: cantDeEsteResto > 0 ? 90 : 0 }}>
 
       {/* ── Banner con botón volver superpuesto ── */}
       <div style={{ position: 'relative', marginBottom: 0 }}>
@@ -176,13 +240,11 @@ export default function RestDetalle({ establecimiento, onBack }) {
               : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
           }}
         />
-        {/* Gradient overlay top */}
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: 80,
           background: 'linear-gradient(180deg, rgba(14,14,14,0.75) 0%, transparent 100%)',
           borderRadius: '22px 22px 0 0',
         }} />
-        {/* Botón volver */}
         <button
           onClick={onBack}
           style={{
@@ -199,7 +261,6 @@ export default function RestDetalle({ establecimiento, onBack }) {
           <ArrowLeft size={15} strokeWidth={2.5} />
           Volver
         </button>
-        {/* Logo superpuesto al banner */}
         {est.logo_url && (
           <div style={{
             position: 'absolute', bottom: -24, left: 16,
@@ -219,24 +280,31 @@ export default function RestDetalle({ establecimiento, onBack }) {
         padding: est.logo_url ? '34px 16px 20px' : '20px 16px',
         marginBottom: 0,
       }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-text)', marginBottom: 6, letterSpacing: '-0.02em' }}>
-          {est.nombre}
-        </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <Stars rating={est.rating} size={13} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-primary-light)' }}>
-            {est.rating?.toFixed(1)}
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>({est.total_resenas} reseñas)</span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
+            {est.nombre}
+          </h2>
+          {est.rating > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+              background: 'rgba(255,255,255,0.04)', padding: '4px 10px',
+              borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 13 }}>⭐</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>
+                {est.rating?.toFixed(1)}
+              </span>
+            </div>
+          )}
         </div>
         {est.direccion && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c-muted)', marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c-muted)', marginBottom: 8 }}>
             <MapPin size={13} strokeWidth={2} color="var(--c-muted)" />
             {est.direccion}
           </div>
         )}
         {est.descripcion && (
-          <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginTop: 4 }}>
+          <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, margin: 0 }}>
             {est.descripcion}
           </p>
         )}
@@ -244,38 +312,32 @@ export default function RestDetalle({ establecimiento, onBack }) {
 
       {/* ── Promociones ── */}
       {!loading && promociones.length > 0 && (
-        <div style={{ padding: '16px 16px 0', background: '#0E0E0E' }}>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+        <div style={{ padding: '16px 0 0', background: '#0E0E0E' }}>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, paddingLeft: 16, paddingRight: 16 }}>
             {promociones.map(promo => {
-              const icon = promo.tipo === 'descuento_porcentaje' ? '🏷️'
-                : promo.tipo === 'descuento_fijo' ? '💰'
-                : promo.tipo === '2x1' ? '🔥' : '🎁'
-              const badge = promo.tipo === 'descuento_porcentaje' ? `-${promo.valor}%`
+              const badge = promo.tipo === 'descuento_porcentaje' ? `${promo.valor}% OFF`
                 : promo.tipo === 'descuento_fijo' ? `-${promo.valor}€`
                 : promo.tipo === '2x1' ? '2×1' : 'GRATIS'
               return (
                 <div key={promo.id} style={{
-                  minWidth: 190, flexShrink: 0,
+                  minWidth: 220, flexShrink: 0,
                   padding: '14px 14px',
-                  borderRadius: 12,
-                  background: 'rgba(255,107,44,0.08)',
-                  border: '1px solid rgba(255,107,44,0.2)',
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  borderRadius: 14,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
                 }}>
-                  <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 800, padding: '2px 7px',
-                        borderRadius: 5, background: 'var(--c-primary)', color: '#fff',
-                        letterSpacing: '0.03em',
-                      }}>{badge}</span>
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)', lineHeight: 1.3 }}>{promo.titulo}</div>
-                    {promo.minimo_compra > 0 && (
-                      <div style={{ fontSize: 10, color: 'var(--c-muted)', marginTop: 2 }}>Min. {promo.minimo_compra}€</div>
-                    )}
+                  <div style={{
+                    display: 'inline-block', fontSize: 10, fontWeight: 800,
+                    padding: '3px 8px', borderRadius: 6,
+                    background: 'var(--c-primary)', color: '#fff',
+                    letterSpacing: '0.04em', marginBottom: 8,
+                  }}>{badge}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text)', lineHeight: 1.35 }}>
+                    {promo.titulo}
                   </div>
+                  {promo.minimo_compra > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--c-muted)', marginTop: 4 }}>Min. {promo.minimo_compra}€</div>
+                  )}
                 </div>
               )
             })}
@@ -284,22 +346,22 @@ export default function RestDetalle({ establecimiento, onBack }) {
       )}
 
       {/* ── Carta ── */}
-      <div style={{ padding: '0 16px 16px', background: '#0E0E0E' }}>
+      <div style={{ padding: '0 8px 16px', background: '#0E0E0E' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>Cargando carta...</div>
         ) : (
           <>
             {/* Filtro categorías */}
             {categorias.length > 1 && (
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 0', marginBottom: 4 }}>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 8px 8px', marginBottom: 4 }}>
                 <button
                   onClick={() => setCatFiltro(null)}
                   style={{
-                    padding: '7px 16px', borderRadius: 20,
-                    border: !catFiltro ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                    background: !catFiltro ? 'var(--c-btn-gradient)' : 'rgba(255,255,255,0.08)',
-                    color: !catFiltro ? '#fff' : 'var(--c-muted)',
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    padding: '8px 18px', borderRadius: 22,
+                    border: 'none',
+                    background: !catFiltro ? 'var(--c-primary)' : 'rgba(255,255,255,0.06)',
+                    color: !catFiltro ? '#fff' : 'var(--c-text)',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                   }}
                 >
@@ -310,11 +372,11 @@ export default function RestDetalle({ establecimiento, onBack }) {
                     key={cat.id}
                     onClick={() => setCatFiltro(catFiltro === cat.id ? null : cat.id)}
                     style={{
-                      padding: '7px 16px', borderRadius: 20,
-                      border: catFiltro === cat.id ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                      background: catFiltro === cat.id ? 'var(--c-btn-gradient)' : 'rgba(255,255,255,0.08)',
-                      color: catFiltro === cat.id ? '#fff' : 'var(--c-muted)',
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      padding: '8px 18px', borderRadius: 22,
+                      border: 'none',
+                      background: catFiltro === cat.id ? 'var(--c-primary)' : 'rgba(255,255,255,0.06)',
+                      color: catFiltro === cat.id ? '#fff' : 'var(--c-text)',
+                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                     }}
                   >
@@ -334,7 +396,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                   <div key={cat.id} style={{ marginBottom: 24 }}>
                     <h3 style={{
                       fontSize: 16, fontWeight: 700, color: 'var(--c-text)',
-                      marginBottom: 12, marginTop: 8, letterSpacing: '-0.01em',
+                      marginBottom: 12, marginTop: 8, marginLeft: 4, letterSpacing: '-0.01em',
                     }}>
                       {cat.nombre}
                     </h3>
@@ -342,7 +404,9 @@ export default function RestDetalle({ establecimiento, onBack }) {
                       <ProductoCard
                         key={p.id} p={p}
                         onOpen={() => abrirProducto(p)}
+                        onAddSimple={addItemSimple}
                         carrito={carrito}
+                        updateCantidad={updateCantidad}
                         tamanos={prodTamanosMap[p.id] || []}
                       />
                     ))}
@@ -357,7 +421,9 @@ export default function RestDetalle({ establecimiento, onBack }) {
                 <ProductoCard
                   key={p.id} p={p}
                   onOpen={() => abrirProducto(p)}
+                  onAddSimple={addItemSimple}
                   carrito={carrito}
+                  updateCantidad={updateCantidad}
                   tamanos={prodTamanosMap[p.id] || []}
                 />
               ))}
@@ -391,13 +457,11 @@ export default function RestDetalle({ establecimiento, onBack }) {
               boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
             }}
           >
-            {/* Handle */}
             <div style={{
               width: 36, height: 4, borderRadius: 2,
               background: 'rgba(255,255,255,0.1)', margin: '0 auto 20px',
             }} />
 
-            {/* Imagen modal */}
             {modal.imagen_url && (
               <img
                 src={modal.imagen_url}
@@ -410,9 +474,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
               />
             )}
 
-            {/* Nombre y descripción */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '-0.02em', flex: 1, marginRight: 12 }}>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.02em', flex: 1, marginRight: 12 }}>
                 {modal.nombre}
               </h3>
               <button
@@ -434,10 +497,9 @@ export default function RestDetalle({ establecimiento, onBack }) {
               </p>
             )}
 
-            {/* Tamaños */}
             {tamanos.length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 11 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   Tamaño
                 </div>
                 {tamanos.map((t, i) => (
@@ -448,24 +510,19 @@ export default function RestDetalle({ establecimiento, onBack }) {
                       display: 'flex', justifyContent: 'space-between',
                       width: '100%', padding: '13px 16px',
                       borderRadius: 14, marginBottom: 8,
-                      border: tamSel === i
-                        ? '1.5px solid var(--c-primary)'
-                        : '1px solid rgba(255,255,255,0.1)',
-                      background: tamSel === i ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
-                      backdropFilter: tamSel === i ? 'none' : 'blur(12px)',
-                      WebkitBackdropFilter: tamSel === i ? 'none' : 'blur(12px)',
+                      border: tamSel === i ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
+                      background: tamSel === i ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
                       cursor: 'pointer', fontFamily: 'inherit',
                       transition: 'all 0.15s ease',
                     }}
                   >
                     <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--c-text)' }}>{t.nombre}</span>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-primary-light)' }}>{t.precio.toFixed(2)} €</span>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--c-text)' }}>{t.precio.toFixed(2)} €</span>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Extras */}
             {gruposExtras.map(g => (
               <div key={g.id} style={{ marginBottom: 20 }}>
                 <div style={{ marginBottom: 10 }}>
@@ -486,10 +543,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
                         display: 'flex', justifyContent: 'space-between',
                         width: '100%', padding: '13px 16px',
                         borderRadius: 14, marginBottom: 8,
-                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-                        background: sel ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
-                        backdropFilter: sel ? 'none' : 'blur(12px)',
-                        WebkitBackdropFilter: sel ? 'none' : 'blur(12px)',
+                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
+                        background: sel ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
                         cursor: 'pointer', fontFamily: 'inherit',
                         transition: 'all 0.15s ease',
                       }}
@@ -497,7 +552,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
                           width: 20, height: 20, borderRadius: 6,
-                          border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.1)',
+                          border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.12)',
                           background: sel ? 'var(--c-primary)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0, transition: 'all 0.15s ease',
@@ -506,7 +561,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                         </div>
                         <span style={{ fontSize: 14, color: 'var(--c-text)', fontWeight: 500 }}>{op.nombre}</span>
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-primary-light)' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>
                         +{op.precio.toFixed(2)} €
                       </span>
                     </button>
@@ -515,7 +570,6 @@ export default function RestDetalle({ establecimiento, onBack }) {
               </div>
             ))}
 
-            {/* Cantidad */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               gap: 24, marginBottom: 20,
@@ -525,9 +579,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
                 onClick={() => setCant(Math.max(1, cant - 1))}
                 style={{
                   width: 40, height: 40, borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'rgba(255,255,255,0.08)',
-                  backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.04)',
                   fontSize: 20, cursor: 'pointer', fontFamily: 'inherit',
                   color: 'var(--c-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
@@ -541,7 +594,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
                 onClick={() => setCant(cant + 1)}
                 style={{
                   width: 40, height: 40, borderRadius: 12,
-                  border: 'none', background: 'var(--c-btn-gradient)',
+                  border: 'none', background: 'var(--c-primary)',
                   color: '#fff', fontSize: 20, cursor: 'pointer',
                   fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
@@ -550,14 +603,13 @@ export default function RestDetalle({ establecimiento, onBack }) {
               </button>
             </div>
 
-            {/* Botón añadir */}
             <button
               onClick={confirmarItem}
               style={{
                 width: '100%', padding: '16px 0',
                 borderRadius: 12, border: 'none',
-                background: 'var(--c-btn-gradient)',
-                color: '#fff', fontSize: 15, fontWeight: 700,
+                background: 'var(--c-primary)',
+                color: '#fff', fontSize: 15, fontWeight: 800,
                 cursor: 'pointer', fontFamily: 'inherit',
                 letterSpacing: '0.01em',
               }}

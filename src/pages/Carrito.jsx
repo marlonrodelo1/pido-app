@@ -24,11 +24,11 @@ const cardStyle = {
 const S = {
   label: { fontSize: 11, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 },
   selBtn: (active) => ({
-    flex: 1, padding: '12px 0', borderRadius: 14,
-    border: active ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-    background: active ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
-    fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-    color: active ? 'var(--c-primary-light)' : 'var(--c-text)',
+    flex: 1, padding: '14px 0', borderRadius: 14,
+    border: active ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
+    background: active ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
+    fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+    color: 'var(--c-text)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     transition: 'all 0.15s ease',
   }),
@@ -117,7 +117,7 @@ const brandIcon = { visa: '💳', mastercard: '💳', amex: '💳' }
 
 export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
   const { user, perfil, updatePerfil } = useAuth()
-  const { carrito, removeItem, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm } = useCart()
+  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm } = useCart()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pasoTarjeta, setPasoTarjeta] = useState(false)
@@ -370,32 +370,51 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
 
   return (
     <>
-      {/* ── Floating cart icon (Stitch style) ── */}
-      <button onClick={() => setOpen(true)} style={{
-        position: 'fixed',
-        bottom: 'calc(20px + 64px + 14px + env(safe-area-inset-bottom, 0px))',
-        right: 16,
-        width: 52, height: 52, borderRadius: 16,
-        background: 'var(--c-btn-gradient)',
-        border: 'none', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 8px 24px rgba(255,107,44,0.25)',
-        zIndex: 50,
-      }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
-        </svg>
-        {/* Badge */}
-        <span style={{
-          position: 'absolute', top: -4, right: -4,
-          background: '#fff', color: '#FF6B2C',
-          fontSize: 10, fontWeight: 800,
-          width: 20, height: 20, borderRadius: 10,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+      {/* ── Barra flotante VER CARRITO (solo si hay items) ── */}
+      {totalItems > 0 && !open && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(20px + 64px + 14px + env(safe-area-inset-bottom, 0px))',
+          left: 0, right: 0,
+          display: 'flex', justifyContent: 'center',
+          padding: '0 16px',
+          zIndex: 50,
+          pointerEvents: 'none',
         }}>
-          {totalItems}
-        </span>
-      </button>
+          <button onClick={() => setOpen(true)} style={{
+            pointerEvents: 'auto',
+            width: '100%', maxWidth: 420,
+            padding: '14px 18px', borderRadius: 16,
+            background: 'var(--c-primary)',
+            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 12,
+            boxShadow: '0 10px 28px rgba(255,107,44,0.35)',
+          }}>
+            <span style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.25)', color: '#fff',
+              fontSize: 13, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              {totalItems}
+            </span>
+            <span style={{
+              color: '#fff', fontSize: 14, fontWeight: 800,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              flex: 1, textAlign: 'center',
+            }}>
+              Ver carrito
+            </span>
+            <span style={{
+              color: '#fff', fontSize: 15, fontWeight: 800,
+              flexShrink: 0,
+            }}>
+              {subtotal.toFixed(2)} €
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* ── Modal carrito ── */}
       {open && (
@@ -468,26 +487,44 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
                 <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 16 }}>{carrito[0]?.establecimiento_nombre}</div>
 
                 {/* Items */}
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 20 }}>
                   {carrito.map((item, idx) => (
                     <div key={idx} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '12px 14px', marginBottom: 6,
-                      background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14,
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+                      padding: '14px 16px', marginBottom: 8,
+                      background: 'rgba(255,255,255,0.04)', borderRadius: 14,
+                      border: '1px solid rgba(255,255,255,0.06)',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--c-text)' }}>{item.cantidad}x {item.nombre}</div>
-                        {item.tamano && <div style={{ fontSize: 10, color: 'var(--c-muted)', marginTop: 2 }}>{item.tamano}</div>}
-                        {item.extras?.length > 0 && <div style={{ fontSize: 10, color: 'var(--c-muted)' }}>{item.extras.join(', ')}</div>}
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)', lineHeight: 1.3 }}>{item.nombre}</div>
+                        {item.tamano && <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 3 }}>{item.tamano}</div>}
+                        {item.extras?.length > 0 && <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>{item.extras.join(', ')}</div>}
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginTop: 6 }}>
+                          {(item.precio_unitario * item.cantidad).toFixed(2)} €
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--c-primary-light)' }}>{(item.precio_unitario * item.cantidad).toFixed(2)} €</span>
-                        <button onClick={() => removeItem(idx)} style={{
-                          width: 22, height: 22, borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
-                          background: 'rgba(255,255,255,0.08)', cursor: 'pointer', fontSize: 10,
-                          color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>×</button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0, background: 'rgba(255,255,255,0.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <button
+                          onClick={() => updateCantidad(idx, item.cantidad - 1)}
+                          aria-label="Restar"
+                          style={{
+                            width: 32, height: 32, border: 'none', background: 'transparent',
+                            cursor: 'pointer', fontSize: 18, fontWeight: 700,
+                            color: 'var(--c-text)', fontFamily: 'inherit',
+                          }}
+                        >−</button>
+                        <span style={{ minWidth: 26, textAlign: 'center', fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>
+                          {item.cantidad}
+                        </span>
+                        <button
+                          onClick={() => updateCantidad(idx, item.cantidad + 1)}
+                          aria-label="Sumar"
+                          style={{
+                            width: 32, height: 32, border: 'none', background: 'transparent',
+                            cursor: 'pointer', fontSize: 18, fontWeight: 700,
+                            color: 'var(--c-primary)', fontFamily: 'inherit',
+                          }}
+                        >+</button>
                       </div>
                     </div>
                   ))}
@@ -504,7 +541,6 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
                   <div style={{ display: 'flex', gap: 8 }}>
                     {(tieneDelivery ? ['delivery', 'recogida'] : ['recogida']).map(m => (
                       <button key={m} onClick={() => setModoEntrega(m)} style={S.selBtn(modoEntrega === m)}>
-                        <span style={{ fontSize: 16 }}>{m === 'delivery' ? '🛵' : '🏪'}</span>
                         {m === 'delivery' ? 'Delivery' : 'Recogida'}
                       </button>
                     ))}
@@ -531,7 +567,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
                 <div style={{ marginBottom: 16 }}>
                   <div style={S.label}>Método de pago</div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {[{ id: 'tarjeta', l: '💳 Tarjeta' }, { id: 'efectivo', l: '💵 Efectivo' }].map(m => (
+                    {[{ id: 'tarjeta', l: 'Tarjeta' }, { id: 'efectivo', l: 'Efectivo' }].map(m => (
                       <button key={m.id} onClick={() => setMetodoPago(m.id)} style={S.selBtn(metodoPago === m.id)}>
                         {m.l}
                       </button>
@@ -545,14 +581,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido' }) {
                       {tarjetasGuardadas.map(c => (
                         <button key={c.id} onClick={() => setTarjetaSel(c.id)} style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 14px', borderRadius: 14, marginBottom: 6,
+                          padding: '12px 14px', borderRadius: 14, marginBottom: 6,
                           cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                          border: tarjetaSel === c.id ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-                          background: tarjetaSel === c.id ? 'rgba(255,107,44,0.08)' : 'rgba(255,255,255,0.08)',
+                          border: tarjetaSel === c.id ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
+                          background: tarjetaSel === c.id ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
                         }}>
-                          <span style={{ fontSize: 20 }}>💳</span>
                           <div style={{ flex: 1 }}>
-                            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--c-text)', textTransform: 'capitalize' }}>{c.brand} </span>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)', textTransform: 'capitalize' }}>{c.brand} </span>
                             <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>•••• {c.last4}</span>
                           </div>
                           <span style={{ fontSize: 11, color: 'var(--c-muted)' }}>{c.exp_month}/{c.exp_year}</span>
