@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { MapPin, Search, X, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentPosition } from '../lib/geolocation'
@@ -23,7 +23,7 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre }) {
+export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
   const { perfil, updatePerfil, user } = useAuth()
   const [establecimientos, setEstablecimientos] = useState([])
@@ -396,6 +396,47 @@ export default function Home({ onOpenRest, categoriaPadre }) {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── CTA Repartidores ── */}
+      {!busqueda && !catActiva && (
+        <div
+          onClick={() => onOpenRepartidores?.()}
+          style={{
+            position: 'relative', overflow: 'hidden',
+            borderRadius: 22, padding: 20, marginBottom: 24,
+            background: 'linear-gradient(135deg, #FF6B2C 0%, #FF4500 100%)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}
+        >
+          <div style={{ position: 'relative', zIndex: 2, flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
+              Gana dinero repartiendo
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+              Crea tu propio negocio
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpenRepartidores?.() }}
+            style={{
+              position: 'relative', zIndex: 2, flexShrink: 0,
+              padding: '8px 16px', borderRadius: 999, border: 'none',
+              background: '#fff', color: 'var(--c-primary)',
+              fontSize: 11, fontWeight: 800, cursor: 'pointer',
+              fontFamily: 'inherit', letterSpacing: '0.05em',
+            }}
+          >
+            APLICAR
+          </button>
+          <Bike
+            size={48}
+            strokeWidth={2}
+            color="rgba(255,255,255,0.3)"
+            style={{ position: 'absolute', right: 110, bottom: -4, zIndex: 1 }}
+          />
         </div>
       )}
 

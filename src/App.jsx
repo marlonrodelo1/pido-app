@@ -22,6 +22,7 @@ const MisPedidos = lazy(() => import('./pages/MisPedidos'))
 const Notificaciones = lazy(() => import('./pages/Notificaciones'))
 const Perfil = lazy(() => import('./pages/Perfil'))
 const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
+const LandingRepartidores = lazy(() => import('./pages/LandingRepartidores'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 
 // Error Boundary — evita pantalla blanca si algo falla
@@ -182,8 +183,10 @@ function AppContent() {
             ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
             : restOpen && seccion === 'home'
             ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} />
+            : seccion === 'repartidores'
+            ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'
-            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} />
+            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} />
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />
             : seccion === 'mapa'
