@@ -120,8 +120,7 @@ function AppContent() {
       {/* Header */}
       <div style={{
         padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.08)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        background: 'var(--c-bg)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => setOnboarded(false)} style={{
