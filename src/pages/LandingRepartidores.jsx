@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core'
-import { ChevronLeft, Bell, Bike, Wallet, Clock, Zap, Shield } from 'lucide-react'
+import { ChevronLeft, Bell, Bike, Clock, Zap } from 'lucide-react'
 
 const SHIPDAY_SIGNUP_URL = 'https://dispatch.shipday.com/signUp/mcFdlOIL19'
 
@@ -19,17 +19,14 @@ export default function LandingRepartidores({ onBack }) {
   }
 
   const beneficios = [
-    { icon: Wallet, label: 'Pagos Diarios' },
     { icon: Clock, label: 'Tu Horario' },
     { icon: Zap, label: 'Libertad' },
-    { icon: Shield, label: 'Seguro Incluido' },
   ]
 
   const pasos = [
-    { n: 1, titulo: 'Regístrate', desc: 'Completa el formulario online con tus datos básicos.' },
-    { n: 2, titulo: 'Sube documentos', desc: 'DNI, carnet de conducir y papeles de tu vehículo.' },
-    { n: 3, titulo: 'Breve Inducción', desc: 'Aprende a usar nuestra app y protocolos de entrega.' },
-    { n: 4, titulo: '¡A la calle!', desc: 'Recibe tu kit de bienvenida y empieza a facturar.' },
+    { n: 1, titulo: 'Registra tu cuenta', desc: 'Crea tu perfil en nuestra plataforma de reparto con tus datos básicos.' },
+    { n: 2, titulo: 'Elige tus restaurantes aliados', desc: 'Selecciona con qué restaurantes quieres repartir. Ellos serán tus clientes.' },
+    { n: 3, titulo: 'Recibe pedidos y cobra', desc: 'Los pedidos te llegan cuando los restaurantes aceptan. Cobras cada semana el envío + 10% del pedido + propinas.' },
   ]
 
   return (
