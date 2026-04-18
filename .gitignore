@@ -18,6 +18,8 @@ dist-ssr/
 *.jks
 *.keystore
 Keystorepath
+android/app/*.jks
+android/keystore.properties
 
 # Android build output
 **/android/app/release/

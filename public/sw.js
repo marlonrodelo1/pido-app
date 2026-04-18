@@ -8,6 +8,8 @@ self.addEventListener('activate', function(event) {
 })
 
 // Firebase Messaging Service Worker
+// Versión 10.12.0 fija intencionalmente (no usar @latest). Coordinar con `firebase` en package.json.
+// TODO: migrar a paquete local (vite-plugin-pwa o build manual) para no depender de la CDN gstatic.
 try {
   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js')
   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js')

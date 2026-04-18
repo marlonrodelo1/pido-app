@@ -238,7 +238,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   if (totalItems === 0) return null
 
   async function generarCodigo() {
-    try { const { data } = await supabase.functions.invoke('generar_codigo_pedido', { body: {} }); if (data?.codigo) return data.codigo } catch {}
+    try { const { data } = await supabase.functions.invoke('generar_codigo_pedido', { body: {} }); if (data?.codigo) return data.codigo } catch (e) { console.error('[Carrito] generar_codigo_pedido', e) }
     const n = Date.now() % 100000
     return `PD-${n.toString().padStart(5, '0')}`
   }
@@ -261,7 +261,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${perfil.latitud}&lon=${perfil.longitud}&format=json&addressdetails=1`)
           const geo = await res.json()
           dirEntrega = geo.display_name || ''
-        } catch {}
+        } catch (e) { console.error('[Carrito] reverse geocoding', e) }
       }
     }
     const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert({

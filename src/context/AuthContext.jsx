@@ -157,8 +157,8 @@ export function AuthProvider({ children }) {
   async function logout() {
     // Limpiar tokens push antes de cerrar sesión (si hay usuario)
     if (user?.id) {
-      try { await unregisterWebPush('cliente', { user_id: user.id }) } catch {}
-      try { await unregisterPushNotifications() } catch {}
+      try { await unregisterWebPush('cliente', { user_id: user.id }) } catch (e) { console.error('[Auth] unregisterWebPush', e) }
+      try { await unregisterPushNotifications() } catch (e) { console.error('[Auth] unregisterPushNotifications', e) }
     }
     await supabase.auth.signOut()
     setUser(null)

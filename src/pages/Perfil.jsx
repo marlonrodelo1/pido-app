@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getCurrentPosition } from '../lib/geolocation'
-import { MapPin, CreditCard, Tag, Settings, HelpCircle, LogOut, ChevronRight, X, Check, Camera, User, Phone, Mail, Navigation, Plus, Trash2, Star } from 'lucide-react'
+import { MapPin, CreditCard, Tag, Settings, HelpCircle, LogOut, ChevronRight, X, Check, Camera, User, Phone, Mail, Navigation, Plus, Trash2, Star, AlertTriangle } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
 
 export default function Perfil() {
@@ -16,6 +16,36 @@ export default function Perfil() {
   const [subSeccion, setSubSeccion] = useState(null)
   const [promos, setPromos] = useState([])
   const avatarRef = useRef()
+
+  // Eliminar cuenta
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
+
+  async function handleEliminarCuenta() {
+    if (deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Sesión no válida')
+      const { data, error } = await supabase.functions.invoke('eliminar_cuenta', {
+        body: {},
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      try { localStorage.clear() } catch (e) { console.error('[Perfil] clear localStorage', e) }
+      await logout()
+      window.location.href = '/'
+    } catch (e) {
+      console.error('[Perfil] eliminar_cuenta', e)
+      setDeleteError(e.message || 'No se pudo eliminar la cuenta')
+      setDeleting(false)
+    }
+  }
 
   // Direcciones múltiples
   const [direcciones, setDirecciones] = useState([])
@@ -429,6 +459,17 @@ export default function Perfil() {
         </button>
       </div>
 
+      {/* Eliminar cuenta — sutil, no dominante */}
+      <div style={{ marginTop: 24, marginBottom: 12, textAlign: 'center' }}>
+        <button onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(''); setDeleteError(null) }} style={{
+          background: 'transparent', border: 'none', color: 'var(--c-muted)',
+          fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          textDecoration: 'underline', padding: 6, opacity: 0.7,
+        }}>
+          Eliminar mi cuenta
+        </button>
+      </div>
+
       {/* Modal Editar Perfil */}
       {editando && (
         <div style={{
@@ -487,6 +528,80 @@ export default function Perfil() {
               fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
             }}>
               {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Eliminar Cuenta */}
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', zIndex: 1100,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }} onClick={e => { if (e.target === e.currentTarget && !deleting) setShowDeleteModal(false) }}>
+          <div className="modal-sheet" style={{
+            width: '100%', maxWidth: 420, background: 'rgba(20,20,20,0.97)',
+            borderRadius: '20px 20px 0 0', padding: 24, animation: 'slideUp 0.3s ease',
+            backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid rgba(239,68,68,0.25)', borderBottom: 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 12,
+                background: 'rgba(239,68,68,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
+              </div>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#F5F5F5' }}>Eliminar cuenta</h3>
+            </div>
+
+            <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginBottom: 16 }}>
+              Esta acción es <strong style={{ color: '#F5F5F5' }}>permanente</strong>. Se borrarán tu perfil, direcciones, notificaciones, métodos de pago y suscripciones push. Tu historial de pedidos se anonimiza por requisito legal/contable. No podrás recuperar la cuenta.
+            </p>
+
+            <label style={{ ...labelStyle, color: 'rgba(239,68,68,0.7)' }}>Escribe ELIMINAR para confirmar</label>
+            <input
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              placeholder="ELIMINAR"
+              autoCapitalize="characters"
+              autoComplete="off"
+              style={{ ...inputDark, borderBottom: '2px solid rgba(239,68,68,0.4)', marginBottom: 14 }}
+            />
+
+            {deleteError && (
+              <div style={{
+                fontSize: 12, color: '#EF4444', marginBottom: 12,
+                padding: 10, background: 'rgba(239,68,68,0.08)', borderRadius: 8,
+              }}>{deleteError}</div>
+            )}
+
+            <button
+              onClick={handleEliminarCuenta}
+              disabled={deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR'}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                background: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR')
+                  ? 'rgba(239,68,68,0.25)'
+                  : '#EF4444',
+                color: '#fff', fontSize: 14, fontWeight: 700,
+                cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') ? 'default' : 'pointer',
+                fontFamily: 'inherit', marginBottom: 8,
+              }}>
+              {deleting ? 'Eliminando...' : 'Eliminar mi cuenta definitivamente'}
+            </button>
+            <button
+              onClick={() => !deleting && setShowDeleteModal(false)}
+              disabled={deleting}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 12,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'transparent', color: 'var(--c-muted)',
+                fontSize: 13, cursor: deleting ? 'default' : 'pointer', fontFamily: 'inherit',
+              }}>
+              Cancelar
             </button>
           </div>
         </div>
