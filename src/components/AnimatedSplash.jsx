@@ -1,300 +1,221 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Capacitor } from '@capacitor/core'
 
-// ─── Paleta
 const P = {
   orange: '#FF6B2C',
+  orangeDim: 'rgba(255,107,44,0.35)',
   bg: '#0D0D0D',
-  bg2: '#181819',
+  bg2: '#1A1A1D',
   ink: '#EDEDED',
-  inkDim: 'rgba(237,237,237,0.55)',
-  stroke: 'rgba(237,237,237,0.2)',
+  inkDim: 'rgba(237,237,237,0.4)',
 }
 
-// ─── Datos geográficos reales de Tenerife
-const TF_PLACES_REAL = [
-  { id: 'santa_ursula', name: 'Sta. Úrsula', lat: 28.4181, lon: -16.4972, icon: '🏠' },
-  { id: 'la_laguna', name: 'La Laguna', lat: 28.4853, lon: -16.3201, icon: '🏛' },
-  { id: 'santa_cruz', name: 'Sta. Cruz', lat: 28.4636, lon: -16.2518, icon: '⚓' },
-  { id: 'puerto_cruz', name: 'Pto. Cruz', lat: 28.4152, lon: -16.5447, icon: '🏖' },
-  { id: 'la_orotava', name: 'La Orotava', lat: 28.3902, lon: -16.5237, icon: '🌳' },
-  { id: 'la_matanza', name: 'La Matanza', lat: 28.4501, lon: -16.4542, icon: '🍇' },
-  { id: 'tacoronte', name: 'Tacoronte', lat: 28.4731, lon: -16.4126, icon: '🍷' },
-  { id: 'la_esperanza', name: 'La Esperanza', lat: 28.4444, lon: -16.3719, icon: '🌲' },
-  { id: 'icod', name: 'Icod', lat: 28.3717, lon: -16.7163, icon: '🌿' },
-  { id: 'garachico', name: 'Garachico', lat: 28.3738, lon: -16.7612, icon: '🌊' },
-  { id: 'buenavista', name: 'Buenavista', lat: 28.3747, lon: -16.8533, icon: '🌅' },
-  { id: 'el_portillo', name: 'El Portillo', lat: 28.3058, lon: -16.5632, icon: '🏔' },
-  { id: 'teide', name: 'Teide', lat: 28.2724, lon: -16.6425, icon: '🌋' },
-  { id: 'vilaflor', name: 'Vilaflor', lat: 28.1572, lon: -16.6358, icon: '⛰' },
-  { id: 'los_cristianos', name: 'Los Cristianos', lat: 28.0508, lon: -16.7186, icon: '🏝' },
-  { id: 'adeje', name: 'Adeje', lat: 28.1222, lon: -16.7261, icon: '🏨' },
-  { id: 'el_medano', name: 'El Médano', lat: 28.0453, lon: -16.5385, icon: '🏄' },
-  { id: 'candelaria', name: 'Candelaria', lat: 28.3542, lon: -16.3708, icon: '⛪' },
-  { id: 'guimar', name: 'Güímar', lat: 28.3194, lon: -16.4122, icon: '🔺' },
-  { id: 'arico', name: 'Arico', lat: 28.1665, lon: -16.4836, icon: '🏜' },
-]
-
-const TF_BBOX = { latMin: 28.02, latMax: 28.60, lonMin: -16.93, lonMax: -16.10 }
-const SVG_BOX = { xMin: 40, xMax: 275, yMin: 30, yMax: 380 }
-
-function projectTF(lat, lon) {
-  const latMid = (TF_BBOX.latMin + TF_BBOX.latMax) / 2
-  const cosLat = Math.cos(latMid * Math.PI / 180)
-  const lonW = (TF_BBOX.lonMax - TF_BBOX.lonMin) * cosLat
-  const latH = TF_BBOX.latMax - TF_BBOX.latMin
-  const svgW = SVG_BOX.xMax - SVG_BOX.xMin
-  const svgH = SVG_BOX.yMax - SVG_BOX.yMin
-  const scale = Math.min(svgW / lonW, svgH / latH)
-  const usedW = lonW * scale, usedH = latH * scale
-  const offsetX = SVG_BOX.xMin + (svgW - usedW) / 2
-  const offsetY = SVG_BOX.yMin + (svgH - usedH) / 2
-  const x = offsetX + (lon - TF_BBOX.lonMin) * cosLat * scale
-  const y = offsetY + (TF_BBOX.latMax - lat) * scale
-  return { x: Math.round(x), y: Math.round(y) }
-}
-
-function haversineKm(a, b) {
-  const R = 6371
-  const toRad = d => d * Math.PI / 180
-  const dLat = toRad(b.lat - a.lat)
-  const dLon = toRad(b.lon - a.lon)
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(h))
-}
-
-const TF_PLACES = TF_PLACES_REAL.map(p => ({ ...p, ...projectTF(p.lat, p.lon) }))
-
-function pickRoute() {
-  const pool = TF_PLACES
-  const rand = n => Math.floor(Math.random() * n)
-  let o, d, tries = 0
-  do {
-    o = pool[rand(pool.length)]
-    d = pool[rand(pool.length)]
-    tries++
-  } while (o.id === d.id && tries < 20)
-
-  const others = pool.filter(p => p.id !== o.id && p.id !== d.id)
-  others.forEach(p => {
-    const dx = d.x - o.x, dy = d.y - o.y
-    const L2 = dx * dx + dy * dy || 1
-    const t = Math.max(0, Math.min(1, ((p.x - o.x) * dx + (p.y - o.y) * dy) / L2))
-    const px = o.x + t * dx, py = o.y + t * dy
-    p._score = Math.hypot(p.x - px, p.y - py) + Math.abs(0.5 - t) * 20
-  })
-  const near = others.sort((a, b) => a._score - b._score).slice(0, 2)
-  near.sort((a, b) => Math.hypot(a.x - o.x, a.y - o.y) - Math.hypot(b.x - o.x, b.y - o.y))
-
-  const stopsRaw = [o, ...near, d]
-  const stops = stopsRaw.map((p, i) => {
-    if (i === 0) return { ...p, meta: 'origen', t: 0 }
-    const prevP = stopsRaw[i - 1]
-    const segKm = Math.round(haversineKm(prevP, p) * 10) / 10
-    const mins = Math.max(2, Math.round(segKm * 1.8))
-    return { ...p, meta: `${segKm.toFixed(1)} km · ${mins} min`, t: 0 }
-  })
-  const cumKm = [0]
-  for (let i = 1; i < stopsRaw.length; i++) {
-    cumKm.push(cumKm[i - 1] + haversineKm(stopsRaw[i - 1], stopsRaw[i]))
-  }
-  const totalK = cumKm[cumKm.length - 1] || 1
-  stops.forEach((s, i) => s.t = cumKm[i] / totalK)
-
-  const totalMin = Math.max(5, Math.round(totalK * 1.8))
-  return { origin: o, dest: d, stops, totalKm: Math.round(totalK * 10) / 10, totalMin }
-}
-
-function buildPath(points) {
-  if (points.length < 2) return ''
-  let d = `M ${points[0].x} ${points[0].y}`
-  for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1], p1 = points[i]
-    const midx = (p0.x + p1.x) / 2, midy = (p0.y + p1.y) / 2
-    const cx = p0.x + (midx - p0.x) * 0.8
-    const cy = p0.y + (midy - p0.y) * 0.8
-    d += ` Q ${cx} ${cy} ${midx} ${midy}`
-    d += ` T ${p1.x} ${p1.y}`
-  }
-  return d
-}
+// Carretera serpenteante con perspectiva (parte desde horizonte y llega al front)
+const ROAD_D = 'M 200 180 C 180 260 260 340 220 420 C 180 500 300 580 250 660 C 210 720 280 780 230 840'
 
 export default function AnimatedSplash({ onComplete }) {
   const [exiting, setExiting] = useState(false)
+  const [motoPos, setMotoPos] = useState({ x: 200, y: 180, a: 0 })
   const [progress, setProgress] = useState(0)
-  const [motoPos, setMotoPos] = useState({ x: 0, y: 0 })
   const pathRef = useRef(null)
   const isNative = Capacitor.isNativePlatform()
 
-  const route = useMemo(() => pickRoute(), [])
-  const pathD = useMemo(() => buildPath(route.stops), [route])
-
-  // Exit timer (~3s total con fadeout)
+  // Exit timer (~3s total)
   useEffect(() => {
-    const exitAt = isNative ? 1800 : 2600
-    const completeAt = isNative ? 2200 : 3000
+    const exitAt = isNative ? 2200 : 2600
+    const completeAt = isNative ? 2600 : 3000
     const t1 = setTimeout(() => setExiting(true), exitAt)
     const t2 = setTimeout(() => onComplete(), completeAt)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [isNative, onComplete])
 
-  // Animación progreso de la ruta
+  // Loop animación: la moto recorre la carretera
   useEffect(() => {
     let raf, start
-    const DURATION = isNative ? 1600 : 2200
+    const DURATION = isNative ? 2000 : 2400
     const loop = t => {
       if (!start) start = t
       const elapsed = t - start
       const p = Math.min(1, elapsed / DURATION)
       setProgress(p)
+      if (pathRef.current) {
+        const L = pathRef.current.getTotalLength()
+        const pt = pathRef.current.getPointAtLength(L * p)
+        const pt2 = pathRef.current.getPointAtLength(Math.min(L, L * p + 1))
+        const a = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI
+        setMotoPos({ x: pt.x, y: pt.y, a })
+      }
       if (p < 1) raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
   }, [isNative])
 
-  // Posición moto siguiendo path
-  useEffect(() => {
-    if (!pathRef.current) return
-    const L = pathRef.current.getTotalLength()
-    const pt = pathRef.current.getPointAtLength(L * progress)
-    setMotoPos({ x: pt.x, y: pt.y })
-  }, [progress])
-
-  const { origin, dest, stops, totalKm, totalMin } = route
-
   return (
     <>
       <style>{`
         @keyframes splashOut { to { opacity: 0; } }
+        @keyframes floatSlow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
       `}</style>
 
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: P.bg,
-        display: 'flex', flexDirection: 'column',
+        background: `radial-gradient(ellipse at 50% 20%, #1a1113 0%, ${P.bg} 55%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         animation: exiting ? 'splashOut 0.4s ease forwards' : undefined,
         overflow: 'hidden',
       }}>
-        {/* Header compacto */}
-        <div style={{ textAlign: 'center', padding: '80px 20px 6px' }}>
-          <span style={{
-            display: 'inline-block', padding: '3px 12px', borderRadius: 99,
-            border: `1px dashed ${P.orange}`, color: P.orange,
-            fontFamily: 'ui-monospace, monospace', fontSize: 10, letterSpacing: 1,
-            textTransform: 'uppercase',
-          }}>
-            bienvenida
-          </span>
-          <div style={{
-            color: P.inkDim, fontSize: 13, marginTop: 6,
-            fontFamily: 'system-ui, sans-serif',
-          }}>
-            {origin.name} → <b style={{ color: P.orange }}>{dest.name}</b>
-          </div>
-        </div>
+        <svg
+          viewBox="0 0 400 900"
+          preserveAspectRatio="xMidYMid slice"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        >
+          <defs>
+            {/* Grid floor 3D */}
+            <linearGradient id="floorFade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={P.orange} stopOpacity="0" />
+              <stop offset="30%" stopColor={P.orange} stopOpacity="0.18" />
+              <stop offset="100%" stopColor={P.orange} stopOpacity="0.32" />
+            </linearGradient>
+            <linearGradient id="skyFade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1E0F14" stopOpacity="0.8" />
+              <stop offset="100%" stopColor={P.bg} stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={P.orange} stopOpacity="0.9" />
+              <stop offset="60%" stopColor={P.orange} stopOpacity="0.12" />
+              <stop offset="100%" stopColor={P.orange} stopOpacity="0" />
+            </radialGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="4" /></filter>
+          </defs>
 
-        {/* Mapa principal */}
-        <div style={{ flex: 1, position: 'relative', padding: '0 12px', minHeight: 0 }}>
-          {/* Silueta isla al fondo */}
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.16, pointerEvents: 'none' }}>
-            <svg viewBox="0 0 400 260" style={{ width: '100%', height: '100%', transform: 'scale(1.05)' }}>
-              <path
-                d="M 60 180 Q 50 120 90 80 Q 140 45 210 55 Q 290 60 330 110 Q 360 150 340 195 Q 300 225 220 220 Q 130 215 60 180 Z"
-                fill="none" stroke={P.orange} strokeWidth="1.5" strokeDasharray="3 4"
-              />
-            </svg>
-          </div>
+          {/* Cielo degradado */}
+          <rect width="400" height="400" fill="url(#skyFade)" />
 
-          <svg viewBox="0 0 300 400" style={{ width: '100%', height: '100%' }}>
-            <defs>
-              <filter id="splashGlow"><feGaussianBlur stdDeviation="2.5" /></filter>
-            </defs>
+          {/* Sol distante detrás del horizonte */}
+          <circle cx="200" cy="170" r="120" fill="url(#sun)" style={{ animation: 'floatSlow 3s ease-in-out infinite' }} />
 
-            {/* Path dim */}
-            <path d={pathD} fill="none" stroke={P.orange} strokeOpacity="0.18"
-              strokeWidth="3" strokeDasharray="6 8" strokeLinecap="round" />
+          {/* Montañas sutiles en el horizonte */}
+          <path d="M 0 200 L 60 165 L 110 180 L 170 145 L 230 175 L 290 155 L 350 180 L 400 165 L 400 210 L 0 210 Z"
+            fill="#0a0708" opacity="0.9" />
+          <path d="M 0 210 L 80 190 L 140 205 L 210 185 L 280 200 L 360 192 L 400 205 L 400 235 L 0 235 Z"
+            fill="#050304" opacity="0.95" />
 
-            {/* Path animado glow */}
-            <path
-              ref={pathRef}
-              d={pathD}
-              fill="none" stroke={P.orange}
-              strokeWidth="3" strokeLinecap="round"
-              pathLength="1"
-              strokeDasharray="1"
-              strokeDashoffset={1 - progress}
-              filter="url(#splashGlow)"
-            />
-            {/* Path animado nítido */}
-            <path
-              d={pathD}
-              fill="none" stroke={P.orange}
-              strokeWidth="1.8" strokeLinecap="round"
-              pathLength="1"
-              strokeDasharray="1"
-              strokeDashoffset={1 - progress}
-            />
+          {/* Horizonte line glow */}
+          <line x1="0" y1="210" x2="400" y2="210" stroke={P.orange} strokeOpacity="0.5" strokeWidth="0.8" filter="url(#glow)" />
+          <line x1="0" y1="210" x2="400" y2="210" stroke={P.orange} strokeOpacity="0.8" strokeWidth="0.4" />
 
-            {/* Stops */}
-            {stops.map((s, i) => {
-              const active = progress >= s.t - 0.02
-              const onLeft = s.x < 150
-              const labelOffset = onLeft ? 14 : -14
+          {/* Grid floor 3D — líneas que convergen */}
+          <g opacity="0.7">
+            {[...Array(19)].map((_, i) => {
+              const offset = (i - 9) * 0.5
+              const x1 = 200 + offset * 20
+              const x2 = 200 + offset * 420
               return (
-                <g key={`${s.id}-${i}`} transform={`translate(${s.x} ${s.y})`}>
-                  {active && (
-                    <circle r="10" fill="none" stroke={P.orange} strokeWidth="1.5" opacity="0.5">
-                      <animate attributeName="r" values="8;16;8" dur="1.4s" repeatCount="indefinite" />
-                      <animate attributeName="opacity" values="0.6;0;0.6" dur="1.4s" repeatCount="indefinite" />
-                    </circle>
-                  )}
-                  <circle r="8" fill={active ? P.orange : P.bg2}
-                    stroke={active ? P.orange : P.stroke} strokeWidth="1.5"
-                    style={{ transition: 'fill .3s' }} />
-                  <text textAnchor="middle" y="3" fontSize="10">{s.icon}</text>
-
-                  <g transform={`translate(${labelOffset} 0)`} style={{ opacity: active ? 1 : 0.45, transition: 'opacity .4s' }}>
-                    <rect x={onLeft ? 0 : -130} y="-11" width="130" height="28" rx="14"
-                      fill={P.bg2}
-                      stroke={active ? P.orange : P.stroke} strokeWidth="1" />
-                    <text x={onLeft ? 9 : -121} y="0"
-                      fontFamily="system-ui, sans-serif" fontSize="11"
-                      fill={active ? P.ink : P.inkDim}>{s.name}</text>
-                    <text x={onLeft ? 9 : -121} y="12"
-                      fontFamily="ui-monospace, monospace" fontSize="8"
-                      fill={P.inkDim}>{s.meta}</text>
-                  </g>
-                </g>
+                <line key={'v' + i}
+                  x1={x1} y1="210" x2={x2} y2="900"
+                  stroke="url(#floorFade)" strokeWidth="0.8" />
               )
             })}
+            {/* Líneas horizontales con espaciado de perspectiva */}
+            {[...Array(12)].map((_, i) => {
+              const progress = (i + 1) / 12
+              const y = 210 + Math.pow(progress, 1.6) * 700
+              const opacity = 0.08 + progress * 0.22
+              return (
+                <line key={'h' + i}
+                  x1="0" y1={y} x2="400" y2={y}
+                  stroke={P.orange} strokeOpacity={opacity} strokeWidth="0.6" />
+              )
+            })}
+          </g>
 
-            {/* Moto */}
-            {progress < 1 && (
-              <g transform={`translate(${motoPos.x} ${motoPos.y})`}>
-                <circle r="11" fill={P.orange} opacity="0.3">
-                  <animate attributeName="r" values="9;13;9" dur="0.8s" repeatCount="indefinite" />
-                </circle>
-                <text textAnchor="middle" y="5" fontSize="16">🛵</text>
-              </g>
-            )}
-          </svg>
-        </div>
+          {/* Edificios pequeños a los lados (isométricos sutiles) */}
+          {[
+            { x: 40, y: 380, w: 28, h: 42, side: 'left' },
+            { x: 20, y: 480, w: 36, h: 60, side: 'left' },
+            { x: 50, y: 600, w: 42, h: 78, side: 'left' },
+            { x: 20, y: 740, w: 50, h: 96, side: 'left' },
+            { x: 340, y: 380, w: 28, h: 42, side: 'right' },
+            { x: 348, y: 480, w: 36, h: 60, side: 'right' },
+            { x: 320, y: 600, w: 42, h: 78, side: 'right' },
+            { x: 340, y: 740, w: 50, h: 96, side: 'right' },
+          ].map((b, i) => (
+            <g key={'b' + i}>
+              {/* sombra lateral */}
+              <polygon
+                points={`${b.x},${b.y} ${b.x + b.w},${b.y} ${b.x + b.w + 4},${b.y - 4} ${b.x + 4},${b.y - 4}`}
+                fill="#0a0708" opacity="0.6"
+              />
+              {/* frontal */}
+              <rect x={b.x} y={b.y} width={b.w} height={b.h}
+                fill={P.bg2} stroke={P.orange} strokeOpacity="0.4" strokeWidth="0.7" />
+              {/* ventanas con luz naranja */}
+              {[...Array(Math.floor(b.h / 14))].map((_, j) => (
+                <rect key={j}
+                  x={b.x + 4} y={b.y + 6 + j * 14}
+                  width={b.w - 8} height={6}
+                  fill={P.orange} opacity={j % 2 === 0 ? 0.6 : 0.2} />
+              ))}
+            </g>
+          ))}
 
-        {/* Resumen ruta */}
-        <div style={{ padding: '6px 16px 28px' }}>
-          <div style={{
-            background: P.bg2, border: `1px solid ${P.stroke}`,
-            borderRadius: 14, padding: '10px 14px',
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontFamily: 'ui-monospace, monospace', fontSize: 10, color: P.inkDim,
-            textTransform: 'uppercase', letterSpacing: 1,
-          }}>
-            <span>cómo se llega</span>
-            <span style={{ flex: 1, height: 1, background: P.stroke }} />
-            <span style={{ color: P.orange }}>{totalMin}min · {totalKm}km</span>
-          </div>
-        </div>
+          {/* Palmeras sencillas (decoración canaria) */}
+          {[
+            { x: 80, y: 450, s: 0.9 },
+            { x: 320, y: 520, s: 1.0 },
+            { x: 100, y: 680, s: 1.3 },
+            { x: 310, y: 740, s: 1.4 },
+          ].map((t, i) => (
+            <g key={'t' + i} transform={`translate(${t.x} ${t.y}) scale(${t.s})`} opacity="0.8">
+              <line x1="0" y1="0" x2="1" y2="-28" stroke="#5a3a1a" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 0 -28 Q -12 -34 -18 -26 M 0 -28 Q 12 -34 18 -26 M 0 -28 Q -6 -40 -4 -46 M 0 -28 Q 6 -40 4 -46"
+                stroke="#2d6b2d" strokeWidth="2" strokeLinecap="round" fill="none" />
+            </g>
+          ))}
+
+          {/* Carretera — shadow */}
+          <path d={ROAD_D}
+            fill="none" stroke="#000" strokeWidth="34" strokeLinecap="round" opacity="0.6" />
+          {/* Carretera — base oscura */}
+          <path d={ROAD_D}
+            fill="none" stroke="#1a1a1c" strokeWidth="28" strokeLinecap="round" />
+          {/* Carretera — borde naranja glow */}
+          <path ref={pathRef} d={ROAD_D}
+            fill="none" stroke={P.orange} strokeOpacity="0.5" strokeWidth="30"
+            strokeLinecap="round" filter="url(#glow)" />
+          {/* Líneas discontinuas centrales */}
+          <path d={ROAD_D}
+            fill="none" stroke={P.orange} strokeOpacity="0.85"
+            strokeWidth="1.6" strokeLinecap="round"
+            strokeDasharray="8 14" />
+
+          {/* Moto recorriendo la carretera */}
+          <g transform={`translate(${motoPos.x} ${motoPos.y}) rotate(${motoPos.a + 90})`}>
+            {/* halo */}
+            <circle r="18" fill={P.orange} opacity="0.25">
+              <animate attributeName="r" values="14;22;14" dur="0.9s" repeatCount="indefinite" />
+            </circle>
+            <circle r="10" fill={P.orange} opacity="0.5" />
+            {/* emoji moto */}
+            <g transform={`rotate(${-motoPos.a - 90})`}>
+              <text textAnchor="middle" y="7" fontSize="26">🛵</text>
+            </g>
+          </g>
+
+          {/* Partículas progresando */}
+          {[0.15, 0.35, 0.55, 0.75].map((delay, i) => {
+            const p = Math.max(0, progress - delay)
+            if (p <= 0 || !pathRef.current) return null
+            const L = pathRef.current.getTotalLength?.() || 0
+            if (!L) return null
+            const pt = pathRef.current.getPointAtLength(Math.min(L, L * p))
+            return (
+              <circle key={i} cx={pt.x} cy={pt.y} r="2"
+                fill={P.orange} opacity={1 - p * 0.8} />
+            )
+          })}
+        </svg>
       </div>
     </>
   )
