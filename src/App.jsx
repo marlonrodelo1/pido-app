@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { CartProvider, useCart } from './context/CartContext'
 import Login from './pages/Login'
 import BottomNav from './components/BottomNav'
-import PWAInstallPrompt from './components/PWAInstallPrompt'
 import AnimatedSplash from './components/AnimatedSplash'
 
 // Lazy-loaded routes (code splitting)
@@ -117,8 +116,6 @@ function AppContent() {
   return (
     <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(20px + 64px + 20px + env(safe-area-inset-bottom, 0px))' }}>
       <style>{globalCss}</style>
-
-      <PWAInstallPrompt />
 
       {/* Header */}
       <div style={{
