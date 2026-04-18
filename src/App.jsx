@@ -121,6 +121,7 @@ function AppContent() {
       <div style={{
         padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         background: 'var(--c-bg)',
+        position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => setOnboarded(false)} style={{
