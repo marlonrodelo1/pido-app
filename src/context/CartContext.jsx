@@ -107,9 +107,11 @@ export function CartProvider({ children }) {
       if (data?.fuera_de_radio) {
         throw { message: data.error, fuera_de_radio: true }
       }
-      if (data?.success) {
+      if (typeof data?.envio === 'number') {
         setEnvio(data.envio)
-        setDistanciaKm(data.distancia_km)
+        setDistanciaKm(data.distancia_km ?? null)
+      } else {
+        console.warn('[calcularEnvio] respuesta inesperada', data)
       }
     } catch (err) {
       if (err?.fuera_de_radio) throw err
