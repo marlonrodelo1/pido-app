@@ -36,8 +36,25 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
   const [categoriasGenerales, setCategoriasGenerales] = useState([])
   const [promociones, setPromociones] = useState([])
   const [driversMap, setDriversMap] = useState({})
+  const [landingRiders, setLandingRiders] = useState({ activa: true, config: { titulo: 'Gana dinero repartiendo', subtitulo: 'Crea tu propio negocio', boton: 'APLICAR' } })
 
   useEffect(() => {
+    // Config landing repartidores (para CTA del Home)
+    supabase.from('landing_repartidores_config')
+      .select('activa, config').eq('id', 'default').maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        const homeCfg = data.config?.home_cta || {}
+        setLandingRiders({
+          activa: data.activa !== false,
+          config: {
+            visible: homeCfg.visible !== false,
+            titulo: homeCfg.titulo || 'Gana dinero repartiendo',
+            subtitulo: homeCfg.subtitulo || 'Crea tu propio negocio',
+            boton: homeCfg.boton || 'APLICAR',
+          },
+        })
+      })
     // Cargar categorías generales filtradas por categoria_padre
     supabase.from('categorias_generales').select('*')
       .eq('activa', true)
@@ -232,8 +249,20 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
 
   return (
     <div>
+      <style>{`
+        @keyframes homeFadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes skeletonPulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.7; }
+        }
+        .home-fade { animation: homeFadeIn 0.4s ease-out both; }
+        .skeleton { background: rgba(255,255,255,0.06); border-radius: 12px; animation: skeletonPulse 1.2s ease-in-out infinite; }
+      `}</style>
       {/* ── Dirección ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16 }}>
+      <div className="home-fade" style={{ animationDelay: '0s', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16 }}>
         <MapPin size={24} strokeWidth={2} color="#ff9066" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#adaaaa', fontWeight: 700, lineHeight: '14px' }}>Enviar a</div>
@@ -253,7 +282,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       )}
 
       {/* ── Buscador (glass card, rounded-2xl, filtro integrado) ── */}
-      <div style={{
+      <div className="home-fade" style={{
+        animationDelay: '0.05s',
         position: 'relative', marginTop: 8, marginBottom: 32,
       }}>
         <div style={{
@@ -280,7 +310,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       </div>
 
       {/* ── Categorías (64×64, gradient active, glass inactive) ── */}
-      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, marginBottom: 40 }}>
+      <div className="home-fade" style={{ animationDelay: '0.1s', display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, marginBottom: 40 }}>
         {categoriasGenerales.map(c => {
           const isActive = catActiva === c.nombre
           return (
@@ -318,7 +348,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
 
       {/* ── Destacados (280px cards, 176px image, 22px radius, glass) ── */}
       {!busqueda && !catActiva && destacados.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="home-fade" style={{ animationDelay: '0.15s', marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
             <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>Destacados</h2>
             <span style={{ color: '#ff9066', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>Ver todo</span>
@@ -389,7 +419,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
 
       {/* ── Ofertas Irresistibles (gradient cards, 128px, 22px radius) ── */}
       {!busqueda && !catActiva && promociones.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="home-fade" style={{ animationDelay: '0.2s', marginBottom: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
           <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollSnapType: 'x mandatory' }}>
             {promociones.map((promo, idx) => {
@@ -423,10 +453,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       )}
 
       {/* ── CTA Repartidores ── */}
-      {!busqueda && !catActiva && (
+      {!busqueda && !catActiva && landingRiders.activa && landingRiders.config.visible && (
         <div
+          className="home-fade"
           onClick={() => onOpenRepartidores?.()}
           style={{
+            animationDelay: '0.25s',
             position: 'relative', overflow: 'hidden',
             borderRadius: 22, padding: 20, marginBottom: 24,
             background: 'linear-gradient(135deg, #FF6B2C 0%, #FF4500 100%)',
@@ -436,10 +468,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
         >
           <div style={{ position: 'relative', zIndex: 2, flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
-              Gana dinero repartiendo
+              {landingRiders.config.titulo}
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-              Crea tu propio negocio
+              {landingRiders.config.subtitulo}
             </div>
           </div>
           <button
@@ -452,7 +484,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
               fontFamily: 'inherit', letterSpacing: '0.05em',
             }}
           >
-            APLICAR
+            {landingRiders.config.boton}
           </button>
           <Bike
             size={48}
@@ -464,14 +496,22 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       )}
 
       {/* ── Cerca de ti (vertical stack, glass cards, 192px image, text overlay) ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
+      <div className="home-fade" style={{ animationDelay: '0.3s', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
           {busqueda ? 'Resultados' : catActiva ? ctx.titulo : 'Cerca de ti'}
         </h2>
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#adaaaa' }}>Cargando...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 120 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              borderRadius: 22, overflow: 'hidden', ...G,
+            }}>
+              <div className="skeleton" style={{ height: 192, borderRadius: 0 }} />
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && filtrados.length === 0 && (
@@ -500,8 +540,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
           items.push(
             <div
               key={r.id}
+              className="home-fade"
               onClick={() => onOpenRest(r)}
               style={{
+                animationDelay: `${0.35 + Math.min(i, 6) * 0.05}s`,
                 borderRadius: 22, overflow: 'hidden', cursor: 'pointer',
                 ...G,
                 opacity: estado.abierto ? 1 : 0.6,
