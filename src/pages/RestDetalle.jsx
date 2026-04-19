@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, MapPin } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
+import { estaAbierto } from '../lib/horario'
 
 /* ─── ProductoCard ────────────────────────────────────────── */
-function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [], tieneExtras = false }) {
+function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [], tieneExtras = false, cerrado = false, onIntentoCerrado }) {
   const enCarritoIdx = carrito.findIndex(i => i.producto_id === p.id)
   const enCarrito = enCarritoIdx >= 0 ? carrito[enCarritoIdx] : null
   const minPrecio = tamanos.length > 0 ? Math.min(...tamanos.map(t => t.precio)) : null
@@ -12,6 +13,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
 
   function handleIncrementar(e) {
     e.stopPropagation()
+    if (cerrado) { onIntentoCerrado?.(); return }
     if (enCarrito && !tieneConfig) {
       updateCantidad(enCarritoIdx, enCarrito.cantidad + 1)
     } else if (tieneConfig) {
@@ -35,7 +37,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
       borderRadius: 14,
       border: '1px solid rgba(255,255,255,0.06)',
       cursor: 'pointer',
-    }} onClick={onOpen}>
+    }} onClick={cerrado ? onIntentoCerrado : onOpen}>
       {p.imagen_url && (
         <img
           src={p.imagen_url}
@@ -132,8 +134,16 @@ export default function RestDetalle({ establecimiento, onBack }) {
   const [prodTamanosMap, setProdTamanosMap] = useState({})
   const [prodExtrasSet, setProdExtrasSet] = useState(new Set())
   const [ridersOnline, setRidersOnline] = useState(null)
+  const [avisoCerrado, setAvisoCerrado] = useState(false)
 
   const est = establecimiento
+  const estadoAbierto = estaAbierto(est)
+  const cerrado = !estadoAbierto.abierto
+
+  function mostrarAvisoCerrado() {
+    setAvisoCerrado(true)
+    setTimeout(() => setAvisoCerrado(false), 2800)
+  }
 
   useEffect(() => { fetchCarta() }, [est.id])
 
@@ -191,6 +201,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
   }
 
   async function abrirProducto(p) {
+    if (cerrado) { mostrarAvisoCerrado(); return }
     setModal(p); setCant(1); setExSel([]); setTamSel(null)
     const { data: tams } = await supabase.from('producto_tamanos').select('*').eq('producto_id', p.id).order('orden')
     setTamanos(tams || [])
@@ -216,6 +227,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
   }
 
   function confirmarItem() {
+    if (cerrado) { mostrarAvisoCerrado(); setModal(null); return }
     if (!puedeConfirmar) return
     // Agrupar opciones seleccionadas por grupo
     const extrasRich = gruposExtras
@@ -242,6 +254,7 @@ export default function RestDetalle({ establecimiento, onBack }) {
   }
 
   function addItemSimple(p) {
+    if (cerrado) { mostrarAvisoCerrado(); return }
     addItem({
       producto_id: p.id,
       nombre: p.nombre,
@@ -368,7 +381,27 @@ export default function RestDetalle({ establecimiento, onBack }) {
             {est.descripcion}
           </p>
         )}
-        {sinRiders && (
+        {cerrado && (
+          <div style={{
+            marginTop: 12,
+            padding: '10px 12px',
+            borderRadius: 12,
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.35)',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#F87171', lineHeight: 1.2 }}>
+                Restaurante cerrado
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.35 }}>
+                {estadoAbierto.proximaApertura || 'No se pueden realizar pedidos ahora mismo'}
+              </div>
+            </div>
+          </div>
+        )}
+        {!cerrado && sinRiders && (
           <div style={{
             marginTop: 12,
             padding: '10px 12px',
@@ -389,6 +422,21 @@ export default function RestDetalle({ establecimiento, onBack }) {
           </div>
         )}
       </div>
+
+      {avisoCerrado && (
+        <div style={{
+          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 300, padding: '10px 16px', borderRadius: 10,
+          background: 'rgba(239,68,68,0.95)', color: '#fff',
+          fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+          animation: 'slideIn 0.25s ease',
+          maxWidth: 'calc(100% - 40px)',
+          textAlign: 'center',
+        }}>
+          Restaurante cerrado · No se puede pedir
+        </div>
+      )}
 
       {/* ── Promociones ── */}
       {!loading && promociones.length > 0 && (
@@ -489,6 +537,8 @@ export default function RestDetalle({ establecimiento, onBack }) {
                         updateCantidad={updateCantidad}
                         tamanos={prodTamanosMap[p.id] || []}
                         tieneExtras={prodExtrasSet.has(p.id)}
+                        cerrado={cerrado}
+                        onIntentoCerrado={mostrarAvisoCerrado}
                       />
                     ))}
                   </div>

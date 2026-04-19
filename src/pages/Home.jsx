@@ -572,10 +572,21 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
                 >
                   {isFav ? '❤️' : '🤍'}
                 </button>
-                {/* Badge sin repartidores */}
+                {/* Badge estado abierto/cerrado */}
+                <div style={{
+                  position: 'absolute', top: 12, left: 12,
+                  background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(12px)',
+                  padding: '4px 12px', borderRadius: 999,
+                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
+                  color: '#fff', display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: estado.abierto ? '#22c55e' : '#ef4444' }} />
+                  {estado.abierto ? 'Abierto' : 'Cerrado'}
+                </div>
+                {/* Badge sin repartidores (solo si está abierto) */}
                 {sinRiders && (
                   <div style={{
-                    position: 'absolute', top: 12, left: 12,
+                    position: 'absolute', top: 52, left: 12,
                     background: 'rgba(251,191,36,0.95)',
                     padding: '5px 10px', borderRadius: 999,
                     fontSize: 10, fontWeight: 800,
