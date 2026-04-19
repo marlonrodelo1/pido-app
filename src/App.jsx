@@ -125,7 +125,10 @@ function AppContent() {
       {/* Header */}
       <div style={{
         padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'var(--c-bg)',
+        background: 'rgba(13,13,13,0.72)',
+        backdropFilter: 'blur(16px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
