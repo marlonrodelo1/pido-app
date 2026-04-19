@@ -35,6 +35,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
   const [geoError, setGeoError] = useState(false)
   const [categoriasGenerales, setCategoriasGenerales] = useState([])
   const [promociones, setPromociones] = useState([])
+  const [driversMap, setDriversMap] = useState({})
 
   useEffect(() => {
     // Cargar categorías generales filtradas por categoria_padre
@@ -147,6 +148,14 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
         catMap[ec.establecimiento_id].push(ec.categoria_id)
       }
       setEstablecimientos(data.map(e => ({ ...e, _catIds: catMap[e.id] || [] })))
+
+      const { data: ds } = await supabase
+        .from('drivers_status')
+        .select('establecimiento_id, online_count')
+        .in('establecimiento_id', estIds)
+      const dsMap = {}
+      for (const d of (ds || [])) dsMap[d.establecimiento_id] = d.online_count ?? 0
+      setDriversMap(dsMap)
     } else {
       setEstablecimientos(data || [])
     }
@@ -317,6 +326,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {
               const estDest = estaAbierto(r)
+              const sinRidersDest = estDest.abierto && r.tiene_delivery && (driversMap[r.id] ?? 0) === 0
               return (
                 <div key={r.id} onClick={() => onOpenRest(r)} style={{ minWidth: 280, cursor: 'pointer', flexShrink: 0 }}>
                   {/* Image container — glass card */}
@@ -339,6 +349,19 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: estDest.abierto ? '#22c55e' : '#ef4444' }} />
                       {estDest.abierto ? 'Abierto' : 'Cerrado'}
                     </div>
+                    {sinRidersDest && (
+                      <div style={{
+                        position: 'absolute', top: 16, right: 16,
+                        background: 'rgba(251,191,36,0.95)',
+                        padding: '4px 9px', borderRadius: 999,
+                        fontSize: 9, fontWeight: 800,
+                        color: '#1a1a1a',
+                        textTransform: 'uppercase', letterSpacing: '0.04em',
+                        backdropFilter: 'blur(8px)',
+                      }}>
+                        🛵 Solo recogida
+                      </div>
+                    )}
                     {/* Rating badge */}
                     <div style={{
                       position: 'absolute', bottom: 16, right: 16,
@@ -473,6 +496,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
               </div>
             )
           }
+          const sinRiders = estado.abierto && r.tiene_delivery && (driversMap[r.id] ?? 0) === 0
           items.push(
             <div
               key={r.id}
@@ -506,6 +530,21 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
                 >
                   {isFav ? '❤️' : '🤍'}
                 </button>
+                {/* Badge sin repartidores */}
+                {sinRiders && (
+                  <div style={{
+                    position: 'absolute', top: 12, left: 12,
+                    background: 'rgba(251,191,36,0.95)',
+                    padding: '5px 10px', borderRadius: 999,
+                    fontSize: 10, fontWeight: 800,
+                    color: '#1a1a1a',
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    backdropFilter: 'blur(8px)',
+                  }}>
+                    🛵 Sin repartidores · Solo recogida
+                  </div>
+                )}
                 {/* Text on bottom of image */}
                 <div style={{ position: 'absolute', bottom: 16, left: 24 }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{r.nombre}</div>

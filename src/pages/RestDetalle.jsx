@@ -131,10 +131,34 @@ export default function RestDetalle({ establecimiento, onBack }) {
   const [catFiltro, setCatFiltro] = useState(null)
   const [prodTamanosMap, setProdTamanosMap] = useState({})
   const [prodExtrasSet, setProdExtrasSet] = useState(new Set())
+  const [ridersOnline, setRidersOnline] = useState(null)
 
   const est = establecimiento
 
   useEffect(() => { fetchCarta() }, [est.id])
+
+  useEffect(() => {
+    if (!est.id || !est.tiene_delivery) { setRidersOnline(null); return }
+    let cancel = false
+    supabase
+      .from('drivers_status')
+      .select('online_count')
+      .eq('establecimiento_id', est.id)
+      .maybeSingle()
+      .then(({ data }) => { if (!cancel) setRidersOnline(data?.online_count ?? 0) })
+    const channel = supabase
+      .channel(`drivers_status_det_${est.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'drivers_status',
+        filter: `establecimiento_id=eq.${est.id}`,
+      }, (payload) => {
+        if (!cancel) setRidersOnline(payload.new?.online_count ?? 0)
+      })
+      .subscribe()
+    return () => { cancel = true; supabase.removeChannel(channel) }
+  }, [est.id, est.tiene_delivery])
+
+  const sinRiders = est.tiene_delivery && ridersOnline === 0
 
   async function fetchCarta() {
     setLoading(true)
@@ -343,6 +367,26 @@ export default function RestDetalle({ establecimiento, onBack }) {
           <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, margin: 0 }}>
             {est.descripcion}
           </p>
+        )}
+        {sinRiders && (
+          <div style={{
+            marginTop: 12,
+            padding: '10px 12px',
+            borderRadius: 12,
+            background: 'rgba(251,191,36,0.12)',
+            border: '1px solid rgba(251,191,36,0.35)',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{ fontSize: 18 }}>🛵</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#FBBF24', lineHeight: 1.2 }}>
+                Sin repartidores · Solo recogida
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.35 }}>
+                Ahora mismo no hay repartidores disponibles. Puedes pedir para recoger tú.
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
