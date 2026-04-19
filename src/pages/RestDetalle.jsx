@@ -118,7 +118,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
 }
 
 /* ─── RestDetalle ─────────────────────────────────────────── */
-export default function RestDetalle({ establecimiento, onBack }) {
+export default function RestDetalle({ establecimiento, onBack, modoTienda = false }) {
   const { addItem, carrito, updateCantidad, totalItems, subtotal } = useCart()
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])
@@ -318,22 +318,24 @@ export default function RestDetalle({ establecimiento, onBack }) {
           background: 'linear-gradient(180deg, rgba(14,14,14,0.75) 0%, transparent 100%)',
           borderRadius: '22px 22px 0 0',
         }} />
-        <button
-          onClick={onBack}
-          style={{
-            position: 'absolute', top: 14, left: 14,
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-            color: '#fff', padding: '7px 12px',
-            borderRadius: 12, cursor: 'pointer',
-            fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-          }}
-        >
-          <ArrowLeft size={15} strokeWidth={2.5} />
-          Volver
-        </button>
+        {!modoTienda && (
+          <button
+            onClick={onBack}
+            style={{
+              position: 'absolute', top: 14, left: 14,
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+              color: '#fff', padding: '7px 12px',
+              borderRadius: 12, cursor: 'pointer',
+              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+            }}
+          >
+            <ArrowLeft size={15} strokeWidth={2.5} />
+            Volver
+          </button>
+        )}
         {est.logo_url && (
           <div style={{
             position: 'absolute', bottom: -24, left: 16,

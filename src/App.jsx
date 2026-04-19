@@ -24,6 +24,7 @@ const Perfil = lazy(() => import('./pages/Perfil'))
 const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
 const LandingRepartidores = lazy(() => import('./pages/LandingRepartidores'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const TiendaPublica = lazy(() => import('./pages/TiendaPublica'))
 
 // Error Boundary — evita pantalla blanca si algo falla
 class ErrorBoundary extends Component {
@@ -316,6 +317,7 @@ function TiendaDetector() {
   const [emailConfirmado, setEmailConfirmado] = useState(false)
   const [paginaLegal, setPaginaLegal] = useState(null)
   const [isResetPassword, setIsResetPassword] = useState(false)
+  const [tiendaRestaurante, setTiendaRestaurante] = useState(null)
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -382,7 +384,7 @@ function TiendaDetector() {
   }, [])
 
   useEffect(() => {
-    const path = window.location.pathname.replace(/^\//, '')
+    const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '')
     // Reset password
     if (path === 'reset-password') {
       setIsResetPassword(true)
@@ -393,6 +395,33 @@ function TiendaDetector() {
     if (path === 'terminos' || path === 'privacidad') {
       setPaginaLegal(path)
       setChecking(false)
+      return
+    }
+    // Capacitor: no usar slug-detection en nativo
+    if (Capacitor.isNativePlatform()) {
+      setChecking(false)
+      return
+    }
+    // Detectar slug de tienda pública (una sola palabra, no reservada)
+    const RESERVED = [
+      'terminos', 'privacidad', 'reset-password', 'landing-repartidores',
+      'perfil', 'home', 'carrito', 'mis-pedidos', 'favoritos', 'mapa',
+      'notificaciones', 'admin', 'panel', 'api', 'login', 'registro',
+      'tracking', 'tienda', 'pedido',
+    ]
+    if (path && !RESERVED.includes(path) && !path.includes('/') && /^[a-z0-9-]+$/i.test(path)) {
+      supabase
+        .from('establecimientos')
+        .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre')
+        .eq('slug', path)
+        .eq('activo', true)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setTiendaRestaurante(data)
+          }
+          setChecking(false)
+        })
       return
     }
     // Rutas internas de la app (sin slug externo)
@@ -450,6 +479,18 @@ function TiendaDetector() {
           <PaginaLegal slug={paginaLegal} onBack={() => window.history.back()} />
         </Suspense>
       </div>
+    )
+  }
+
+  if (tiendaRestaurante) {
+    return (
+      <AuthProvider>
+        <CartProvider>
+          <Suspense fallback={SuspenseFallback}>
+            <TiendaPublica establecimiento={tiendaRestaurante} />
+          </Suspense>
+        </CartProvider>
+      </AuthProvider>
     )
   }
 

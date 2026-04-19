@@ -14,6 +14,9 @@ export function CartProvider({ children }) {
   const [distanciaKm, setDistanciaKm] = useState(null)
   const [envioLoading, setEnvioLoading] = useState(false)
   const [envioError, setEnvioError] = useState(false)
+  const [origenPedido, setOrigenPedido] = useState(() => {
+    try { return localStorage.getItem('pido_origen_pedido') || 'pido' } catch { return 'pido' }
+  })
   const carritoRef = useRef(carrito)
   carritoRef.current = carrito
 
@@ -21,6 +24,11 @@ export function CartProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem('pido_cart', JSON.stringify(carrito)) } catch (e) { console.warn('Error guardando carrito:', e) }
   }, [carrito])
+
+  // Persist origenPedido
+  useEffect(() => {
+    try { localStorage.setItem('pido_origen_pedido', origenPedido) } catch (e) { /* noop */ }
+  }, [origenPedido])
 
   function extrasSignature(extras) {
     if (!extras || extras.length === 0) return ''
@@ -140,7 +148,8 @@ export function CartProvider({ children }) {
     modoEntrega, setModoEntrega,
     totalItems, subtotal, envio: envioFinal, total,
     calcularEnvio, envioLoading, envioError, distanciaKm,
-  }), [carrito, propina, metodoPago, modoEntrega, totalItems, subtotal, envioFinal, total, envioLoading, envioError, distanciaKm, calcularEnvio])
+    origenPedido, setOrigenPedido, setEnvio,
+  }), [carrito, propina, metodoPago, modoEntrega, totalItems, subtotal, envioFinal, total, envioLoading, envioError, distanciaKm, calcularEnvio, origenPedido])
 
   return (
     <CartContext.Provider value={contextValue}>

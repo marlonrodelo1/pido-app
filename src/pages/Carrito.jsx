@@ -112,7 +112,8 @@ const brandIcon = { visa: '💳', mastercard: '💳', amex: '💳' }
 
 export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin }) {
   const { user, perfil, updatePerfil } = useAuth()
-  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm } = useCart()
+  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
+  const [tarifaEnvioFija, setTarifaEnvioFija] = useState(null)
   const [openInternal, setOpenInternal] = useState(false)
   const open = openProp !== undefined ? openProp : openInternal
   const setOpen = setOpenProp || setOpenInternal
@@ -148,13 +149,19 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   useEffect(() => {
     if (!open || carrito.length === 0) return
     const estId = carrito[0].establecimiento_id
-    supabase.from('establecimientos').select('tiene_delivery').eq('id', estId).single()
+    supabase.from('establecimientos').select('tiene_delivery, tarifa_envio_fija, plan_pro').eq('id', estId).single()
       .then(({ data }) => {
         const td = data?.tiene_delivery ?? true
         setTieneDelivery(td)
         if (!td) setModoEntrega('recogida')
+        // Si viene de tienda pública y hay tarifa fija → usarla
+        if (origenPedido === 'tienda_publica' && data?.tarifa_envio_fija != null) {
+          setTarifaEnvioFija(Number(data.tarifa_envio_fija))
+        } else {
+          setTarifaEnvioFija(null)
+        }
       })
-  }, [open, carrito.length > 0 ? carrito[0]?.establecimiento_id : null])
+  }, [open, carrito.length > 0 ? carrito[0]?.establecimiento_id : null, origenPedido])
 
   // Forzar recogida si no hay repartidores en línea
   useEffect(() => {
@@ -220,9 +227,14 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       const lat = perfil?.latitud, lng = perfil?.longitud
       const hayDir = !!(lat && lng && perfil?.direccion)
       setSinDireccion(!hayDir); setFueraDeRadio(false)
+      // Si es tienda pública y hay tarifa fija, saltar calcularEnvio
+      if (tarifaEnvioFija != null) {
+        if (typeof setEnvio === 'function') setEnvio(tarifaEnvioFija)
+        return
+      }
       if (hayDir) calcularEnvio(lat, lng).catch(err => { if (err?.fuera_de_radio) setFueraDeRadio(true) })
     }
-  }, [open, modoEntrega, carrito.length, perfil?.latitud, perfil?.longitud, perfil?.direccion])
+  }, [open, modoEntrega, carrito.length, perfil?.latitud, perfil?.longitud, perfil?.direccion, tarifaEnvioFija])
 
   useEffect(() => {
     if (open && user?.id && metodoPago === 'tarjeta') {
@@ -273,6 +285,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       lat_entrega: modoEntrega === 'delivery' ? (perfil?.latitud || null) : null,
       lng_entrega: modoEntrega === 'delivery' ? (perfil?.longitud || null) : null,
       direccion_entrega: dirEntrega,
+      origen_pedido: origenPedido || 'pido',
     }).select().single()
     if (pedidoError) throw pedidoError
     const items = carrito.map(item => {
@@ -642,11 +655,16 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span>Envío {distanciaKm && modoEntrega === 'delivery' ? <span style={{ fontSize: 10 }}>({distanciaKm} km)</span> : null}</span>
+                    <span>Envío {distanciaKm && modoEntrega === 'delivery' && tarifaEnvioFija == null ? <span style={{ fontSize: 10 }}>({distanciaKm} km)</span> : null}</span>
                     <span style={{ color: modoEntrega === 'recogida' ? '#22C55E' : 'var(--c-text)', fontWeight: 600 }}>
                       {modoEntrega === 'recogida' ? 'Gratis' : envioLoading ? 'Calculando...' : `${envio.toFixed(2)} €`}
                     </span>
                   </div>
+                  {tarifaEnvioFija != null && modoEntrega === 'delivery' && (
+                    <div style={{ fontSize: 10, color: 'var(--c-muted)', marginTop: -2, marginBottom: 6, textAlign: 'right' }}>
+                      Envío gestionado por el restaurante
+                    </div>
+                  )}
                   {propina > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#FBBF24' }}><span>Propina</span><span style={{ fontWeight: 600 }}>{propina} €</span></div>}
                 </div>
 
