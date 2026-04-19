@@ -110,7 +110,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
 const brandIcon = { visa: '💳', mastercard: '💳', amex: '💳' }
 
-export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp }) {
+export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin }) {
   const { user, perfil, updatePerfil } = useAuth()
   const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm } = useCart()
   const [openInternal, setOpenInternal] = useState(false)
@@ -325,6 +325,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   async function iniciarPago() {
     if (isPaying.current) return
+    if (!user) { onRequireLogin?.(); return }
     if (modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
       setSinDireccion(true); setMostrarAddDir(true); return
     }

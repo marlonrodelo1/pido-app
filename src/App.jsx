@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { CartProvider, useCart } from './context/CartContext'
 import Login from './pages/Login'
 import BottomNav from './components/BottomNav'
-import AnimatedSplash from './components/AnimatedSplash'
+import { X } from 'lucide-react'
 
 // Lazy-loaded routes (code splitting)
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -70,11 +70,19 @@ function AppContent() {
   const [pedidoActivo, setPedidoActivo] = useState(null)
   const [notifsNoLeidas, setNotifsNoLeidas] = useState(0)
   const [carritoOpen, setCarritoOpen] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
   const { totalItems } = useCart()
+
+  const SECCIONES_PROTEGIDAS = ['favoritos', 'pedidos', 'notificaciones', 'perfil']
+
+  // Cerrar modal login automáticamente al iniciar sesión
+  useEffect(() => {
+    if (user && loginOpen) setLoginOpen(false)
+  }, [user, loginOpen])
 
   // Cargar y escuchar notificaciones no leídas en tiempo real
   useEffect(() => {
-    if (!user) return
+    if (!user) { setNotifsNoLeidas(0); return }
     supabase.from('notificaciones').select('id', { count: 'exact', head: true })
       .eq('usuario_id', user.id).eq('leida', false)
       .then(({ count }) => setNotifsNoLeidas(count || 0))
@@ -89,12 +97,7 @@ function AppContent() {
     return <div style={{ ...shellStyle, minHeight: '100vh' }} />
   }
 
-  // Login obligatorio
-  if (!user) {
-    return <div style={shellStyle}><style>{globalCss}</style><Login /></div>
-  }
-
-  // Onboarding
+  // Onboarding primero (guardado en localStorage, se muestra 1 sola vez)
   if (!onboarded) {
     return (
       <div style={shellStyle}>
@@ -145,7 +148,10 @@ function AppContent() {
               En curso
             </button>
           )}
-          <button onClick={() => { setSeccion('notificaciones'); setNotifsNoLeidas(0) }} style={{
+          <button onClick={() => {
+            if (!user) { setLoginOpen(true); return }
+            setSeccion('notificaciones'); setNotifsNoLeidas(0)
+          }} style={{
             width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
             border: 'none', cursor: 'pointer', position: 'relative',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -166,7 +172,10 @@ function AppContent() {
           }}>
             <Share2 size={18} strokeWidth={1.8} color="var(--c-text)" />
           </button>
-          <button onClick={() => { setSeccion('perfil'); setRestOpen(null) }} style={{
+          <button onClick={() => {
+            if (!user) { setLoginOpen(true); return }
+            setSeccion('perfil'); setRestOpen(null)
+          }} style={{
             width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -203,17 +212,47 @@ function AppContent() {
       </div>
 
       <Suspense fallback={null}>
-        <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} />
+        <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} onRequireLogin={() => setLoginOpen(true)} />
       </Suspense>
       <BottomNav active={seccion} totalItems={totalItems} onChange={s => {
         if (s === 'carrito') {
           setCarritoOpen(true)
           return
         }
+        if (!user && SECCIONES_PROTEGIDAS.includes(s)) {
+          setLoginOpen(true)
+          return
+        }
         setSeccion(s)
         setRestOpen(null)
         if (s === 'notificaciones') setNotifsNoLeidas(0)
       }} />
+
+      {/* Modal Login on-demand (guest checkout) */}
+      {loginOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(6px)',
+          overflowY: 'auto', animation: 'fadeIn 0.25s ease',
+        }}>
+          <button
+            onClick={() => setLoginOpen(false)}
+            aria-label="Cerrar"
+            style={{
+              position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 14, zIndex: 310,
+              width: 36, height: 36, borderRadius: 999,
+              background: 'rgba(255,255,255,0.12)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <X size={18} strokeWidth={2.2} />
+          </button>
+          <Login />
+        </div>
+      )}
     </div>
   )
 }
@@ -273,7 +312,6 @@ body{background:#0D0D0D;margin:0}
 `
 
 function TiendaDetector() {
-  const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('pido_splash_shown'))
   const [checking, setChecking] = useState(true)
   const [emailConfirmado, setEmailConfirmado] = useState(false)
   const [paginaLegal, setPaginaLegal] = useState(null)
@@ -360,10 +398,6 @@ function TiendaDetector() {
     // Rutas internas de la app (sin slug externo)
     setChecking(false)
   }, [])
-
-  if (showSplash) {
-    return <AnimatedSplash onComplete={() => { sessionStorage.setItem('pido_splash_shown', '1'); setShowSplash(false) }} />
-  }
 
   if (checking) {
     return <div style={{ ...shellStyle, minHeight: '100vh' }} />
