@@ -39,11 +39,11 @@ export default function Favoritos({ onOpenRest }) {
       )}
       {restaurantes.map(r => (
         <div key={r.id} onClick={() => onOpenRest(r)} style={{
-          background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14, padding: '14px 16px',
-          border: '1px solid rgba(255,255,255,0.1)', marginBottom: 10, cursor: 'pointer',
+          background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14, padding: '14px 16px',
+          border: '1px solid rgba(0,0,0,0.08)', marginBottom: 10, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0, overflow: 'hidden' }}>
             {r.logo_url ? <img src={r.logo_url} alt="" style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} /> : '🍽️'}
           </div>
           <div style={{ flex: 1 }}>

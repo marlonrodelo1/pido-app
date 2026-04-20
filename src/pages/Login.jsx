@@ -71,7 +71,7 @@ export default function Login() {
   const inputStyle = {
     width: '100%', padding: '14px 16px 14px 44px', borderRadius: 14,
     border: '1px solid transparent', fontSize: 14, fontFamily: 'inherit',
-    background: '#262626', color: 'var(--c-text)', outline: 'none',
+    background: '#F4F2EC', color: 'var(--c-text)', outline: 'none',
     boxSizing: 'border-box', transition: 'border 0.2s',
   }
   const inputFocus = { borderColor: 'var(--c-primary)' }
@@ -134,7 +134,7 @@ export default function Login() {
       <div style={{ width: '100%', maxWidth: 340 }}>
         {/* Tab switcher */}
         {modo !== 'reset' ? (
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 3, marginBottom: 24 }}>
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.06)', borderRadius: 14, padding: 3, marginBottom: 24 }}>
             {['login', 'registro'].map(m => (
               <button key={m} onClick={() => { setModo(m); setError(null); setErrores({}) }} style={{
                 flex: 1, padding: '10px 0', borderRadius: 12, border: 'none',
@@ -243,8 +243,8 @@ export default function Login() {
         {/* CTA */}
         <button onClick={handleSubmit} disabled={loading || !!(blockedUntil && Date.now() < blockedUntil)} style={{
           width: '100%', padding: '16px 0', borderRadius: 12, border: 'none',
-          background: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'rgba(255,255,255,0.08)' : 'var(--c-btn-gradient)',
-          color: '#fff', fontSize: 15, fontWeight: 700,
+          background: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)',
+          color: '#1F1F1E', fontSize: 15, fontWeight: 700,
           cursor: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'default' : 'pointer',
           fontFamily: 'inherit', marginTop: 4, letterSpacing: '0.01em',
         }}>
@@ -255,9 +255,9 @@ export default function Login() {
         {modo !== 'reset' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+              <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.05)' }} />
               <span style={{ fontSize: 11, color: '#767575', fontWeight: 600 }}>o</span>
-              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+              <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.05)' }} />
             </div>
             <button onClick={async () => {
               setError(null); setLoading(true)
@@ -275,8 +275,8 @@ export default function Login() {
               } catch (err) { setError('Error al conectar con Google: ' + err.message); setLoading(false) }
             }} style={{
               width: '100%', padding: '14px 0', borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', color: 'var(--c-text)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', color: 'var(--c-text)',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               transition: 'border-color 0.2s',
@@ -308,10 +308,10 @@ export default function Login() {
             }}>
               <div style={{
                 width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                border: aceptaTerminos ? 'none' : errores.terminos ? '1.5px solid #EF4444' : '1.5px solid rgba(255,255,255,0.1)',
+                border: aceptaTerminos ? 'none' : errores.terminos ? '1.5px solid #EF4444' : '1.5px solid rgba(0,0,0,0.08)',
                 background: aceptaTerminos ? 'var(--c-primary)' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, color: '#fff', transition: 'all 0.15s',
+                fontSize: 12, color: '#1F1F1E', transition: 'all 0.15s',
               }}>
                 {aceptaTerminos && '✓'}
               </div>

@@ -19,8 +19,8 @@ const S = {
   label: { fontSize: 11, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 },
   selBtn: (active) => ({
     flex: 1, padding: '14px 0', borderRadius: 14,
-    border: active ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
-    background: active ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
+    border: active ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
+    background: active ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
     fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
     color: 'var(--c-text)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -98,7 +98,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
       <button onClick={handlePagar} disabled={loading || !stripe} style={{
         width: '100%', padding: '16px 0', borderRadius: 12, border: 'none',
-        background: loading ? '#484847' : 'var(--c-btn-gradient)', color: '#fff',
+        background: loading ? '#E8E6E0' : 'var(--c-btn-gradient)', color: '#fff',
         fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
         fontFamily: 'inherit', letterSpacing: '0.01em',
       }}>
@@ -422,13 +422,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               width: '100%', maxWidth: 420,
               maxHeight: '88vh', overflowY: 'auto',
               animation: 'slideUp 0.3s ease',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(0,0,0,0.08)',
               borderBottom: 'none',
               boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
             }}
           >
             {/* Handle */}
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 16px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.08)', margin: '0 auto 16px' }} />
 
             {pasoTarjeta && clientSecret ? (
               <Elements stripe={stripePromise} options={{
@@ -437,8 +437,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   theme: 'night',
                   variables: {
                     colorPrimary: '#FF6B2C',
-                    colorBackground: '#262626',
-                    colorText: '#F5F5F5',
+                    colorBackground: '#F4F2EC',
+                    colorText: '#1F1F1E',
                     colorDanger: '#EF4444',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                     borderRadius: '12px',
@@ -477,7 +477,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '-0.02em' }}>Tu pedido</h3>
                   <button onClick={() => setOpen(false)} style={{
-                    width: 30, height: 30, borderRadius: 12, background: 'rgba(255,255,255,0.08)',
+                    width: 30, height: 30, borderRadius: 12, background: 'rgba(0,0,0,0.06)',
                     border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <X size={14} strokeWidth={2.5} color="var(--c-muted)" />
@@ -492,8 +492,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     <div key={idx} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
                       padding: '14px 16px', marginBottom: 8,
-                      background: 'rgba(255,255,255,0.04)', borderRadius: 14,
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      background: 'rgba(0,0,0,0.04)', borderRadius: 14,
+                      border: '1px solid rgba(0,0,0,0.05)',
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)', lineHeight: 1.3 }}>{item.nombre}</div>
@@ -509,7 +509,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           {(item.precio_unitario * item.cantidad).toFixed(2)} €
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0, background: 'rgba(255,255,255,0.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0, background: 'rgba(0,0,0,0.05)', borderRadius: 10, border: '1px solid rgba(0,0,0,0.06)' }}>
                         <button
                           onClick={() => updateCantidad(idx, item.cantidad - 1)}
                           aria-label="Restar"
@@ -540,13 +540,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 <div style={{ marginBottom: 16 }}>
                   <div style={S.label}>Tipo de entrega</div>
                   {!tieneDelivery && (
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: '#6B6B68', marginBottom: 8 }}>
                       Este restaurante solo ofrece recogida en local
                     </div>
                   )}
                   {tieneDelivery && !driversLoading && driversOnline === 0 && (
                     <div style={{
-                      fontSize: 12, color: '#F5F5F5', marginBottom: 8,
+                      fontSize: 12, color: '#1F1F1E', marginBottom: 8,
                       padding: '10px 12px', borderRadius: 10,
                       background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
                       fontWeight: 600,
@@ -599,8 +599,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                           padding: '12px 14px', borderRadius: 14, marginBottom: 6,
                           cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                          border: tarjetaSel === c.id ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
-                          background: tarjetaSel === c.id ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
+                          border: tarjetaSel === c.id ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
+                          background: tarjetaSel === c.id ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
                         }}>
                           <div style={{ flex: 1 }}>
                             <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)', textTransform: 'capitalize' }}>{c.brand} </span>
@@ -612,7 +612,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       ))}
                       <button onClick={() => setTarjetaSel(null)} style={{
                         width: '100%', padding: '8px', borderRadius: 12,
-                        border: '1px dashed rgba(255,255,255,0.1)',
+                        border: '1px dashed rgba(0,0,0,0.08)',
                         background: 'transparent', color: 'var(--c-muted)',
                         fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                       }}>
@@ -665,7 +665,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       Envío gestionado por el restaurante
                     </div>
                   )}
-                  {propina > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#FBBF24' }}><span>Propina</span><span style={{ fontWeight: 600 }}>{propina} €</span></div>}
+                  {propina > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#D97706' }}><span>Propina</span><span style={{ fontWeight: 600 }}>{propina} €</span></div>}
                 </div>
 
                 <div style={{
@@ -685,7 +685,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     placeholder="Ej: sin cebolla, piso 3.º izquierda..."
                     style={{
                       width: '100%', padding: '12px 14px', borderRadius: 14,
-                      border: 'none', background: '#262626',
+                      border: 'none', background: '#F4F2EC',
                       fontSize: 13, fontFamily: 'inherit', color: 'var(--c-text)',
                       outline: 'none', boxSizing: 'border-box',
                     }}
@@ -694,7 +694,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
                 {/* Avisos envío */}
                 {envioError && modoEntrega === 'delivery' && (
-                  <div style={{ marginBottom: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 12, color: '#FBBF24', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ marginBottom: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 12, color: '#D97706', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16 }}>⚠️</span> Envío estimado (2.50€). El coste final puede variar.
                   </div>
                 )}
@@ -794,7 +794,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                             style={{
                               width: '100%', padding: '10px 10px 10px 32px', borderRadius: 14,
                               border: 'none', fontSize: 13, fontFamily: 'inherit',
-                              background: '#262626', color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box',
+                              background: '#F4F2EC', color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box',
                             }}
                           />
                         </div>
@@ -802,7 +802,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                         {dirMsg && <div style={{ fontSize: 11, color: '#EF4444', textAlign: 'center', marginBottom: 4 }}>{dirMsg}</div>}
 
                         <button onClick={() => { setMostrarAddDir(false); setDirMsg(null) }} style={{
-                          width: '100%', padding: '8px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
+                          width: '100%', padding: '8px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)',
                           background: 'transparent', color: 'var(--c-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
                         }}>Cancelar</button>
                       </div>
@@ -828,8 +828,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {/* CTA */}
                 <button onClick={iniciarPago} disabled={isDisabled} style={{
                   width: '100%', marginTop: 14, padding: '16px 0', borderRadius: 12, border: 'none',
-                  background: isDisabled ? '#484847' : 'var(--c-btn-gradient)',
-                  color: '#fff', fontSize: 15, fontWeight: 700,
+                  background: isDisabled ? '#E8E6E0' : 'var(--c-btn-gradient)',
+                  color: '#1F1F1E', fontSize: 15, fontWeight: 700,
                   cursor: isDisabled ? 'default' : 'pointer',
                   fontFamily: 'inherit', letterSpacing: '0.01em',
                   opacity: isDisabled ? 0.55 : 1,

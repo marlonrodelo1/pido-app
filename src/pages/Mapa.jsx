@@ -61,7 +61,7 @@ export default function Mapa({ onOpenRest }) {
     return (
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
         <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', margin: '0 0 16px' }}>Mapa</h2>
-        <div style={{ height: 300, borderRadius: 16, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ height: 300, borderRadius: 16, background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ color: 'var(--c-muted)', fontSize: 13 }}>Cargando mapa...</div>
         </div>
       </div>
@@ -71,14 +71,14 @@ export default function Mapa({ onOpenRest }) {
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
       {geoError && (
-        <div style={{ marginBottom: 10, padding: '8px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 11, color: '#FBBF24', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ marginBottom: 10, padding: '8px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 11, color: '#D97706', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
           📍 Activa tu ubicación para centrar el mapa
         </div>
       )}
 
       {/* Contadores flotantes */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--c-border)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, color: 'var(--c-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ background: 'rgba(0,0,0,0.06)', border: '1px solid var(--c-border)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, color: 'var(--c-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 14 }}>🍽️</span> {establecimientos.length} establecimientos
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function Mapa({ onOpenRest }) {
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
                   border: `2.5px solid ${selectedEst?.id === est.id ? '#fff' : '#FF6B2C'}`,
-                  overflow: 'hidden', background: '#1A1A1A',
+                  overflow: 'hidden', background: '#FFFFFF',
                   transform: 'translate(-50%, -50%)',
                   cursor: 'pointer',
                   boxShadow: selectedEst?.id === est.id
@@ -182,7 +182,7 @@ export default function Mapa({ onOpenRest }) {
                 <div style={{ fontWeight: 800, fontSize: 13, color: '#1A1A1A' }}>{selectedEst.nombre}</div>
               </div>
               <div style={{ fontSize: 11, color: '#666', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                <span style={{ color: '#FBBF24' }}>★</span> {selectedEst.rating?.toFixed(1) || '—'}
+                <span style={{ color: '#D97706' }}>★</span> {selectedEst.rating?.toFixed(1) || '—'}
                 <span style={{ margin: '0 4px' }}>·</span>
                 <span style={{ textTransform: 'capitalize' }}>{selectedEst.tipo}</span>
               </div>

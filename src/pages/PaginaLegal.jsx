@@ -28,7 +28,7 @@ export default function PaginaLegal({ slug, onBack }) {
       .catch(() => setLoading(false))
   }, [slug])
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Cargando...</div></div>
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div></div>
   if (!pagina) return <div style={{ textAlign: 'center', padding: '60px 20px' }}><div style={{ fontSize: 48, marginBottom: 12 }}>📄</div><div style={{ fontSize: 16, fontWeight: 700 }}>Página no encontrada</div></div>
 
   return (
@@ -39,10 +39,10 @@ export default function PaginaLegal({ slug, onBack }) {
         </button>
       )}
       <div
-        style={{ fontSize: 14, lineHeight: 1.7, color: '#F5F5F5' }}
+        style={{ fontSize: 14, lineHeight: 1.7, color: '#1F1F1E' }}
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pagina.contenido) }}
       />
-      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 24, textAlign: 'center' }}>
+      <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginTop: 24, textAlign: 'center' }}>
         Última actualización: {new Date(pagina.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
       </div>
     </div>

@@ -152,7 +152,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             {pedido.estado === 'cancelado' ? 'Pedido cancelado' : 'Entrega fallida'}
           </div>
           {pedido.motivo_cancelacion && (
-            <div style={{ fontSize: 14, color: 'var(--c-text)', marginBottom: 12, fontWeight: 600, background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{ fontSize: 14, color: 'var(--c-text)', marginBottom: 12, fontWeight: 600, background: 'rgba(0,0,0,0.06)', borderRadius: 10, padding: '10px 14px' }}>
               {pedido.motivo_cancelacion}
             </div>
           )}
@@ -214,7 +214,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
         {/* Contador auto-cierre */}
         {mostrarContador && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 16 }}>
             <span style={{ fontSize: 11, color: 'var(--c-muted)' }}>Cerrando en {secondsLeft}s...</span>
             <button onClick={() => setAutoCloseCancelled(true)} style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>
               Dejar valoración
@@ -224,7 +224,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
         {/* Formulario valoración (solo si el usuario cancela el cierre o ya interactuó) */}
         {(autoCloseCancelled || yaValorado || resenaEnviada) && (
-          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ background: 'rgba(0,0,0,0.06)', borderRadius: 14, padding: 20, border: '1px solid rgba(0,0,0,0.08)' }}>
             {yaValorado || resenaEnviada ? (
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
@@ -238,8 +238,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   {[1, 2, 3, 4, 5].map(i => (
                     <button key={i} onClick={() => setValoracion(i)} style={{
                       width: 40, height: 40, borderRadius: 10,
-                      border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-                      background: i <= valoracion ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
+                      border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.08)',
+                      background: i <= valoracion ? 'var(--c-primary)' : 'rgba(0,0,0,0.06)',
                       cursor: 'pointer', fontSize: 18, color: i <= valoracion ? '#fff' : '#767575', transition: 'all 0.15s',
                     }}>★</button>
                   ))}
@@ -248,7 +248,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   <>
                     <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuéntanos más sobre tu experiencia (opcional)..." rows={3} style={{
                       width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none',
-                      fontSize: 13, fontFamily: 'inherit', background: '#262626',
+                      fontSize: 13, fontFamily: 'inherit', background: '#F4F2EC',
                       color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12,
                     }} />
                     {errorResena && <div style={{ fontSize: 12, color: '#EF4444', textAlign: 'center', marginBottom: 10, fontWeight: 600 }}>{errorResena}</div>}
@@ -304,14 +304,14 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           const done = idx < currentStep
           const active = idx === currentStep
           const future = idx > currentStep
-          const bg = done ? '#10B981' : active ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)'
+          const bg = done ? '#10B981' : active ? 'var(--c-primary)' : 'rgba(0,0,0,0.06)'
           const textColor = future ? '#767575' : '#fff'
           return (
             <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               {idx < stepLabels.length - 1 && (
                 <div style={{
                   position: 'absolute', top: 12, left: '55%', right: '-45%', height: 2,
-                  background: done ? '#10B981' : 'rgba(255,255,255,0.08)',
+                  background: done ? '#10B981' : 'rgba(0,0,0,0.06)',
                   zIndex: 0,
                 }} />
               )}
@@ -335,20 +335,20 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
       {/* Estado 0: Esperando al restaurante */}
       {(pedido.estado === 'nuevo' || pedido.estado === 'aceptado') && (
-        <div style={{ borderRadius: 16, marginBottom: 16, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e2a3a 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        <div style={{ borderRadius: 16, marginBottom: 16, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e2a3a 100%)', border: '1px solid rgba(0,0,0,0.06)', height: 180, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           {[...Array(8)].map((_, i) => (
             <div key={i} style={{ position: 'absolute', top: 8 + (i * 11) % 60, left: `${8 + (i * 19) % 84}%`, width: 2, height: 2, borderRadius: '50%', background: '#fff', opacity: 0.25 + (i % 3) * 0.15, animation: `pulse2 ${1.8 + i * 0.4}s ease-in-out infinite ${i * 0.3}s` }} />
           ))}
           <div style={{ fontSize: 44, animation: 'pulse2 2s ease-in-out infinite' }}>⏳</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Esperando al restaurante...</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>Te avisaremos cuando acepten tu pedido</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#1F1F1E' }}>Esperando al restaurante...</div>
+          <div style={{ fontSize: 11, color: '#6B6B68' }}>Te avisaremos cuando acepten tu pedido</div>
         </div>
       )}
 
       {/* Estado 1: Preparando / Listo */}
       {(pedido.estado === 'preparando' || pedido.estado === 'listo') && (
         <>
-          <div style={{ borderRadius: 16, marginBottom: 12, overflow: 'hidden', background: 'linear-gradient(135deg, #1a1207 0%, #2d1f0e 50%, #1a1207 100%)', border: '1px solid rgba(255,255,255,0.07)', height: 180, position: 'relative' }}>
+          <div style={{ borderRadius: 16, marginBottom: 12, overflow: 'hidden', background: 'linear-gradient(135deg, #1a1207 0%, #2d1f0e 50%, #1a1207 100%)', border: '1px solid rgba(0,0,0,0.06)', height: 180, position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%),repeating-linear-gradient(0deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%)', backgroundSize: '22px 22px' }} />
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg,#5C4033,#4A3428)', borderTop: '3px solid #6B4F3A' }} />
             <div style={{ position: 'absolute', bottom: '40%', left: '10%', animation: 'floatPan 2s ease-in-out infinite' }}>
@@ -381,7 +381,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
 
           {esDelivery && !riderOk && (
-            <div style={{ borderRadius: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ borderRadius: 12, padding: '12px 14px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 18 }}>🛵</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)' }}>Buscando repartidor...</div>
@@ -418,7 +418,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   Ver ubicación en tiempo real
                 </button>
               ) : iframeError ? (
-                <div style={{ borderRadius: 14, padding: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+                <div style={{ borderRadius: 14, padding: 20, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
                   <div style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 14 }}>Abre el seguimiento en una nueva pestaña</div>
                   <button onClick={abrirTrackingExterno} style={{
                     padding: '14px 26px', borderRadius: 12, border: 'none',
@@ -430,7 +430,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   </button>
                 </div>
               ) : (
-                <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', background: '#1a1a1a' }}>
+                <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', position: 'relative', background: '#FFFFFF' }}>
                   <iframe
                     src={pedido.shipday_tracking_url}
                     title="Seguimiento del repartidor"
@@ -452,7 +452,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               )}
             </>
           ) : (
-            <div style={{ borderRadius: 14, padding: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+            <div style={{ borderRadius: 14, padding: 20, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--c-muted)' }}>Preparando el seguimiento en tiempo real...</div>
             </div>
           )}

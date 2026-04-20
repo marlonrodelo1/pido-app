@@ -36,10 +36,10 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0D0D0D', color: '#F5F5F5', fontFamily: "'DM Sans', sans-serif", padding: 32, textAlign: 'center' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FAFAF7', color: '#1F1F1E', fontFamily: "'DM Sans', sans-serif", padding: 32, textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>😵</div>
           <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Algo salio mal</div>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 24, maxWidth: 300, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: '#6B6B68', marginBottom: 24, maxWidth: 300, lineHeight: 1.5 }}>
             Ha ocurrido un error inesperado. Intenta recargar la pagina.
           </p>
           <button onClick={() => window.location.reload()} style={{
@@ -58,7 +58,7 @@ class ErrorBoundary extends Component {
 
 const SuspenseFallback = (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Cargando...</div>
+    <div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div>
   </div>
 )
 
@@ -125,10 +125,10 @@ function AppContent() {
       {/* Header */}
       <div style={{
         padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'rgba(13,13,13,0.72)',
+        background: 'rgba(250,250,247,0.85)',
         backdropFilter: 'blur(16px) saturate(180%)',
         WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid var(--c-border)',
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -236,7 +236,7 @@ function AppContent() {
       {loginOpen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 300,
-          background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(6px)',
+          background: 'rgba(15,15,15,0.55)', backdropFilter: 'blur(6px)',
           overflowY: 'auto', animation: 'fadeIn 0.25s ease',
         }}>
           <button
@@ -245,9 +245,9 @@ function AppContent() {
             style={{
               position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 14, zIndex: 310,
               width: 36, height: 36, borderRadius: 999,
-              background: 'rgba(255,255,255,0.12)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.95)',
+              border: '1px solid #E8E6E0',
+              color: '#1F1F1E', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backdropFilter: 'blur(10px)',
             }}
@@ -263,16 +263,16 @@ function AppContent() {
 
 const shellStyle = {
   '--c-primary': '#FF6B2C',
-  '--c-primary-light': 'rgba(255,107,44,0.15)',
-  '--c-primary-soft': 'rgba(255,107,44,0.25)',
-  '--c-bg': '#0D0D0D',
-  '--c-surface': 'rgba(255,255,255,0.08)',
-  '--c-surface2': 'rgba(255,255,255,0.05)',
-  '--c-border': 'rgba(255,255,255,0.1)',
-  '--c-text': '#F5F5F5',
-  '--c-muted': 'rgba(255,255,255,0.45)',
-  '--c-glass': 'rgba(255,255,255,0.06)',
-  '--c-glass-border': 'rgba(255,255,255,0.12)',
+  '--c-primary-light': 'rgba(255,107,44,0.10)',
+  '--c-primary-soft': 'rgba(255,107,44,0.18)',
+  '--c-bg': '#FAFAF7',
+  '--c-surface': '#FFFFFF',
+  '--c-surface2': '#F4F2EC',
+  '--c-border': '#E8E6E0',
+  '--c-text': '#1F1F1E',
+  '--c-muted': '#6B6B68',
+  '--c-glass': 'rgba(255,255,255,0.7)',
+  '--c-glass-border': 'rgba(0,0,0,0.06)',
   fontFamily: "'DM Sans', sans-serif",
   margin: '0 auto',
   background: 'var(--c-bg)',
@@ -287,7 +287,7 @@ const globalCss = `
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 *{box-sizing:border-box;margin:0;padding:0}
 ::-webkit-scrollbar{display:none}
-body{background:#0D0D0D;margin:0}
+body{background:#FAFAF7;color:#1F1F1E;margin:0}
 @media(min-width:768px){
   .tablet-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:14px!important}
   .tablet-grid>*{margin-bottom:0!important}
@@ -325,8 +325,8 @@ function TiendaDetector() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       StatusBar.setOverlaysWebView({ overlay: false })
-      StatusBar.setBackgroundColor({ color: '#0D0D0D' })
-      StatusBar.setStyle({ style: Style.Dark })
+      StatusBar.setBackgroundColor({ color: '#FAFAF7' })
+      StatusBar.setStyle({ style: Style.Light })
 
       // Capturar deep link de OAuth callback
       CapApp.addListener('appUrlOpen', async ({ url }) => {
@@ -441,10 +441,10 @@ function TiendaDetector() {
       <div style={{ ...shellStyle, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <style>{globalCss}</style>
         <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#F5F5F5', marginBottom: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1F1F1E', marginBottom: 8, textAlign: 'center' }}>
           Cuenta confirmada
         </div>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: '#6B6B68', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
           Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesion en pidoo.
         </p>
         <button onClick={() => { setEmailConfirmado(false); window.location.hash = ''; window.location.href = '/' }} style={{
@@ -455,7 +455,7 @@ function TiendaDetector() {
           Iniciar sesion
         </button>
         <button onClick={() => { setEmailConfirmado(false); window.location.hash = '' }} style={{
-          marginTop: 16, background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)',
+          marginTop: 16, background: 'none', border: 'none', color: '#6B6B68',
           fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
         }}>
           Continuar en la web

@@ -206,20 +206,20 @@ export default function Perfil() {
             {!loadingDirs && direcciones.map(dir => (
               <div key={dir.id} style={{
                 ...glass, padding: '14px 16px', marginBottom: 10,
-                border: dir.principal ? '1.5px solid rgba(255,107,44,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                background: dir.principal ? 'rgba(255,107,44,0.06)' : 'rgba(255,255,255,0.08)',
+                border: dir.principal ? '1.5px solid rgba(255,107,44,0.4)' : '1px solid rgba(0,0,0,0.08)',
+                background: dir.principal ? 'rgba(255,107,44,0.06)' : 'rgba(0,0,0,0.06)',
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{
                     width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                    background: dir.principal ? 'rgba(255,107,44,0.15)' : 'rgba(255,255,255,0.08)',
+                    background: dir.principal ? 'rgba(255,107,44,0.15)' : 'rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     <MapPin size={18} strokeWidth={1.8} color={dir.principal ? 'var(--c-primary)' : 'var(--c-muted)'} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: dir.principal ? 'var(--c-primary)' : '#F5F5F5' }}>{dir.etiqueta}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: dir.principal ? 'var(--c-primary)' : '#1F1F1E' }}>{dir.etiqueta}</span>
                       {dir.principal && (
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,107,44,0.2)', color: 'var(--c-primary)' }}>PRINCIPAL</span>
                       )}
@@ -253,7 +253,7 @@ export default function Perfil() {
             {/* Formulario añadir nueva dirección */}
             {addingDir ? (
               <div style={{ ...glass, padding: 16, marginTop: 10 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#F5F5F5' }}>Nueva direccion</div>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#1F1F1E' }}>Nueva direccion</div>
 
                 {/* Etiqueta */}
                 <label style={labelStyle}>Etiqueta</label>
@@ -262,9 +262,9 @@ export default function Perfil() {
                     <button key={e} onClick={() => setNuevaEtiqueta(e)} style={{
                       padding: '8px 14px', borderRadius: 12, fontSize: 12, fontWeight: 700,
                       cursor: 'pointer', fontFamily: 'inherit',
-                      border: nuevaEtiqueta === e ? '2px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-                      background: nuevaEtiqueta === e ? 'rgba(255,107,44,0.12)' : 'rgba(255,255,255,0.04)',
-                      color: nuevaEtiqueta === e ? 'var(--c-primary)' : '#F5F5F5',
+                      border: nuevaEtiqueta === e ? '2px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.08)',
+                      background: nuevaEtiqueta === e ? 'rgba(255,107,44,0.12)' : 'rgba(0,0,0,0.04)',
+                      color: nuevaEtiqueta === e ? 'var(--c-primary)' : '#1F1F1E',
                     }}>{e === 'Casa' ? '🏠 Casa' : e === 'Trabajo' ? '💼 Trabajo' : '📍 Otro'}</button>
                   ))}
                 </div>
@@ -298,7 +298,7 @@ export default function Perfil() {
                 </div>
 
                 <button onClick={() => { setAddingDir(false); setNuevaDir(''); setNuevaEtiqueta('Casa') }} style={{
-                  width: '100%', padding: '10px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)',
+                  width: '100%', padding: '10px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.08)',
                   background: 'transparent', color: 'var(--c-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                 }}>Cancelar</button>
               </div>
@@ -334,12 +334,12 @@ export default function Perfil() {
                 <button key={m.id} onClick={async () => { await updatePerfil({ metodo_pago_preferido: m.id }) }} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px',
                   borderRadius: 14, marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                  border: sel ? '2px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.1)',
-                  background: sel ? 'rgba(255,107,44,0.1)' : 'rgba(255,255,255,0.04)',
+                  border: sel ? '2px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.08)',
+                  background: sel ? 'rgba(255,107,44,0.1)' : 'rgba(0,0,0,0.04)',
                 }}>
                   <span style={{ fontSize: 28 }}>{m.emoji}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: sel ? 'var(--c-primary)' : '#F5F5F5' }}>{m.label}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: sel ? 'var(--c-primary)' : '#1F1F1E' }}>{m.label}</div>
                     <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{m.desc}</div>
                   </div>
                   {sel && <Check size={18} color="var(--c-primary)" />}
@@ -406,7 +406,7 @@ export default function Perfil() {
           </div>
           <button onClick={() => avatarRef.current?.click()} style={{
             position: 'absolute', bottom: -4, right: -4, width: 28, height: 28,
-            borderRadius: 10, background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '2px solid rgba(255,255,255,0.1)',
+            borderRadius: 10, background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '2px solid rgba(0,0,0,0.08)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <Camera size={13} strokeWidth={2} color="var(--c-primary)" />
@@ -421,7 +421,7 @@ export default function Perfil() {
           setNombre(perfil?.nombre || ''); setApellido(perfil?.apellido || ''); setTelefono(perfil?.telefono || '')
           setEditando(true)
         }} style={{
-          marginTop: 10, padding: '6px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
+          marginTop: 10, padding: '6px 16px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)',
           background: 'transparent', fontSize: 12, fontWeight: 700, cursor: 'pointer',
           fontFamily: 'inherit', color: 'var(--c-primary)',
         }}>
@@ -483,15 +483,15 @@ export default function Perfil() {
             animation: 'slideUp 0.3s ease',
             backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
             boxShadow: '0 -8px 32px rgba(255,107,44,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
+            border: '1px solid rgba(0,0,0,0.08)', borderBottom: 'none',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#F5F5F5' }}>Editar perfil</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1F1F1E' }}>Editar perfil</h3>
               <button onClick={() => setEditando(false)} style={{
-                width: 32, height: 32, borderRadius: 12, background: 'rgba(255,255,255,0.1)',
+                width: 32, height: 32, borderRadius: 12, background: 'rgba(0,0,0,0.08)',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <X size={16} strokeWidth={2} color="#F5F5F5" />
+                <X size={16} strokeWidth={2} color="#1F1F1E" />
               </button>
             </div>
 
@@ -509,7 +509,7 @@ export default function Perfil() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Email</label>
-              <input value={user?.email || perfil?.email || ''} disabled style={{ ...inputDark, opacity: 0.5, cursor: 'not-allowed', background: 'rgba(255,255,255,0.04)' }} />
+              <input value={user?.email || perfil?.email || ''} disabled style={{ ...inputDark, opacity: 0.5, cursor: 'not-allowed', background: 'rgba(0,0,0,0.04)' }} />
             </div>
 
             {msg && (
@@ -524,7 +524,7 @@ export default function Perfil() {
 
             <button onClick={handleGuardar} disabled={saving} style={{
               width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: saving ? 'rgba(255,255,255,0.08)' : 'var(--c-btn-gradient)', color: '#fff',
+              background: saving ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)', color: saving ? '#6B6B68' : '#fff',
               fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
             }}>
               {saving ? 'Guardando...' : 'Guardar cambios'}
@@ -554,11 +554,11 @@ export default function Perfil() {
               }}>
                 <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
               </div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#F5F5F5' }}>Eliminar cuenta</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1F1F1E' }}>Eliminar cuenta</h3>
             </div>
 
             <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginBottom: 16 }}>
-              Esta acción es <strong style={{ color: '#F5F5F5' }}>permanente</strong>. Se borrarán tu perfil, direcciones, notificaciones, métodos de pago y suscripciones push. Tu historial de pedidos se anonimiza por requisito legal/contable. No podrás recuperar la cuenta.
+              Esta acción es <strong style={{ color: '#1F1F1E' }}>permanente</strong>. Se borrarán tu perfil, direcciones, notificaciones, métodos de pago y suscripciones push. Tu historial de pedidos se anonimiza por requisito legal/contable. No podrás recuperar la cuenta.
             </p>
 
             <label style={{ ...labelStyle, color: 'rgba(239,68,68,0.7)' }}>Escribe ELIMINAR para confirmar</label>
@@ -584,9 +584,9 @@ export default function Perfil() {
               style={{
                 width: '100%', padding: '14px', borderRadius: 12, border: 'none',
                 background: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR')
-                  ? 'rgba(239,68,68,0.25)'
-                  : '#EF4444',
-                color: '#fff', fontSize: 14, fontWeight: 700,
+                  ? 'rgba(220,38,38,0.20)'
+                  : '#DC2626',
+                color: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') ? '#9A1F1F' : '#fff', fontSize: 14, fontWeight: 700,
                 cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') ? 'default' : 'pointer',
                 fontFamily: 'inherit', marginBottom: 8,
               }}>
@@ -597,7 +597,7 @@ export default function Perfil() {
               disabled={deleting}
               style={{
                 width: '100%', padding: '12px', borderRadius: 12,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid rgba(0,0,0,0.08)',
                 background: 'transparent', color: 'var(--c-muted)',
                 fontSize: 13, cursor: deleting ? 'default' : 'pointer', fontFamily: 'inherit',
               }}>
@@ -624,7 +624,7 @@ function PromosSection() {
       <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Promociones</h2>
       {loading && <div style={{ textAlign: 'center', padding: 30, color: 'var(--c-muted)' }}>Cargando...</div>}
       {!loading && promos.length === 0 && (
-        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 24, textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ background: 'rgba(0,0,0,0.05)', borderRadius: 14, padding: 24, textAlign: 'center', border: '1px solid rgba(0,0,0,0.06)' }}>
           <Tag size={32} strokeWidth={1.5} color="var(--c-muted)" style={{ marginBottom: 12 }} />
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Sin promociones activas</div>
           <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>Las promociones aparecen aqui cuando los restaurantes las publican</div>
@@ -632,11 +632,11 @@ function PromosSection() {
       )}
       {promos.map(p => (
         <div key={p.id} style={{
-          background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 16px',
+          background: 'rgba(0,0,0,0.05)', borderRadius: 14, padding: '14px 16px',
           border: '1px solid rgba(220,38,38,0.2)', marginBottom: 10,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', background: 'rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
             {p.establecimientos?.logo_url ? <img src={p.establecimientos.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🍽️'}
           </div>
           <div style={{ flex: 1 }}>
@@ -654,19 +654,19 @@ function PromosSection() {
 }
 
 const glass = {
-  background: 'rgba(255,255,255,0.08)', borderRadius: 14,
-  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(0,0,0,0.06)', borderRadius: 14,
+  border: '1px solid rgba(0,0,0,0.08)',
   backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
 }
 
 const inputDark = {
   width: '100%', padding: '14px 16px', borderRadius: 14,
-  border: 'none', fontSize: 14, fontFamily: 'inherit',
-  background: '#262626', color: '#F5F5F5', outline: 'none',
+  border: '1px solid #E8E6E0', fontSize: 14, fontFamily: 'inherit',
+  background: '#F4F2EC', color: '#1F1F1E', outline: 'none',
   boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)',
+  fontSize: 11, fontWeight: 700, color: '#6B6B68',
   marginBottom: 6, display: 'block', letterSpacing: '0.05em', textTransform: 'uppercase',
 }

@@ -55,10 +55,10 @@ export default function ResetPassword() {
     return (
       <div style={containerStyle}>
         <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#F5F5F5', marginBottom: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1F1F1E', marginBottom: 8, textAlign: 'center' }}>
           Contrasena actualizada
         </div>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: '#3D3D3B', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
           Tu contrasena se ha cambiado correctamente. Redirigiendo al inicio de sesion...
         </p>
         <a href="/" style={btnStyle}>
@@ -72,7 +72,7 @@ export default function ResetPassword() {
     return (
       <div style={containerStyle}>
         <div style={{ fontSize: 48, fontWeight: 800, color: '#FF6B2C', letterSpacing: -2, marginBottom: 16 }}>pidoo</div>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Verificando enlace...</div>
+        <div style={{ color: '#6B6B68', fontSize: 13 }}>Verificando enlace...</div>
       </div>
     )
   }
@@ -80,7 +80,7 @@ export default function ResetPassword() {
   return (
     <div style={containerStyle}>
       <div style={{ fontSize: 48, fontWeight: 800, color: '#FF6B2C', letterSpacing: -2, marginBottom: 8 }}>pidoo</div>
-      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 32, textAlign: 'center' }}>
+      <p style={{ fontSize: 13, color: '#6B6B68', marginBottom: 32, textAlign: 'center' }}>
         Introduce tu nueva contrasena
       </p>
 
@@ -136,7 +136,7 @@ export default function ResetPassword() {
 
         <button onClick={handleSubmit} disabled={loading} style={{
           width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
-          background: loading ? 'rgba(255,255,255,0.45)' : '#FF6B2C', color: '#fff',
+          background: loading ? '#6B6B68' : '#FF6B2C', color: '#fff',
           fontSize: 16, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
           fontFamily: "'DM Sans', sans-serif", marginTop: 6, transition: 'background 0.2s',
         }}>
@@ -149,25 +149,25 @@ export default function ResetPassword() {
 
 const containerStyle = {
   minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center',
-  justifyContent: 'center', padding: '40px 20px', background: '#0D0D0D',
-  fontFamily: "'DM Sans', sans-serif", color: '#F5F5F5',
+  justifyContent: 'center', padding: '40px 20px', background: '#FAFAF7',
+  fontFamily: "'DM Sans', sans-serif", color: '#1F1F1E',
 }
 
 const inputWrap = { position: 'relative', marginBottom: 12 }
 
-const iconStyle = { position: 'absolute', left: 14, top: 14, color: 'rgba(255,255,255,0.45)' }
+const iconStyle = { position: 'absolute', left: 14, top: 14, color: '#6B6B68' }
 
 const inputStyle = {
   width: '100%', padding: '14px 16px 14px 44px', borderRadius: 12,
-  border: '1px solid rgba(255,255,255,0.12)', fontSize: 14,
+  border: '1px solid rgba(0,0,0,0.08)', fontSize: 14,
   fontFamily: "'DM Sans', sans-serif",
-  background: 'rgba(255,255,255,0.08)', color: '#F5F5F5', outline: 'none',
+  background: 'rgba(0,0,0,0.06)', color: '#1F1F1E', outline: 'none',
   boxSizing: 'border-box', transition: 'border 0.2s',
 }
 
 const eyeBtn = {
   position: 'absolute', right: 12, top: 12, background: 'none', border: 'none',
-  cursor: 'pointer', color: 'rgba(255,255,255,0.45)', padding: 4,
+  cursor: 'pointer', color: '#6B6B68', padding: 4,
 }
 
 const btnStyle = {

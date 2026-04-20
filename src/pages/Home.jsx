@@ -240,11 +240,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
     'linear-gradient(to right, #ff9066, #ff8d44)',
   ]
 
-  /* ── Glass style ── */
+  /* ── Glass style (light) ── */
   const G = {
-    background: 'rgba(255,255,255,0.08)',
+    background: '#FFFFFF',
     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid #E8E6E0',
+    boxShadow: '0 1px 2px rgba(15,15,15,0.04), 0 1px 3px rgba(15,15,15,0.06)',
   }
 
   return (
@@ -259,25 +260,25 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
           50% { opacity: 0.7; }
         }
         .home-fade { animation: homeFadeIn 0.4s ease-out both; }
-        .skeleton { background: rgba(255,255,255,0.06); border-radius: 12px; animation: skeletonPulse 1.2s ease-in-out infinite; }
+        .skeleton { background: rgba(0,0,0,0.06); border-radius: 12px; animation: skeletonPulse 1.2s ease-in-out infinite; }
       `}</style>
       {/* ── Dirección ── */}
       <div className="home-fade" style={{ animationDelay: '0s', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16 }}>
-        <MapPin size={24} strokeWidth={2} color="#ff9066" style={{ flexShrink: 0 }} />
+        <MapPin size={24} strokeWidth={2} color="#FF6B2C" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#adaaaa', fontWeight: 700, lineHeight: '14px' }}>Enviar a</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6B6B68', fontWeight: 700, lineHeight: '14px' }}>Enviar a</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#1F1F1E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {perfil?.direccion || 'Configura tu dirección'}
           </div>
         </div>
-        <ChevronRight size={12} strokeWidth={2} color="#adaaaa" style={{ flexShrink: 0 }} />
+        <ChevronRight size={12} strokeWidth={2} color="#6B6B68" style={{ flexShrink: 0 }} />
       </div>
 
       {/* Aviso geolocalización */}
       {geoError && (
         <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 22, ...G, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14 }}>📍</span>
-          <span style={{ fontSize: 11, color: '#FBBF24', fontWeight: 600 }}>Activa tu ubicación para ver restaurantes cerca de ti</span>
+          <span style={{ fontSize: 11, color: '#D97706', fontWeight: 600 }}>Activa tu ubicación para ver restaurantes cerca de ti</span>
         </div>
       )}
 
@@ -292,19 +293,19 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
           borderRadius: 16,
           ...G,
         }}>
-          <Search size={20} strokeWidth={1.8} color="#adaaaa" style={{ marginRight: 12, flexShrink: 0 }} />
+          <Search size={20} strokeWidth={1.8} color="#6B6B68" style={{ marginRight: 12, flexShrink: 0 }} />
           <input
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             placeholder={ctx.placeholder}
-            style={{ border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', flex: 1, color: '#ffffff', fontWeight: 500 }}
+            style={{ border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', flex: 1, color: '#1F1F1E', fontWeight: 500 }}
           />
           {busqueda ? (
-            <button onClick={() => setBusqueda('')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 50, width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <X size={10} color="#adaaaa" />
+            <button onClick={() => setBusqueda('')} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 50, width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <X size={10} color="#6B6B68" />
             </button>
           ) : (
-            <SlidersHorizontal size={20} strokeWidth={1.8} color="#ff9066" style={{ flexShrink: 0 }} />
+            <SlidersHorizontal size={20} strokeWidth={1.8} color="#FF6B2C" style={{ flexShrink: 0 }} />
           )}
         </div>
       </div>
@@ -337,7 +338,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
               <span style={{
                 fontSize: 10, fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.1em',
-                color: isActive ? '#ff9066' : '#adaaaa',
+                color: isActive ? '#FF6B2C' : '#6B6B68',
               }}>
                 {c.nombre}
               </span>
@@ -350,8 +351,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       {!busqueda && !catActiva && destacados.length > 0 && (
         <div className="home-fade" style={{ animationDelay: '0.15s', marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
-            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>Destacados</h2>
-            <span style={{ color: '#ff9066', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>Ver todo</span>
+            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', margin: 0 }}>Destacados</h2>
+            <span style={{ color: '#FF6B2C', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>Ver todo</span>
           </div>
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {
@@ -405,8 +406,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
                   </div>
                   {/* Text below */}
                   <div style={{ padding: '0 4px' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1.25 }}>{r.nombre}</div>
-                    <div style={{ fontSize: 10, color: '#adaaaa', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1F1F1E', lineHeight: 1.25 }}>{r.nombre}</div>
+                    <div style={{ fontSize: 10, color: '#6B6B68', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
                       {r.tipo || 'Restaurante'} {r._distancia ? `• ${r._distancia.toFixed(0)}-${Math.round(r._distancia * 5 + 15)} min` : ''}
                     </div>
                   </div>
@@ -420,7 +421,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       {/* ── Ofertas Irresistibles (gradient cards, 128px, 22px radius) ── */}
       {!busqueda && !catActiva && promociones.length > 0 && (
         <div className="home-fade" style={{ animationDelay: '0.2s', marginBottom: 24 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
           <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollSnapType: 'x mandatory' }}>
             {promociones.map((promo, idx) => {
               const est = promo.establecimientos
@@ -489,7 +490,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
           <Bike
             size={48}
             strokeWidth={2}
-            color="rgba(255,255,255,0.3)"
+            color="rgba(0,0,0,0.35)"
             style={{ position: 'absolute', right: 110, bottom: -4, zIndex: 1 }}
           />
         </div>
@@ -497,7 +498,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
 
       {/* ── Cerca de ti (vertical stack, glass cards, 192px image, text overlay) ── */}
       <div className="home-fade" style={{ animationDelay: '0.3s', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#ffffff', margin: 0 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', margin: 0 }}>
           {busqueda ? 'Resultados' : catActiva ? ctx.titulo : 'Cerca de ti'}
         </h2>
       </div>
@@ -515,7 +516,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       )}
 
       {!loading && filtrados.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#adaaaa' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#6B6B68' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>No hay resultados</div>
         </div>
@@ -530,9 +531,9 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
           if (r._fueraDeRadio && (i === 0 || !filtrados[i - 1]._fueraDeRadio)) {
             items.push(
               <div key="fuera-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#adaaaa', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Más restaurantes</span>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+                <div style={{ flex: 1, height: 1, background: '#E8E6E0' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#6B6B68', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Más restaurantes</span>
+                <div style={{ flex: 1, height: 1, background: '#E8E6E0' }} />
               </div>
             )
           }
@@ -602,10 +603,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
                 <div style={{ position: 'absolute', bottom: 16, left: 24 }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{r.nombre}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ff9066', fontSize: 14, fontWeight: 700 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#FFD9C2', fontSize: 14, fontWeight: 700 }}>
                       <span style={{ fontSize: 12 }}>★</span> {r.rating?.toFixed(1)}
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                       {r._distancia != null ? `${r._distancia.toFixed(1)} km · ${Math.round(r._distancia * 5 + 10)} min` : r.tipo || ''}
                     </div>
                   </div>

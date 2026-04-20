@@ -35,9 +35,9 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
     <div style={{
       display: 'flex', gap: 14, alignItems: 'stretch',
       padding: '12px', marginBottom: 10,
-      background: 'rgba(255,255,255,0.04)',
+      background: 'rgba(0,0,0,0.04)',
       borderRadius: 14,
-      border: '1px solid rgba(255,255,255,0.06)',
+      border: '1px solid rgba(0,0,0,0.05)',
       cursor: 'pointer',
     }} onClick={cerrado ? onIntentoCerrado : onOpen}>
       {p.imagen_url && (
@@ -78,7 +78,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
                 aria-label="Restar"
                 style={{
                   width: 34, height: 34, borderRadius: 10, border: 'none',
-                  background: 'rgba(255,255,255,0.08)',
+                  background: 'rgba(0,0,0,0.06)',
                   color: 'var(--c-text)', fontSize: 20, fontWeight: 700,
                   cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -359,10 +359,10 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
             style={{
               position: 'absolute', top: 14, left: 14,
               display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(0,0,0,0.10)',
+              border: '1px solid rgba(0,0,0,0.08)',
               backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-              color: '#fff', padding: '7px 12px',
+              color: '#1F1F1E', padding: '7px 12px',
               borderRadius: 12, cursor: 'pointer',
               fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
             }}
@@ -375,8 +375,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           <div style={{
             position: 'absolute', bottom: -24, left: 16,
             width: 56, height: 56, borderRadius: 14,
-            border: '3px solid #0E0E0E',
-            overflow: 'hidden', background: 'rgba(255,255,255,0.08)',
+            border: '3px solid #FAFAF7',
+            overflow: 'hidden', background: '#FFFFFF',
             boxShadow: '0 4px 12px rgba(255,107,44,0.06)',
           }}>
             <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -386,7 +386,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
       {/* ── Info del restaurante ── */}
       <div style={{
-        background: '#0E0E0E',
+        background: '#FAFAF7',
         padding: est.logo_url ? '34px 16px 20px' : '20px 16px',
         marginBottom: 0,
       }}>
@@ -397,8 +397,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           {est.rating > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-              background: 'rgba(255,255,255,0.04)', padding: '4px 10px',
-              borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(0,0,0,0.04)', padding: '4px 10px',
+              borderRadius: 8, border: '1px solid rgba(0,0,0,0.05)',
             }}>
               <span style={{ fontSize: 13 }}>⭐</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>
@@ -429,7 +429,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#F87171', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#DC2626', lineHeight: 1.2 }}>
                 Restaurante cerrado
               </div>
               <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.35 }}>
@@ -449,7 +449,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           }}>
             <span style={{ fontSize: 18 }}>🛵</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#FBBF24', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#D97706', lineHeight: 1.2 }}>
                 Sin repartidores · Solo recogida
               </div>
               <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.35 }}>
@@ -464,7 +464,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         <div style={{
           position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
           zIndex: 300, padding: '10px 16px', borderRadius: 10,
-          background: 'rgba(239,68,68,0.95)', color: '#fff',
+          background: 'rgba(239,68,68,0.95)', color: '#1F1F1E',
           fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
           boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
           animation: 'slideIn 0.25s ease',
@@ -492,7 +492,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
       {/* ── Promociones ── */}
       {!loading && promociones.length > 0 && (
-        <div style={{ padding: '16px 0 0', background: '#0E0E0E' }}>
+        <div style={{ padding: '16px 0 0', background: '#FAFAF7' }}>
           <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, paddingLeft: 16, paddingRight: 16 }}>
             {promociones.map(promo => {
               const badge = promo.tipo === 'descuento_porcentaje' ? `${promo.valor}% OFF`
@@ -503,8 +503,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                   minWidth: 220, flexShrink: 0,
                   padding: '14px 14px',
                   borderRadius: 14,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(0,0,0,0.04)',
+                  border: '1px solid rgba(0,0,0,0.06)',
                 }}>
                   <div style={{
                     display: 'inline-block', fontSize: 10, fontWeight: 800,
@@ -526,7 +526,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       )}
 
       {/* ── Carta ── */}
-      <div style={{ padding: '0 8px 16px', background: '#0E0E0E' }}>
+      <div style={{ padding: '0 8px 16px', background: '#FAFAF7' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>Cargando carta...</div>
         ) : (
@@ -539,7 +539,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                   style={{
                     padding: '8px 18px', borderRadius: 22,
                     border: 'none',
-                    background: !catFiltro ? 'var(--c-primary)' : 'rgba(255,255,255,0.06)',
+                    background: !catFiltro ? 'var(--c-primary)' : 'rgba(0,0,0,0.05)',
                     color: !catFiltro ? '#fff' : 'var(--c-text)',
                     fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
@@ -554,7 +554,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                     style={{
                       padding: '8px 18px', borderRadius: 22,
                       border: 'none',
-                      background: catFiltro === cat.id ? 'var(--c-primary)' : 'rgba(255,255,255,0.06)',
+                      background: catFiltro === cat.id ? 'var(--c-primary)' : 'rgba(0,0,0,0.05)',
                       color: catFiltro === cat.id ? '#fff' : 'var(--c-text)',
                       fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
@@ -631,21 +631,21 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'rgba(20,20,20,0.95)',
+              background: '#FFFFFF',
               backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
               borderRadius: '20px 20px 0 0',
               padding: '20px 20px 36px',
               width: '100%', maxWidth: 420,
               maxHeight: '88vh', overflowY: 'auto',
               animation: 'slideUp 0.3s ease',
-              border: '1px solid rgba(255,255,255,0.1)',
+              border: '1px solid rgba(0,0,0,0.08)',
               borderBottom: 'none',
               boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
             }}
           >
             <div style={{
               width: 36, height: 4, borderRadius: 2,
-              background: 'rgba(255,255,255,0.1)', margin: '0 auto 20px',
+              background: 'rgba(0,0,0,0.08)', margin: '0 auto 20px',
             }} />
 
             {modal.imagen_url && (
@@ -667,7 +667,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               <button
                 onClick={() => setModal(null)}
                 style={{
-                  background: 'rgba(255,255,255,0.08)', border: 'none',
+                  background: 'rgba(0,0,0,0.06)', border: 'none',
                   width: 30, height: 30, borderRadius: 12,
                   cursor: 'pointer', color: 'var(--c-muted)',
                   fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -696,8 +696,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                       display: 'flex', justifyContent: 'space-between',
                       width: '100%', padding: '13px 16px',
                       borderRadius: 14, marginBottom: 8,
-                      border: tamSel === i ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
-                      background: tamSel === i ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
+                      border: tamSel === i ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
+                      background: tamSel === i ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
                       cursor: 'pointer', fontFamily: 'inherit',
                       transition: 'all 0.15s ease',
                     }}
@@ -736,8 +736,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                         display: 'flex', justifyContent: 'space-between',
                         width: '100%', padding: '13px 16px',
                         borderRadius: 14, marginBottom: 8,
-                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(255,255,255,0.08)',
-                        background: sel ? 'rgba(255,107,44,0.14)' : 'rgba(255,255,255,0.04)',
+                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
+                        background: sel ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
                         cursor: bloqueado ? 'not-allowed' : 'pointer',
                         fontFamily: 'inherit',
                         opacity: bloqueado ? 0.45 : 1,
@@ -747,14 +747,14 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{
                           width: 20, height: 20, borderRadius: esUnico ? 10 : 6,
-                          border: sel ? 'none' : '1.5px solid rgba(255,255,255,0.12)',
+                          border: sel ? 'none' : '1.5px solid rgba(0,0,0,0.08)',
                           background: sel ? 'var(--c-primary)' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0, transition: 'all 0.15s ease',
                         }}>
                           {sel && (esUnico
                             ? <span style={{ width: 8, height: 8, borderRadius: 4, background: '#fff' }} />
-                            : <span style={{ color: '#fff', fontSize: 11, fontWeight: 800 }}>✓</span>
+                            : <span style={{ color: '#1F1F1E', fontSize: 11, fontWeight: 800 }}>✓</span>
                           )}
                         </div>
                         <span style={{ fontSize: 14, color: 'var(--c-text)', fontWeight: 500 }}>{op.nombre}</span>
@@ -777,8 +777,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                 onClick={() => setCant(Math.max(1, cant - 1))}
                 style={{
                   width: 40, height: 40, borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                  background: 'rgba(0,0,0,0.04)',
                   fontSize: 20, cursor: 'pointer', fontFamily: 'inherit',
                   color: 'var(--c-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
@@ -807,8 +807,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               style={{
                 width: '100%', padding: '16px 0',
                 borderRadius: 12, border: 'none',
-                background: puedeConfirmar ? 'var(--c-primary)' : 'rgba(255,255,255,0.08)',
-                color: puedeConfirmar ? '#fff' : 'rgba(255,255,255,0.4)',
+                background: puedeConfirmar ? 'var(--c-primary)' : 'rgba(0,0,0,0.06)',
+                color: puedeConfirmar ? '#fff' : '#6B6B68',
                 fontSize: 15, fontWeight: 800,
                 cursor: puedeConfirmar ? 'pointer' : 'not-allowed',
                 fontFamily: 'inherit',

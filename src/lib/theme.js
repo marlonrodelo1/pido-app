@@ -1,30 +1,30 @@
-// Design System PIDO - Dark Theme
+// Design System PIDO - Light Theme (paleta Claude)
 // Paleta unica - solo estos colores en toda la app
 
 export const colors = {
   // Principal
   primary: '#FF6B2C',
-  primaryLight: 'rgba(255,107,44,0.15)',
-  primarySoft: 'rgba(255,107,44,0.25)',
+  primaryLight: 'rgba(255,107,44,0.10)',
+  primarySoft: 'rgba(255,107,44,0.18)',
 
-  // Neutros (Dark)
-  bg: '#0D0D0D',
-  surface: 'rgba(255,255,255,0.08)',
-  surface2: 'rgba(255,255,255,0.05)',
-  border: 'rgba(255,255,255,0.1)',
-  text: '#F5F5F5',
-  textSecondary: 'rgba(255,255,255,0.6)',
-  muted: 'rgba(255,255,255,0.45)',
+  // Neutros (Light cálido tipo Claude)
+  bg: '#FAFAF7',
+  surface: '#FFFFFF',
+  surface2: '#F4F2EC',
+  border: '#E8E6E0',
+  text: '#1F1F1E',
+  textSecondary: '#3D3D3B',
+  muted: '#6B6B68',
 
   // Glass
-  glass: 'rgba(255,255,255,0.06)',
-  glassBorder: 'rgba(255,255,255,0.12)',
+  glass: 'rgba(255,255,255,0.7)',
+  glassBorder: 'rgba(0,0,0,0.06)',
 
-  // Estados (solo estos 2)
-  success: '#22C55E',
-  successLight: 'rgba(34,197,94,0.15)',
-  error: '#EF4444',
-  errorLight: 'rgba(239,68,68,0.15)',
+  // Estados
+  success: '#16A34A',
+  successLight: 'rgba(22,163,74,0.10)',
+  error: '#DC2626',
+  errorLight: 'rgba(220,38,38,0.10)',
 }
 
 // Badge styles unificados

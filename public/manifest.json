@@ -4,8 +4,8 @@
   "description": "Tus restaurantes, locales y farmacias más cerca. 100% canario.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0D0D0D",
-  "theme_color": "#FF6B2C",
+  "background_color": "#FAFAF7",
+  "theme_color": "#FAFAF7",
   "orientation": "portrait",
   "icons": [
     {

@@ -3,12 +3,12 @@ import { Capacitor } from '@capacitor/core'
 
 const P = {
   orange: '#FF6B2C',
-  bg: '#0D0D0D',
-  ink: '#F5F5F5',
-  green: '#22C55E',
-  pillBg: '#1A1A1D',
-  pillBorder: 'rgba(255,255,255,0.08)',
-  dotPending: 'rgba(255,255,255,0.25)',
+  bg: '#FAFAF7',
+  ink: '#1F1F1E',
+  green: '#16A34A',
+  pillBg: '#FFFFFF',
+  pillBorder: '#E8E6E0',
+  dotPending: '#D4D2CC',
 }
 
 // Hitos posicionados sobre la imagen del mapa 3D (mismas zonas que el demo de referencia)
@@ -50,7 +50,7 @@ function Milestone({ m, appear }) {
         padding: '8px 14px',
         fontSize: 13, fontWeight: 600, color: P.ink,
         fontFamily: "'DM Sans', system-ui, sans-serif",
-        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+        boxShadow: '0 4px 12px rgba(15,15,15,0.10)',
         whiteSpace: 'nowrap',
       }}>
         {m.name}
@@ -97,7 +97,7 @@ export default function AnimatedSplash({ onComplete }) {
 
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: `radial-gradient(ellipse at 50% 40%, #1a1113 0%, ${P.bg} 60%)`,
+        background: `radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, ${P.bg} 60%)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         animation: exiting ? 'splashOut 0.4s ease forwards' : undefined,
         overflow: 'hidden',
@@ -118,7 +118,7 @@ export default function AnimatedSplash({ onComplete }) {
               width: '100%', height: '100%',
               objectFit: 'contain',
               animation: 'splashMapIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-              filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.5))',
+              filter: 'drop-shadow(0 20px 40px rgba(15,15,15,0.15))',
             }}
           />
 

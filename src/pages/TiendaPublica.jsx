@@ -14,7 +14,7 @@ const Tracking = lazy(() => import('./Tracking'))
 
 const fallback = (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Cargando...</div>
+    <div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div>
   </div>
 )
 
@@ -96,12 +96,12 @@ export default function TiendaPublica({ establecimiento }) {
         padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12,
         background: 'var(--c-bg)',
         position: 'sticky', top: 0, zIndex: 50,
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
       }}>
         {establecimiento?.logo_url && (
           <img
             src={establecimiento.logo_url} alt=""
-            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'rgba(255,255,255,0.06)' }}
+            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'rgba(0,0,0,0.05)' }}
           />
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -158,7 +158,7 @@ export default function TiendaPublica({ establecimiento }) {
         >
           <span>Ver carrito</span>
           <span style={{
-            background: 'rgba(255,255,255,0.25)', borderRadius: 10,
+            background: 'rgba(0,0,0,0.30)', borderRadius: 10,
             padding: '2px 8px', fontSize: 12, fontWeight: 800,
           }}>{totalItems}</span>
         </button>
@@ -192,9 +192,9 @@ export default function TiendaPublica({ establecimiento }) {
             style={{
               position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 14, zIndex: 310,
               width: 36, height: 36, borderRadius: 999,
-              background: 'rgba(255,255,255,0.12)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff', cursor: 'pointer',
+              background: 'rgba(0,0,0,0.08)',
+              border: '1px solid rgba(0,0,0,0.10)',
+              color: '#1F1F1E', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backdropFilter: 'blur(10px)',
             }}
@@ -213,13 +213,13 @@ const shellStyle = {
   '--c-primary-light': 'rgba(255,107,44,0.15)',
   '--c-primary-soft': 'rgba(255,107,44,0.25)',
   '--c-bg': '#0D0D0D',
-  '--c-surface': 'rgba(255,255,255,0.08)',
-  '--c-surface2': 'rgba(255,255,255,0.05)',
-  '--c-border': 'rgba(255,255,255,0.1)',
-  '--c-text': '#F5F5F5',
-  '--c-muted': 'rgba(255,255,255,0.45)',
-  '--c-glass': 'rgba(255,255,255,0.06)',
-  '--c-glass-border': 'rgba(255,255,255,0.12)',
+  '--c-surface': 'rgba(0,0,0,0.06)',
+  '--c-surface2': 'rgba(0,0,0,0.04)',
+  '--c-border': 'rgba(0,0,0,0.08)',
+  '--c-text': '#1F1F1E',
+  '--c-muted': '#6B6B68',
+  '--c-glass': 'rgba(0,0,0,0.05)',
+  '--c-glass-border': 'rgba(0,0,0,0.08)',
   fontFamily: "'DM Sans', sans-serif",
   margin: '0 auto',
   background: 'var(--c-bg)',

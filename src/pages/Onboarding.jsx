@@ -79,7 +79,7 @@ export default function Onboarding({ onComplete }) {
             <text x="24" y="18.5" textAnchor="middle" fontSize="6" fill="#FECB00" fontWeight="bold">IC</text>
           </svg>
         </div>
-        <span style={{ fontSize: 10, color: '#484847', fontWeight: 700, letterSpacing: '0.08em' }}>HECHO EN CANARIAS</span>
+        <span style={{ fontSize: 10, color: '#E8E6E0', fontWeight: 700, letterSpacing: '0.08em' }}>HECHO EN CANARIAS</span>
       </div>
 
       {/* Tarjetas */}
@@ -90,8 +90,8 @@ export default function Onboarding({ onComplete }) {
             style={{
               display: 'flex', alignItems: 'center', gap: 16, width: '100%',
               padding: '20px 18px', borderRadius: 16,
-              border: hovered === c.id ? `1.5px solid ${c.color}` : '1.5px solid #262626',
-              background: '#1A1919', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              border: hovered === c.id ? `1.5px solid ${c.color}` : '1.5px solid #F4F2EC',
+              background: '#FFFFFF', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
               transform: hovered === c.id ? 'scale(1.02)' : 'scale(1)',
               boxShadow: hovered === c.id ? `0 8px 30px ${c.color}15` : 'none',
               transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease, border 0.2s ease',
@@ -100,7 +100,7 @@ export default function Onboarding({ onComplete }) {
             }}>
             <div style={{
               width: 56, height: 56, borderRadius: 14,
-              background: '#262626',
+              background: '#F4F2EC',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 28, flexShrink: 0,
               animation: hovered === c.id ? 'emojiBounce 0.4s ease' : 'none',
@@ -111,7 +111,7 @@ export default function Onboarding({ onComplete }) {
             </div>
             <div style={{
               width: 34, height: 34, borderRadius: 10,
-              background: hovered === c.id ? c.color : '#262626',
+              background: hovered === c.id ? c.color : '#F4F2EC',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.25s ease', flexShrink: 0,
             }}>

@@ -9,7 +9,7 @@ const missingVars = criticalEnvVars.filter(key => !import.meta.env[key])
 if (missingVars.length > 0) {
   const root = document.getElementById('root')
   const wrap = document.createElement('div')
-  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100vh;background:#0D0D0D;color:#EF4444;font-family:sans-serif;padding:20px;text-align:center'
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100vh;background:#FAFAF7;color:#DC2626;font-family:sans-serif;padding:20px;text-align:center'
   const inner = document.createElement('div')
   const h2 = document.createElement('h2')
   h2.textContent = 'Error de configuración'

@@ -1,33 +1,55 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 
-/* ─── Design Tokens ─────────────────────────────────────── */
+/* ─── Design Tokens (Light — Claude palette) ───────────── */
 :root {
   /* Brand */
   --c-primary:        #FF6B2C;
   --c-primary-dim:    #F76526;
   --c-primary-light:  #FF6B2C;
+  --c-primary-dark:   #E85A1F;
+  --c-primary-soft:   rgba(255, 107, 44, 0.10);
   --c-primary-glow:   rgba(255, 107, 44, 0.15);
   --c-primary-shadow: rgba(255, 107, 44, 0.06);
 
   /* Gradient botón principal (Liquid Amber) */
   --c-btn-gradient:   linear-gradient(135deg, #FF6B2C 0%, #F76526 100%);
 
-  /* Superficies */
-  --c-bg:             #0D0D0D;
-  --c-surface:        #0E0E0E;
-  --c-surface-low:    #131313;
-  --c-surface-mid:    #1A1919;
-  --c-surface-high:   #201F1F;
-  --c-surface-glass:  rgba(255, 255, 255, 0.08);
+  /* Superficies (Claude warm light) */
+  --c-bg:             #FAFAF7;
+  --c-surface:        #FFFFFF;
+  --c-surface2:       #F4F2EC;
+  --c-surface-low:    #F4F2EC;
+  --c-surface-mid:    #EFEDE6;
+  --c-surface-high:   #E8E6E0;
+  --c-surface-glass:  rgba(255, 255, 255, 0.65);
 
   /* Texto */
-  --c-text:           #FFFFFF;
-  --c-muted:          #ADAAAA;
-  --c-muted-soft:     rgba(255, 255, 255, 0.45);
+  --c-text:           #1F1F1E;
+  --c-text-soft:      #3D3D3B;
+  --c-muted:          #6B6B68;
+  --c-muted-soft:     #9A9A95;
 
   /* Bordes */
-  --c-border:         rgba(255, 255, 255, 0.10);
-  --c-border-soft:    rgba(255, 255, 255, 0.06);
+  --c-border:         #E8E6E0;
+  --c-border-strong:  #D4D2CC;
+  --c-border-soft:    rgba(0, 0, 0, 0.06);
+
+  /* Estados */
+  --c-success:        #16A34A;
+  --c-success-soft:   rgba(22, 163, 74, 0.10);
+  --c-danger:         #DC2626;
+  --c-danger-soft:    rgba(220, 38, 38, 0.10);
+  --c-warning:        #D97706;
+  --c-warning-soft:   rgba(217, 119, 6, 0.12);
+  --c-info:           #2563EB;
+
+  /* Sombras */
+  --c-shadow:         0 1px 2px rgba(15,15,15,0.04), 0 1px 3px rgba(15,15,15,0.06);
+  --c-shadow-md:      0 4px 12px rgba(15,15,15,0.08);
+
+  /* Glass */
+  --c-glass:          rgba(255, 255, 255, 0.7);
+  --c-glass-border:   rgba(0, 0, 0, 0.06);
 
   /* Glassmorphism */
   --blur-sm:          blur(12px);
@@ -62,6 +84,7 @@ html {
 
 body {
   background: var(--c-bg);
+  color: var(--c-text);
   margin: 0;
   font-family: var(--font);
   height: 100%;
@@ -103,30 +126,30 @@ body {
   max-width: 100%;
 }
 
-/* Google Places Autocomplete dark theme */
+/* Google Places Autocomplete light theme */
 .pac-container {
-  background: #1A1A1A !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
+  background: #FFFFFF !important;
+  border: 1px solid #E8E6E0 !important;
   border-radius: 12px !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 8px 32px rgba(15,15,15,0.12) !important;
   margin-top: 4px !important;
   font-family: var(--font) !important;
   z-index: 10000 !important;
 }
 .pac-item {
-  background: #1A1A1A !important;
-  color: #F5F5F5 !important;
-  border-top: 1px solid rgba(255,255,255,0.06) !important;
+  background: #FFFFFF !important;
+  color: #1F1F1E !important;
+  border-top: 1px solid rgba(0,0,0,0.06) !important;
   padding: 10px 14px !important;
   cursor: pointer !important;
   font-size: 13px !important;
   line-height: 1.4 !important;
 }
 .pac-item:hover, .pac-item-selected {
-  background: rgba(255,107,44,0.12) !important;
+  background: rgba(255,107,44,0.10) !important;
 }
 .pac-item-query {
-  color: #F5F5F5 !important;
+  color: #1F1F1E !important;
   font-weight: 600 !important;
   font-size: 13px !important;
 }
@@ -135,8 +158,7 @@ body {
   font-weight: 700 !important;
 }
 .pac-icon {
-  filter: invert(1) !important;
-  opacity: 0.5 !important;
+  opacity: 0.55 !important;
 }
 .pac-logo::after {
   display: none !important;
