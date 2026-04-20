@@ -195,7 +195,7 @@ function AppContent() {
           {seccion === 'tracking' && pedidoActivo
             ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
             : restOpen && seccion === 'home'
-            ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} />
+            ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} onRequireLogin={() => setLoginOpen(true)} />
             : seccion === 'repartidores'
             ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'

@@ -125,7 +125,7 @@ export default function TiendaPublica({ establecimiento }) {
           ) : seccion === 'perfil' ? (
             <Perfil />
           ) : (
-            <RestDetalle establecimiento={establecimiento} modoTienda={true} />
+            <RestDetalle establecimiento={establecimiento} modoTienda={true} onRequireLogin={() => setLoginOpen(true)} />
           )}
         </Suspense>
       </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, MapPin } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
 import { estaAbierto } from '../lib/horario'
 
 /* ─── ProductoCard ────────────────────────────────────────── */
@@ -118,8 +119,9 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
 }
 
 /* ─── RestDetalle ─────────────────────────────────────────── */
-export default function RestDetalle({ establecimiento, onBack, modoTienda = false }) {
+export default function RestDetalle({ establecimiento, onBack, modoTienda = false, onRequireLogin }) {
   const { addItem, carrito, updateCantidad, totalItems, subtotal } = useCart()
+  const { user } = useAuth()
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])
   const [promociones, setPromociones] = useState([])
@@ -135,6 +137,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const [prodExtrasSet, setProdExtrasSet] = useState(new Set())
   const [ridersOnline, setRidersOnline] = useState(null)
   const [avisoCerrado, setAvisoCerrado] = useState(false)
+  const [toastAdded, setToastAdded] = useState(false)
 
   const est = establecimiento
   const estadoAbierto = estaAbierto(est)
@@ -144,6 +147,26 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     setAvisoCerrado(true)
     setTimeout(() => setAvisoCerrado(false), 2800)
   }
+
+  function guardarPendingItem(item) {
+    try { localStorage.setItem('pido_pending_cart_item', JSON.stringify(item)) } catch (_) {}
+    onRequireLogin?.()
+  }
+
+  // Restaurar item pendiente tras login si pertenece a este restaurante
+  useEffect(() => {
+    if (!user) return
+    let raw
+    try { raw = localStorage.getItem('pido_pending_cart_item') } catch (_) { return }
+    if (!raw) return
+    let item
+    try { item = JSON.parse(raw) } catch (_) { localStorage.removeItem('pido_pending_cart_item'); return }
+    if (!item || item.establecimiento_id !== est.id) return
+    addItem(item)
+    try { localStorage.removeItem('pido_pending_cart_item') } catch (_) {}
+    setToastAdded(true)
+    setTimeout(() => setToastAdded(false), 2500)
+  }, [user, est.id])
 
   useEffect(() => { fetchCarta() }, [est.id])
 
@@ -239,7 +262,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         return { grupo_id: g.id, grupo_nombre: g.nombre, opciones }
       })
       .filter(Boolean)
-    addItem({
+    const item = {
       producto_id: modal.id,
       nombre: modal.nombre,
       tamano: tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].nombre : null,
@@ -249,13 +272,15 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
       coste_envio: 0,
-    })
+    }
+    if (!user) { guardarPendingItem(item); setModal(null); return }
+    addItem(item)
     setModal(null)
   }
 
   function addItemSimple(p) {
     if (cerrado) { mostrarAvisoCerrado(); return }
-    addItem({
+    const item = {
       producto_id: p.id,
       nombre: p.nombre,
       tamano: null,
@@ -265,7 +290,9 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
       coste_envio: 0,
-    })
+    }
+    if (!user) { guardarPendingItem(item); return }
+    addItem(item)
   }
 
   function toggleExtra(op, grupo) {
@@ -437,6 +464,21 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           textAlign: 'center',
         }}>
           Restaurante cerrado · No se puede pedir
+        </div>
+      )}
+
+      {toastAdded && (
+        <div style={{
+          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 300, padding: '10px 16px', borderRadius: 10,
+          background: '#FF6B2C', color: '#fff',
+          fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+          animation: 'slideIn 0.25s ease',
+          maxWidth: 'calc(100% - 40px)',
+          textAlign: 'center',
+        }}>
+          Producto añadido al carrito
         </div>
       )}
 
