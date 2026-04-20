@@ -10,6 +10,7 @@ import Landing from './pages/Landing'
 // Lazy-loaded routes
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
+const EliminarCuenta = lazy(() => import('./pages/EliminarCuenta'))
 const TiendaPublicaRoute = lazy(() => import('./pages/TiendaPublicaRoute'))
 
 // Error Boundary — evita pantalla blanca si algo falla
@@ -176,6 +177,7 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terminos" element={<PaginaLegal slug="terminos" onBack={() => window.history.back()} />} />
         <Route path="/privacidad" element={<PaginaLegal slug="privacidad" onBack={() => window.history.back()} />} />
+        <Route path="/eliminar-cuenta" element={<EliminarCuenta />} />
         <Route path="/:slug" element={<TiendaPublicaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
