@@ -116,6 +116,12 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* En Android nativo MainActivity ya coloca el webview debajo de la status bar,
+   por lo que el padding-top adicional crea un gap visible. */
+html.cap-android body {
+  padding-top: 0;
+}
+
 @supports (height: 100dvh) {
   #root { min-height: 100dvh; }
 }

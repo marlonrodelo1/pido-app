@@ -9,6 +9,12 @@ if (Capacitor.isNativePlatform() && window.location.pathname === '/') {
   window.history.replaceState(null, '', '/app')
 }
 
+// En Android nativo, MainActivity ya empuja el webview debajo de la status bar,
+// así que no debemos sumar safe-area-inset-top (doble offset = gap visible).
+if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
+  document.documentElement.classList.add('cap-android')
+}
+
 // Validar variables de entorno críticas (sin ellas la app no funciona)
 const criticalEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 const missingVars = criticalEnvVars.filter(key => !import.meta.env[key])
