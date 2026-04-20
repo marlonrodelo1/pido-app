@@ -6,11 +6,12 @@ import { useAuth } from '../context/AuthContext'
 import { estaAbierto } from '../lib/horario'
 
 /* ─── ProductoCard ────────────────────────────────────────── */
-function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [], tieneExtras = false, cerrado = false, onIntentoCerrado }) {
+function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [], tieneExtras = false, cerrado = false, onIntentoCerrado, getPrecio }) {
   const enCarritoIdx = carrito.findIndex(i => i.producto_id === p.id)
   const enCarrito = enCarritoIdx >= 0 ? carrito[enCarritoIdx] : null
   const minPrecio = tamanos.length > 0 ? Math.min(...tamanos.map(t => t.precio)) : null
   const tieneConfig = tamanos.length > 0 || tieneExtras
+  const precioBase = getPrecio ? getPrecio(p) : p.precio
 
   function handleIncrementar(e) {
     e.stopPropagation()
@@ -67,7 +68,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
           <span style={{ fontWeight: 800, fontSize: 16, color: '#FF6B2C' }}>
-            {minPrecio !== null ? `${minPrecio.toFixed(2)} €` : `${p.precio.toFixed(2)} €`}
+            {minPrecio !== null ? `${minPrecio.toFixed(2)} €` : `${precioBase.toFixed(2)} €`}
           </span>
 
           {enCarrito ? (
@@ -142,6 +143,13 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const est = establecimiento
   const estadoAbierto = estaAbierto(est)
   const cerrado = !estadoAbierto.abierto
+
+  // En modoTienda + plan_pro activo: usar precio_tienda_publica si está definido
+  const usarPrecioTiendaPublica = modoTienda && !!est.plan_pro
+  const getPrecioMostrado = (p) => {
+    if (usarPrecioTiendaPublica && p.precio_tienda_publica != null) return Number(p.precio_tienda_publica)
+    return p.precio
+  }
 
   function mostrarAvisoCerrado() {
     setAvisoCerrado(true)
@@ -245,7 +253,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
   function precioTotal() {
     if (!modal) return 0
-    const base = tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].precio : modal.precio
+    const base = tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].precio : getPrecioMostrado(modal)
     return (base + exSel.reduce((s, e) => s + e.precio, 0)) * cant
   }
 
@@ -285,7 +293,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       nombre: p.nombre,
       tamano: null,
       extras: [],
-      precio_unitario: p.precio,
+      precio_unitario: getPrecioMostrado(p),
       cantidad: 1,
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
@@ -583,6 +591,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                         tieneExtras={prodExtrasSet.has(p.id)}
                         cerrado={cerrado}
                         onIntentoCerrado={mostrarAvisoCerrado}
+                        getPrecio={getPrecioMostrado}
                       />
                     ))}
                   </div>
@@ -601,6 +610,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                   updateCantidad={updateCantidad}
                   tamanos={prodTamanosMap[p.id] || []}
                   tieneExtras={prodExtrasSet.has(p.id)}
+                  getPrecio={getPrecioMostrado}
                 />
               ))}
           </>
