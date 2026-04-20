@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { supabase } from '../lib/supabase'
@@ -403,10 +404,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   return (
     <>
-      {/* ── Modal carrito ── */}
-      {open && (
+      {/* ── Modal carrito (renderizado en portal a document.body para escapar stacking contexts) ── */}
+      {open && typeof document !== 'undefined' && createPortal(
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,15,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,15,15,0.55)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={() => {
             setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
             setCodigoPedido(null); setClientSecret(null)
@@ -848,7 +849,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

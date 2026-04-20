@@ -1,7 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { estaAbierto } from '../lib/horario'
 import TiendaBottomNav from '../components/TiendaBottomNav'
 import Login from './Login'
 import { X } from 'lucide-react'
@@ -80,9 +79,6 @@ export default function TiendaPublica({ establecimiento }) {
     setSeccion('carta')
   }
 
-  const estadoAbierto = estaAbierto(establecimiento)
-  const abierto = estadoAbierto?.abierto
-
   return (
     <div style={{
       ...shellStyle,
@@ -91,32 +87,8 @@ export default function TiendaPublica({ establecimiento }) {
     }}>
       <style>{globalCss}</style>
 
-      {/* Header propio */}
-      <div style={{
-        padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12,
-        background: 'var(--c-bg)',
-        position: 'sticky', top: 0, zIndex: 50,
-        borderBottom: '1px solid rgba(0,0,0,0.05)',
-      }}>
-        {establecimiento?.logo_url && (
-          <img
-            src={establecimiento.logo_url} alt=""
-            style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'rgba(0,0,0,0.05)' }}
-          />
-        )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--c-text)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {establecimiento?.nombre}
-          </div>
-          <div style={{ fontSize: 11, color: abierto ? '#4ADE80' : '#EF4444', fontWeight: 700, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: 3, background: abierto ? '#22C55E' : '#EF4444' }} />
-            {abierto ? 'Abierto' : 'Cerrado'}
-          </div>
-        </div>
-      </div>
-
       {/* Contenido */}
-      <div className="tablet-pad" style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
+      <div style={{ animation: 'fadeIn 0.3s ease' }}>
         <Suspense fallback={fallback}>
           {seccion === 'tracking' && pedidoActivo ? (
             <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
@@ -212,7 +184,7 @@ const shellStyle = {
   '--c-primary': '#FF6B2C',
   '--c-primary-light': 'rgba(255,107,44,0.15)',
   '--c-primary-soft': 'rgba(255,107,44,0.25)',
-  '--c-bg': '#0D0D0D',
+  '--c-bg': '#FAFAF7',
   '--c-surface': 'rgba(0,0,0,0.06)',
   '--c-surface2': 'rgba(0,0,0,0.04)',
   '--c-border': 'rgba(0,0,0,0.08)',
@@ -234,7 +206,7 @@ const globalCss = `
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 *{box-sizing:border-box;margin:0;padding:0}
 ::-webkit-scrollbar{display:none}
-body{background:#0D0D0D;margin:0}
+body{background:#FAFAF7;margin:0}
 @media(min-width:768px){
   .tablet-pad{padding:24px 32px!important}
   .modal-sheet{max-width:560px!important}
