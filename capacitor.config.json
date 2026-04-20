@@ -1,5 +1,5 @@
 {
-  "appId": "es.pidoo.app",
+  "appId": "com.pidoo.app",
   "appName": "Pidoo",
   "webDir": "dist",
   "plugins": {

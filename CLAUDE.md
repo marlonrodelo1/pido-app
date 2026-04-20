@@ -1,6 +1,6 @@
 # pido-app — Documentación Completa (App del Cliente)
 
-> Versión Android: versionCode 28 · versionName 1.27 · applicationId: `es.pidoo.app`
+> Versión Android: versionCode 28 · versionName 1.27 · applicationId: `com.pidoo.app`
 > Web: https://pidoo.es · Auto-deploy en Dokploy al push a `main`
 
 ---
@@ -264,7 +264,7 @@ npx cap sync android
 npx cap open android   # Android Studio → Generate Signed APK/AAB
 ```
 
-- **applicationId:** `es.pidoo.app` · versionCode 28 · versionName 1.27
+- **applicationId:** `com.pidoo.app` · versionCode 28 · versionName 1.27
 - **Keystore:** `android/app/pidoo-apk.jks` (NO en git)
 
 ---

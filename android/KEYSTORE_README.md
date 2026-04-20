@@ -1,4 +1,4 @@
-# Keystore para release Android (es.pidoo.app)
+# Keystore para release Android (com.pidoo.app)
 
 El keystore NO está en git. Hay que generarlo y configurarlo manualmente antes de generar el AAB de release.
 

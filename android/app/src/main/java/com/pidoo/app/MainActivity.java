@@ -1,4 +1,4 @@
-package es.pidoo.app;
+package com.pidoo.app;
 
 import android.os.Bundle;
 import android.view.View;

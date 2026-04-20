@@ -263,7 +263,7 @@ export default function Login() {
               setError(null); setLoading(true)
               try {
                 const isNative = Capacitor.isNativePlatform()
-                const redirectTo = isNative ? 'es.pidoo.app://login' : window.location.origin
+                const redirectTo = isNative ? 'com.pidoo.app://login' : window.location.origin
                 const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
                   provider: 'google', options: { redirectTo, skipBrowserRedirect: isNative },
                 })
