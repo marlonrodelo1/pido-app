@@ -1,7 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { Capacitor } from '@capacitor/core'
 import './index.css'
 import App from './App.jsx'
+
+// Capacitor: la app nativa arranca directo en /app (sin landing)
+if (Capacitor.isNativePlatform() && window.location.pathname === '/') {
+  window.history.replaceState(null, '', '/app')
+}
 
 // Validar variables de entorno críticas (sin ellas la app no funciona)
 const criticalEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']

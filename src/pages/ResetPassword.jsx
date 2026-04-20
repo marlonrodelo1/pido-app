@@ -40,7 +40,7 @@ export default function ResetPassword() {
       setSuccess(true)
       // Cerrar sesion temporal de recovery y redirigir al login
       await supabase.auth.signOut()
-      setTimeout(() => { window.location.href = '/' }, 3000)
+      setTimeout(() => { window.location.href = '/app' }, 3000)
     } catch (err) {
       if (err.message?.includes('same_password')) setError('La nueva contrasena debe ser diferente a la anterior')
       else setError(err.message || 'Error al actualizar la contrasena')

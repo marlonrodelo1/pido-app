@@ -1,30 +1,16 @@
 import { useState, useEffect, lazy, Suspense, Component } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './lib/supabase'
-import { Bell, Share2, ShoppingBag, CircleUser } from 'lucide-react'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import { CartProvider, useCart } from './context/CartContext'
-import Login from './pages/Login'
-import BottomNav from './components/BottomNav'
-import { X } from 'lucide-react'
+import AppShell from './AppShell'
+import Landing from './pages/Landing'
 
-// Lazy-loaded routes (code splitting)
-const Onboarding = lazy(() => import('./pages/Onboarding'))
-const Home = lazy(() => import('./pages/Home'))
-const RestDetalle = lazy(() => import('./pages/RestDetalle'))
-const Carrito = lazy(() => import('./pages/Carrito'))
-const Tracking = lazy(() => import('./pages/Tracking'))
-const Favoritos = lazy(() => import('./pages/Favoritos'))
-const Mapa = lazy(() => import('./pages/Mapa'))
-const MisPedidos = lazy(() => import('./pages/MisPedidos'))
-const Notificaciones = lazy(() => import('./pages/Notificaciones'))
-const Perfil = lazy(() => import('./pages/Perfil'))
-const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
-const LandingRepartidores = lazy(() => import('./pages/LandingRepartidores'))
+// Lazy-loaded routes
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
-const TiendaPublica = lazy(() => import('./pages/TiendaPublica'))
+const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
+const TiendaPublicaRoute = lazy(() => import('./pages/TiendaPublicaRoute'))
 
 // Error Boundary — evita pantalla blanca si algo falla
 class ErrorBoundary extends Component {
@@ -57,460 +43,153 @@ class ErrorBoundary extends Component {
 }
 
 const SuspenseFallback = (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-    <div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div>
+  <div style={{
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#FAFAF7',
+    color: '#6B6B68',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 13,
+  }}>
+    Cargando...
   </div>
 )
 
-function AppContent() {
-  const { user, loading } = useAuth()
-  const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('pido_onboarded'))
-  const [categoriaPadre, setCategoriaPadre] = useState(() => localStorage.getItem('pido_categoria') || null)
-  const [seccion, setSeccion] = useState('home')
-  const [restOpen, setRestOpen] = useState(null)
-  const [pedidoActivo, setPedidoActivo] = useState(null)
-  const [notifsNoLeidas, setNotifsNoLeidas] = useState(0)
-  const [carritoOpen, setCarritoOpen] = useState(false)
-  const [loginOpen, setLoginOpen] = useState(false)
-  const { totalItems } = useCart()
-
-  const SECCIONES_PROTEGIDAS = ['favoritos', 'pedidos', 'notificaciones', 'perfil']
-
-  // Cerrar modal login automáticamente al iniciar sesión
-  useEffect(() => {
-    if (user && loginOpen) setLoginOpen(false)
-  }, [user, loginOpen])
-
-  // Cargar y escuchar notificaciones no leídas en tiempo real
-  useEffect(() => {
-    if (!user) { setNotifsNoLeidas(0); return }
-    supabase.from('notificaciones').select('id', { count: 'exact', head: true })
-      .eq('usuario_id', user.id).eq('leida', false)
-      .then(({ count }) => setNotifsNoLeidas(count || 0))
-    const ch = supabase.channel('notifs-badge-' + user.id)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: `usuario_id=eq.${user.id}` },
-        () => setNotifsNoLeidas(prev => prev + 1))
-      .subscribe()
-    return () => supabase.removeChannel(ch)
-  }, [user?.id])
-
-  if (loading) {
-    return <div style={{ ...shellStyle, minHeight: '100vh' }} />
-  }
-
-  // Onboarding primero (guardado en localStorage, se muestra 1 sola vez)
-  if (!onboarded) {
-    return (
-      <div style={shellStyle}>
-        <style>{globalCss}</style>
-        <Suspense fallback={SuspenseFallback}>
-          <Onboarding onComplete={cat => { setCategoriaPadre(cat); setOnboarded(true); localStorage.setItem('pido_onboarded', '1'); localStorage.setItem('pido_categoria', cat) }} />
-        </Suspense>
-      </div>
-    )
-  }
-
-  function abrirRest(r) { setRestOpen(r); setSeccion('home') }
-  function handlePedidoCreado(pedido) { setPedidoActivo(pedido); setSeccion('tracking') }
-  function handleTrack(pedido) { setPedidoActivo(pedido); setSeccion('tracking') }
-  function handleTrackingClose() { setPedidoActivo(null); setSeccion('home') }
-
-  const catEmoji = categoriaPadre === 'comida' ? '🍕' : categoriaPadre === 'farmacia' ? '💊' : '🛒'
-  const catLabel = categoriaPadre === 'comida' ? 'Comida' : categoriaPadre === 'farmacia' ? 'Farmacia' : 'Market'
-
+function EmailConfirmadoScreen({ onClose }) {
+  const navigate = useNavigate()
   return (
-    <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(20px + 64px + 20px + env(safe-area-inset-bottom, 0px))' }}>
-      <style>{globalCss}</style>
-
-      {/* Header */}
-      <div style={{
-        padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'rgba(250,250,247,0.85)',
-        backdropFilter: 'blur(16px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-        borderBottom: '1px solid var(--c-border)',
-        position: 'sticky', top: 0, zIndex: 50,
+    <div style={{
+      minHeight: '100vh',
+      background: '#FAFAF7',
+      color: '#1F1F1E',
+      fontFamily: "'DM Sans', sans-serif",
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32,
+    }}>
+      <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: '#1F1F1E', marginBottom: 8, textAlign: 'center' }}>
+        Cuenta confirmada
+      </div>
+      <p style={{ fontSize: 14, color: '#6B6B68', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
+        Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesion en pidoo.
+      </p>
+      <button onClick={() => { onClose(); window.location.hash = ''; navigate('/app') }} style={{
+        display: 'inline-block', padding: '16px 40px', borderRadius: 14, border: 'none',
+        background: '#FF6B2C', color: '#fff', fontSize: 16, fontWeight: 800,
+        cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setOnboarded(false)} style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-            borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
-            fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
-          }}>
-            {catEmoji} {catLabel}
-            <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
-          </button>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {pedidoActivo && !['cancelado', 'fallido', 'entregado'].includes(pedidoActivo.estado) && (
-            <button onClick={() => setSeccion('tracking')} style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px',
-              borderRadius: 10, border: 'none', background: '#DCFCE7',
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#166534',
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: 3, background: '#16A34A', animation: 'pulse 1.5s infinite' }} />
-              En curso
-            </button>
-          )}
-          <button onClick={() => {
-            if (!user) { setLoginOpen(true); return }
-            setSeccion('notificaciones'); setNotifsNoLeidas(0)
-          }} style={{
-            width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
-            border: 'none', cursor: 'pointer', position: 'relative',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Bell size={18} strokeWidth={1.8} color="var(--c-text)" />
-            {notifsNoLeidas > 0 && (
-              <span style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8, background: 'var(--c-primary)', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{notifsNoLeidas}</span>
-            )}
-          </button>
-          <button onClick={async () => {
-            const shareData = { title: 'Pidoo', text: 'Descubre pidoo 🍕 Tus restaurantes, locales y farmacias más cerca. 100% canario 🌴', url: 'https://pidoo.es' }
-            if (navigator.share) { try { await navigator.share(shareData) } catch (_) {} }
-            else { try { await navigator.clipboard.writeText('https://pidoo.es') } catch (_) {} }
-          }} style={{
-            width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
-            border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Share2 size={18} strokeWidth={1.8} color="var(--c-text)" />
-          </button>
-          <button onClick={() => {
-            if (!user) { setLoginOpen(true); return }
-            setSeccion('perfil'); setRestOpen(null)
-          }} style={{
-            width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
-            border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <CircleUser size={18} strokeWidth={1.8} color="var(--c-text)" />
-          </button>
-        </div>
-      </div>
-
-      {/* Contenido */}
-      <div className="tablet-pad" style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
-        <Suspense fallback={SuspenseFallback}>
-          {seccion === 'tracking' && pedidoActivo
-            ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
-            : restOpen && seccion === 'home'
-            ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} onRequireLogin={() => setLoginOpen(true)} />
-            : seccion === 'repartidores'
-            ? <LandingRepartidores onBack={() => setSeccion('home')} />
-            : seccion === 'home'
-            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} />
-            : seccion === 'favoritos'
-            ? <Favoritos onOpenRest={abrirRest} />
-            : seccion === 'mapa'
-            ? <Mapa onOpenRest={abrirRest} />
-            : seccion === 'pedidos'
-            ? <MisPedidos onTrack={handleTrack} />
-            : seccion === 'notificaciones'
-            ? <Notificaciones />
-            : seccion === 'perfil'
-            ? <Perfil />
-            : null
-          }
-        </Suspense>
-      </div>
-
-      <Suspense fallback={null}>
-        <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} onRequireLogin={() => setLoginOpen(true)} />
-      </Suspense>
-      <BottomNav active={seccion} totalItems={totalItems} onChange={s => {
-        if (s === 'carrito') {
-          setCarritoOpen(true)
-          return
-        }
-        if (!user && SECCIONES_PROTEGIDAS.includes(s)) {
-          setLoginOpen(true)
-          return
-        }
-        setSeccion(s)
-        setRestOpen(null)
-        if (s === 'notificaciones') setNotifsNoLeidas(0)
-      }} />
-
-      {/* Modal Login on-demand (guest checkout) */}
-      {loginOpen && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 300,
-          background: 'rgba(15,15,15,0.55)', backdropFilter: 'blur(6px)',
-          overflowY: 'auto', animation: 'fadeIn 0.25s ease',
-        }}>
-          <button
-            onClick={() => setLoginOpen(false)}
-            aria-label="Cerrar"
-            style={{
-              position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 14, zIndex: 310,
-              width: 36, height: 36, borderRadius: 999,
-              background: 'rgba(255,255,255,0.95)',
-              border: '1px solid #E8E6E0',
-              color: '#1F1F1E', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            <X size={18} strokeWidth={2.2} />
-          </button>
-          <Login />
-        </div>
-      )}
+        Iniciar sesion
+      </button>
+      <button onClick={() => { onClose(); window.location.hash = '' }} style={{
+        marginTop: 16, background: 'none', border: 'none', color: '#6B6B68',
+        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+      }}>
+        Continuar en la web
+      </button>
     </div>
   )
 }
 
-const shellStyle = {
-  '--c-primary': '#FF6B2C',
-  '--c-primary-light': 'rgba(255,107,44,0.10)',
-  '--c-primary-soft': 'rgba(255,107,44,0.18)',
-  '--c-bg': '#FAFAF7',
-  '--c-surface': '#FFFFFF',
-  '--c-surface2': '#F4F2EC',
-  '--c-border': '#E8E6E0',
-  '--c-text': '#1F1F1E',
-  '--c-muted': '#6B6B68',
-  '--c-glass': 'rgba(255,255,255,0.7)',
-  '--c-glass-border': 'rgba(0,0,0,0.06)',
-  fontFamily: "'DM Sans', sans-serif",
-  margin: '0 auto',
-  background: 'var(--c-bg)',
-  color: 'var(--c-text)',
-}
-
-const globalCss = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
-@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-*{box-sizing:border-box;margin:0;padding:0}
-::-webkit-scrollbar{display:none}
-body{background:#FAFAF7;color:#1F1F1E;margin:0}
-@media(min-width:768px){
-  .tablet-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:14px!important}
-  .tablet-grid>*{margin-bottom:0!important}
-  .tablet-pad{padding:24px 32px!important}
-  .tablet-slider-card{min-width:280px!important}
-  .bottom-nav-wrap{max-width:560px!important}
-  .modal-sheet{max-width:560px!important}
-  .login-form{max-width:400px!important}
-  .legal-content{max-width:700px!important}
-}
-@media(min-width:1024px){
-  .tablet-grid{grid-template-columns:repeat(3,1fr)!important}
-  .tablet-pad{padding:28px 48px!important}
-  .bottom-nav-wrap{max-width:650px!important}
-  .modal-sheet{max-width:650px!important}
-  .login-form{max-width:440px!important}
-  .legal-content{max-width:900px!important}
-}
-@media(max-width:359px){
-  .small-text{font-size:11px!important}
-  .small-heading{font-size:20px!important}
-}
-@media(orientation:landscape) and (max-height:500px){
-  .banner-responsive{height:100px!important}
-}
-`
-
-function TiendaDetector() {
-  const [checking, setChecking] = useState(true)
-  const [emailConfirmado, setEmailConfirmado] = useState(false)
-  const [paginaLegal, setPaginaLegal] = useState(null)
-  const [isResetPassword, setIsResetPassword] = useState(false)
-  const [tiendaRestaurante, setTiendaRestaurante] = useState(null)
-
+function NativeBootstrap() {
+  // Inicialización Capacitor (StatusBar, deeplinks OAuth, app updates).
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      StatusBar.setOverlaysWebView({ overlay: false })
-      StatusBar.setBackgroundColor({ color: '#FAFAF7' })
-      StatusBar.setStyle({ style: Style.Light })
+    if (!Capacitor.isNativePlatform()) return
 
-      // Capturar deep link de OAuth callback
-      CapApp.addListener('appUrlOpen', async ({ url }) => {
+    StatusBar.setOverlaysWebView({ overlay: false })
+    StatusBar.setBackgroundColor({ color: '#FAFAF7' })
+    StatusBar.setStyle({ style: Style.Light })
+
+    // Capturar deep link de OAuth callback
+    const listenerHandle = CapApp.addListener('appUrlOpen', async ({ url }) => {
+      try {
         try {
-          // Cerrar el navegador externo si sigue abierto
-          try {
-            const { Browser } = await import('@capacitor/browser')
-            await Browser.close()
-          } catch (_) {}
+          const { Browser } = await import('@capacitor/browser')
+          await Browser.close()
+        } catch (_) {}
 
-          // Extraer parámetros del deep link (puede venir como hash o query)
-          const parsed = new URL(url)
-          const hashStr = parsed.hash ? parsed.hash.substring(1) : ''
-          const queryStr = parsed.search ? parsed.search.substring(1) : ''
-          const params = new URLSearchParams(hashStr || queryStr)
+        const parsed = new URL(url)
+        const hashStr = parsed.hash ? parsed.hash.substring(1) : ''
+        const queryStr = parsed.search ? parsed.search.substring(1) : ''
+        const params = new URLSearchParams(hashStr || queryStr)
 
-          // PKCE flow: Supabase v2 envía ?code=xxx (no access_token)
-          const code = params.get('code')
-          if (code) {
-            await supabase.auth.exchangeCodeForSession(code)
-            return
-          }
-
-          // Fallback: implicit flow con access_token + refresh_token
-          const access_token = params.get('access_token')
-          const refresh_token = params.get('refresh_token')
-          if (access_token && refresh_token) {
-            await supabase.auth.setSession({ access_token, refresh_token })
-          }
-        } catch (err) {
-          console.error('Error procesando deep link OAuth:', err)
+        const code = params.get('code')
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code)
+          return
         }
-      })
 
-      // Chequear actualizaciones de Play Store al abrir la app
-      import('@capawesome/capacitor-app-update').then(({ AppUpdate }) => {
-        AppUpdate.getAppUpdateInfo().then(info => {
-          // updateAvailability: 2 = UPDATE_AVAILABLE
-          if (info.updateAvailability === 2) {
-            // Intentar update inmediato (pantalla completa de Play Store)
-            AppUpdate.performImmediateUpdate().catch(() => {
-              // Si falla el inmediato, intentar flexible
-              AppUpdate.startFlexibleUpdate().catch(() => {})
-            })
-          }
-        }).catch(() => {})
-      })
+        const access_token = params.get('access_token')
+        const refresh_token = params.get('refresh_token')
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({ access_token, refresh_token })
+        }
+      } catch (err) {
+        console.error('Error procesando deep link OAuth:', err)
+      }
+    })
+
+    // Chequear actualizaciones de Play Store al abrir la app
+    import('@capawesome/capacitor-app-update').then(({ AppUpdate }) => {
+      AppUpdate.getAppUpdateInfo().then(info => {
+        if (info.updateAvailability === 2) {
+          AppUpdate.performImmediateUpdate().catch(() => {
+            AppUpdate.startFlexibleUpdate().catch(() => {})
+          })
+        }
+      }).catch(() => {})
+    })
+
+    return () => {
+      try {
+        if (listenerHandle && typeof listenerHandle.then === 'function') {
+          listenerHandle.then(h => h?.remove?.())
+        } else {
+          listenerHandle?.remove?.()
+        }
+      } catch (_) {}
     }
   }, [])
+  return null
+}
 
-  // Detectar confirmación de email desde Supabase
+function AppRoutes() {
+  const [emailConfirmado, setEmailConfirmado] = useState(false)
+
+  // Detectar confirmación de email desde Supabase (hash con type=signup)
   useEffect(() => {
     const hash = window.location.hash
     if (hash && hash.includes('type=signup') && !Capacitor.isNativePlatform()) {
       setEmailConfirmado(true)
-      setChecking(false)
     }
   }, [])
-
-  useEffect(() => {
-    const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '')
-    // Reset password
-    if (path === 'reset-password') {
-      setIsResetPassword(true)
-      setChecking(false)
-      return
-    }
-    // Rutas de páginas legales
-    if (path === 'terminos' || path === 'privacidad') {
-      setPaginaLegal(path)
-      setChecking(false)
-      return
-    }
-    // Capacitor: no usar slug-detection en nativo
-    if (Capacitor.isNativePlatform()) {
-      setChecking(false)
-      return
-    }
-    // Detectar slug de tienda pública (una sola palabra, no reservada)
-    const RESERVED = [
-      'terminos', 'privacidad', 'reset-password', 'landing-repartidores',
-      'perfil', 'home', 'carrito', 'mis-pedidos', 'favoritos', 'mapa',
-      'notificaciones', 'admin', 'panel', 'api', 'login', 'registro',
-      'tracking', 'tienda', 'pedido',
-    ]
-    if (path && !RESERVED.includes(path) && !path.includes('/') && /^[a-z0-9-]+$/i.test(path)) {
-      supabase
-        .from('establecimientos')
-        .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre')
-        .eq('slug', path)
-        .eq('activo', true)
-        .eq('plan_pro', true)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setTiendaRestaurante(data)
-          }
-          setChecking(false)
-        })
-      return
-    }
-    // Rutas internas de la app (sin slug externo)
-    setChecking(false)
-  }, [])
-
-  if (checking) {
-    return <div style={{ ...shellStyle, minHeight: '100vh' }} />
-  }
 
   if (emailConfirmado) {
-    return (
-      <div style={{ ...shellStyle, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <style>{globalCss}</style>
-        <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#1F1F1E', marginBottom: 8, textAlign: 'center' }}>
-          Cuenta confirmada
-        </div>
-        <p style={{ fontSize: 14, color: '#6B6B68', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
-          Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesion en pidoo.
-        </p>
-        <button onClick={() => { setEmailConfirmado(false); window.location.hash = ''; window.location.href = '/' }} style={{
-          display: 'inline-block', padding: '16px 40px', borderRadius: 14, border: 'none',
-          background: '#FF6B2C', color: '#fff', fontSize: 16, fontWeight: 800,
-          cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-        }}>
-          Iniciar sesion
-        </button>
-        <button onClick={() => { setEmailConfirmado(false); window.location.hash = '' }} style={{
-          marginTop: 16, background: 'none', border: 'none', color: '#6B6B68',
-          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-        }}>
-          Continuar en la web
-        </button>
-      </div>
-    )
-  }
-
-  if (isResetPassword) {
-    return (
-      <div style={shellStyle}>
-        <style>{globalCss}</style>
-        <Suspense fallback={SuspenseFallback}>
-          <ResetPassword />
-        </Suspense>
-      </div>
-    )
-  }
-
-  if (paginaLegal) {
-    return (
-      <div style={{ ...shellStyle, minHeight: '100vh' }}>
-        <style>{globalCss}</style>
-        <Suspense fallback={SuspenseFallback}>
-          <PaginaLegal slug={paginaLegal} onBack={() => window.history.back()} />
-        </Suspense>
-      </div>
-    )
-  }
-
-  if (tiendaRestaurante) {
-    return (
-      <AuthProvider>
-        <CartProvider>
-          <Suspense fallback={SuspenseFallback}>
-            <TiendaPublica establecimiento={tiendaRestaurante} />
-          </Suspense>
-        </CartProvider>
-      </AuthProvider>
-    )
+    return <EmailConfirmadoScreen onClose={() => setEmailConfirmado(false)} />
   }
 
   return (
-    <AuthProvider>
-      <CartProvider>
-        <AppContent />
-      </CartProvider>
-    </AuthProvider>
+    <Suspense fallback={SuspenseFallback}>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/app/*" element={<AppShell />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/terminos" element={<PaginaLegal slug="terminos" onBack={() => window.history.back()} />} />
+        <Route path="/privacidad" element={<PaginaLegal slug="privacidad" onBack={() => window.history.back()} />} />
+        <Route path="/:slug" element={<TiendaPublicaRoute />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   )
 }
 
 export default function App() {
   return (
     <ErrorBoundary>
-      <TiendaDetector />
+      <BrowserRouter>
+        <NativeBootstrap />
+        <AppRoutes />
+      </BrowserRouter>
     </ErrorBoundary>
   )
 }
