@@ -86,7 +86,7 @@ export default function MisPedidos({ onTrack }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#767575' }}>
               <span>{formatFecha(p.created_at)}</span>
-              <span style={{ fontWeight: 700, color: 'var(--c-primary-light)' }}>{p.total.toFixed(2)} €</span>
+              <span style={{ fontWeight: 700, color: 'var(--c-text)' }}>{p.total.toFixed(2)} €</span>
             </div>
             {['nuevo', 'aceptado', 'preparando', 'listo', 'en_camino', 'recogido'].includes(p.estado) && (
               <button onClick={() => onTrack(p)} style={{

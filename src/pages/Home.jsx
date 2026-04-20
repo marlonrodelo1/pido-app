@@ -352,7 +352,6 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
         <div className="home-fade" style={{ animationDelay: '0.15s', marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
             <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', margin: 0 }}>Destacados</h2>
-            <span style={{ color: '#FF6B2C', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>Ver todo</span>
           </div>
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {

@@ -19,10 +19,10 @@ const S = {
   label: { fontSize: 11, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 },
   selBtn: (active) => ({
     flex: 1, padding: '14px 0', borderRadius: 14,
-    border: active ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
-    background: active ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
-    fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-    color: 'var(--c-text)',
+    border: active ? '1.5px solid var(--c-primary)' : '1px solid var(--c-border)',
+    background: active ? 'var(--c-primary-soft)' : 'var(--c-surface2)',
+    fontSize: 14, fontWeight: active ? 700 : 600, cursor: 'pointer', fontFamily: 'inherit',
+    color: active ? 'var(--c-primary)' : 'var(--c-text)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     transition: 'all 0.15s ease',
   }),
@@ -90,7 +90,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
       {error && (
         <div style={{
-          background: 'rgba(239,68,68,0.1)', color: '#EF4444',
+          background: 'rgba(239,68,68,0.1)', color: 'var(--c-danger)',
           fontSize: 12, padding: '10px 14px', borderRadius: 10,
           marginBottom: 14, textAlign: 'center', fontWeight: 600,
         }}>{error}</div>
@@ -406,7 +406,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       {/* ── Modal carrito ── */}
       {open && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,15,0.55)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={() => {
             setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
             setCodigoPedido(null); setClientSecret(null)
@@ -415,16 +415,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'rgba(20,20,20,0.95)',
-              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+              background: 'var(--c-surface)',
               borderRadius: '20px 20px 0 0',
               padding: '20px 20px 36px',
               width: '100%', maxWidth: 420,
               maxHeight: '88vh', overflowY: 'auto',
               animation: 'slideUp 0.3s ease',
-              border: '1px solid rgba(0,0,0,0.08)',
+              border: '1px solid var(--c-border)',
               borderBottom: 'none',
-              boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
+              boxShadow: '0 -8px 32px rgba(15,15,15,0.12)',
             }}
           >
             {/* Handle */}
@@ -434,12 +433,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               <Elements stripe={stripePromise} options={{
                 clientSecret,
                 appearance: {
-                  theme: 'night',
+                  theme: 'stripe',
                   variables: {
                     colorPrimary: '#FF6B2C',
-                    colorBackground: '#F4F2EC',
+                    colorBackground: '#FFFFFF',
                     colorText: '#1F1F1E',
-                    colorDanger: '#EF4444',
+                    colorDanger: '#DC2626',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                     borderRadius: '12px',
                   },
@@ -540,15 +539,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 <div style={{ marginBottom: 16 }}>
                   <div style={S.label}>Tipo de entrega</div>
                   {!tieneDelivery && (
-                    <div style={{ fontSize: 11, color: '#6B6B68', marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 8 }}>
                       Este restaurante solo ofrece recogida en local
                     </div>
                   )}
                   {tieneDelivery && !driversLoading && driversOnline === 0 && (
                     <div style={{
-                      fontSize: 12, color: '#1F1F1E', marginBottom: 8,
+                      fontSize: 12, color: 'var(--c-danger)', marginBottom: 8,
                       padding: '10px 12px', borderRadius: 10,
-                      background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
+                      background: 'var(--c-danger-soft)', border: '1px solid var(--c-danger)',
                       fontWeight: 600,
                     }}>
                       No hay repartidores disponibles ahora mismo. Puedes pedir para recogida.
@@ -561,7 +560,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       </button>
                     ))}
                   </div>
-                  {modoEntrega === 'recogida' && <div style={{ fontSize: 11, color: '#22C55E', fontWeight: 600, marginTop: 6 }}>Sin coste de envío</div>}
+                  {modoEntrega === 'recogida' && <div style={{ fontSize: 11, color: 'var(--c-success)', fontWeight: 600, marginTop: 6 }}>Sin coste de envío</div>}
                 </div>
 
                 {/* Propina */}
@@ -626,17 +625,17 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {promoActiva && (
                   <div style={{
                     marginBottom: 14, padding: '12px 14px', borderRadius: 10,
-                    background: descuento > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(255,107,44,0.06)',
-                    border: descuento > 0 ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(255,107,44,0.15)',
+                    background: descuento > 0 ? 'var(--c-success-soft)' : 'var(--c-primary-soft)',
+                    border: descuento > 0 ? '1px solid var(--c-success)' : '1px solid var(--c-primary)',
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}>
                     <span style={{ fontSize: 20 }}>{descuento > 0 ? '🎉' : '🏷️'}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: descuento > 0 ? '#4ADE80' : 'var(--c-primary-light)' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: descuento > 0 ? 'var(--c-success)' : 'var(--c-primary)' }}>
                         {promoActiva.titulo}
                       </div>
                       {descuento > 0 ? (
-                        <div style={{ fontSize: 11, color: '#4ADE80' }}>-{descuento.toFixed(2)} € aplicado</div>
+                        <div style={{ fontSize: 11, color: 'var(--c-success)' }}>-{descuento.toFixed(2)} € aplicado</div>
                       ) : (
                         <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>
                           Compra min. {promoActiva.minimo_compra}€ — te faltan {((promoActiva.minimo_compra || 0) - subtotal).toFixed(2)}€
@@ -647,16 +646,16 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 )}
 
                 {/* Desglose */}
-                <div style={{ fontSize: 13, color: 'var(--c-muted)', padding: '14px 0', marginTop: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Subtotal</span><span style={{ color: 'var(--c-text)', fontWeight: 600 }}>{subtotal.toFixed(2)} €</span></div>
+                <div style={{ fontSize: 13, color: 'var(--c-text-soft)', padding: '14px 0', marginTop: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Subtotal</span><span style={{ color: 'var(--c-text)', fontWeight: 700 }}>{subtotal.toFixed(2)} €</span></div>
                   {descuento > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#4ADE80' }}>
-                      <span>Descuento</span><span style={{ fontWeight: 600 }}>-{descuento.toFixed(2)} €</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--c-success)' }}>
+                      <span>Descuento</span><span style={{ fontWeight: 700 }}>-{descuento.toFixed(2)} €</span>
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span>Envío {distanciaKm && modoEntrega === 'delivery' && tarifaEnvioFija == null ? <span style={{ fontSize: 10 }}>({distanciaKm} km)</span> : null}</span>
-                    <span style={{ color: modoEntrega === 'recogida' ? '#22C55E' : 'var(--c-text)', fontWeight: 600 }}>
+                    <span style={{ color: modoEntrega === 'recogida' ? 'var(--c-success)' : 'var(--c-text)', fontWeight: 700 }}>
                       {modoEntrega === 'recogida' ? 'Gratis' : envioLoading ? 'Calculando...' : `${envio.toFixed(2)} €`}
                     </span>
                   </div>
@@ -665,14 +664,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       Envío gestionado por el restaurante
                     </div>
                   )}
-                  {propina > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#D97706' }}><span>Propina</span><span style={{ fontWeight: 600 }}>{propina} €</span></div>}
+                  {propina > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--c-warning)' }}><span>Propina</span><span style={{ fontWeight: 700 }}>{propina} €</span></div>}
                 </div>
 
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
-                  fontWeight: 700, fontSize: 18, paddingTop: 14, marginTop: 4, marginBottom: 4,
+                  fontWeight: 800, fontSize: 18, paddingTop: 14, marginTop: 4, marginBottom: 4,
                   color: 'var(--c-text)',
                   letterSpacing: '-0.01em',
+                  borderTop: '1px solid var(--c-border)',
                 }}>
                   <span>Total</span><span>{(total - descuento).toFixed(2)} €</span>
                 </div>
@@ -685,7 +685,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     placeholder="Ej: sin cebolla, piso 3.º izquierda..."
                     style={{
                       width: '100%', padding: '12px 14px', borderRadius: 14,
-                      border: 'none', background: '#F4F2EC',
+                      border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
                       fontSize: 13, fontFamily: 'inherit', color: 'var(--c-text)',
                       outline: 'none', boxSizing: 'border-box',
                     }}
@@ -694,7 +694,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
                 {/* Avisos envío */}
                 {envioError && modoEntrega === 'delivery' && (
-                  <div style={{ marginBottom: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 12, color: '#D97706', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ marginBottom: 10, padding: '10px 14px', borderRadius: 10, background: 'var(--c-warning-soft)', border: '1px solid var(--c-warning)', fontSize: 12, color: 'var(--c-warning)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16 }}>⚠️</span> Envío estimado (2.50€). El coste final puede variar.
                   </div>
                 )}
@@ -703,8 +703,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {errorMsg && (
                   <div style={{ marginBottom: 10, padding: '12px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 16 }}>❌</span>
-                    <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#EF4444' }}>{errorMsg}</div>
-                    <button onClick={() => setErrorMsg(null)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
+                    <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--c-danger)' }}>{errorMsg}</div>
+                    <button onClick={() => setErrorMsg(null)} style={{ background: 'none', border: 'none', color: 'var(--c-danger)', cursor: 'pointer', fontSize: 14, padding: 0 }}>×</button>
                   </div>
                 )}
 
@@ -714,7 +714,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 22 }}>🚫</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#EF4444', marginBottom: 2 }}>Fuera de la zona de entrega</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-danger)', marginBottom: 2 }}>Fuera de la zona de entrega</div>
                         <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>Este restaurante no hace delivery a tu ubicación. Puedes cambiar a recogida.</div>
                       </div>
                     </div>
@@ -727,7 +727,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: mostrarAddDir ? 12 : 0 }}>
                       <span style={{ fontSize: 22 }}>📍</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#EF4444', marginBottom: 2 }}>Añade tu dirección de entrega</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-danger)', marginBottom: 2 }}>Añade tu dirección de entrega</div>
                         <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>Necesitas una ubicación guardada para pedir a domicilio</div>
                       </div>
                       {!mostrarAddDir && (
@@ -793,13 +793,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                             placeholder="Buscar dirección..."
                             style={{
                               width: '100%', padding: '10px 10px 10px 32px', borderRadius: 14,
-                              border: 'none', fontSize: 13, fontFamily: 'inherit',
-                              background: '#F4F2EC', color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box',
+                              border: '1px solid var(--c-border)', fontSize: 13, fontFamily: 'inherit',
+                              background: 'var(--c-surface2)', color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box',
                             }}
                           />
                         </div>
 
-                        {dirMsg && <div style={{ fontSize: 11, color: '#EF4444', textAlign: 'center', marginBottom: 4 }}>{dirMsg}</div>}
+                        {dirMsg && <div style={{ fontSize: 11, color: 'var(--c-danger)', textAlign: 'center', marginBottom: 4 }}>{dirMsg}</div>}
 
                         <button onClick={() => { setMostrarAddDir(false); setDirMsg(null) }} style={{
                           width: '100%', padding: '8px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)',
@@ -819,7 +819,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   }}>
                     <span style={{ fontSize: 22 }}>🔒</span>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#EF4444', marginBottom: 2 }}>Restaurante cerrado</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-danger)', marginBottom: 2 }}>Restaurante cerrado</div>
                       <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>{restCerradoMsg}</div>
                     </div>
                   </div>
@@ -828,11 +828,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {/* CTA */}
                 <button onClick={iniciarPago} disabled={isDisabled} style={{
                   width: '100%', marginTop: 14, padding: '16px 0', borderRadius: 12, border: 'none',
-                  background: isDisabled ? '#E8E6E0' : 'var(--c-btn-gradient)',
-                  color: '#1F1F1E', fontSize: 15, fontWeight: 700,
+                  background: isDisabled ? 'var(--c-border)' : 'var(--c-btn-gradient)',
+                  color: isDisabled ? 'var(--c-muted)' : '#FFFFFF', fontSize: 15, fontWeight: 700,
                   cursor: isDisabled ? 'default' : 'pointer',
                   fontFamily: 'inherit', letterSpacing: '0.01em',
-                  opacity: isDisabled ? 0.55 : 1,
+                  opacity: isDisabled ? 0.7 : 1,
                 }}>
                   {restCerrado ? 'No disponible — restaurante cerrado'
                     : (fueraDeRadio && modoEntrega === 'delivery') ? 'Fuera de zona — prueba recogida'

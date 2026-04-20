@@ -41,7 +41,7 @@ export default function Onboarding({ onComplete }) {
         {EMOJIS.map((e, i) => (
           <div key={i} style={{
             position: 'absolute', top: `${10 + (i * 11) % 80}%`, left: `${5 + (i * 13) % 90}%`,
-            fontSize: 24 + (i % 3) * 8, opacity: 0.06,
+            fontSize: 24 + (i % 3) * 8, opacity: 0.3,
             animation: `float${(i % 3) + 1} ${4 + i * 0.5}s ease-in-out infinite`,
             animationDelay: `${i * 0.3}s`,
           }}>{e}</div>
@@ -79,7 +79,7 @@ export default function Onboarding({ onComplete }) {
             <text x="24" y="18.5" textAnchor="middle" fontSize="6" fill="#FECB00" fontWeight="bold">IC</text>
           </svg>
         </div>
-        <span style={{ fontSize: 10, color: '#E8E6E0', fontWeight: 700, letterSpacing: '0.08em' }}>HECHO EN CANARIAS</span>
+        <span style={{ fontSize: 10, color: 'var(--c-muted)', fontWeight: 700, letterSpacing: '0.08em' }}>HECHO EN CANARIAS</span>
       </div>
 
       {/* Tarjetas */}
