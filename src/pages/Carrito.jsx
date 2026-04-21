@@ -348,6 +348,24 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     if (modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
       setSinDireccion(true); setMostrarAddDir(true); return
     }
+    // Revalidar rider del socio antes de iniciar el pago
+    try {
+      const socioIdCheck = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
+      const socioSlugCheck = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_slug') : null
+      if (socioIdCheck && socioSlugCheck && modoEntrega === 'delivery') {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/get-socio-marketplace?slug=${encodeURIComponent(socioSlugCheck)}&live=1`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.socio?.rider_online === false) {
+            setErrorMsg('Este repartidor ya no está disponible. El pedido no puede completarse en este momento. Puedes pedir directamente desde Pidoo.')
+            return
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Carrito] revalidación rider socio falló', e)
+    }
     isPaying.current = true; pagoEnviado.current = false; setLoading(true); setErrorMsg(null)
     try {
       const totalConDescuento = Math.max(0, total - descuento)

@@ -24,11 +24,18 @@ function riderAsignado(pedido) {
 export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const { user } = useAuth()
   const [pedido, setPedido] = useState(pedidoInicial)
+  const [socio, setSocio] = useState(null)
   const [valoracion, setValoracion] = useState(0)
   const [textoResena, setTextoResena] = useState('')
   const [resenaEnviada, setResenaEnviada] = useState(false)
   const [yaValorado, setYaValorado] = useState(false)
   const [errorResena, setErrorResena] = useState(null)
+  // Reseña del socio (2º paso, solo si pedido.socio_id)
+  const [pasoResena, setPasoResena] = useState(1) // 1 = restaurante, 2 = socio
+  const [valoracionSocio, setValoracionSocio] = useState(0)
+  const [textoResenaSocio, setTextoResenaSocio] = useState('')
+  const [resenaSocioEnviada, setResenaSocioEnviada] = useState(false)
+  const [yaValoradoSocio, setYaValoradoSocio] = useState(false)
   const [iframeError, setIframeError] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_SECONDS)
   const [autoCloseCancelled, setAutoCloseCancelled] = useState(false)
@@ -39,16 +46,81 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
   useEffect(() => {
     supabase.from('pedidos').select('*').eq('id', pedidoInicial.id).single()
-      .then(({ data }) => { if (data) setPedido(data) })
+      .then(({ data }) => {
+        if (data) {
+          setPedido(data)
+          if (data.socio_id) {
+            supabase.from('socios')
+              .select('nombre_comercial, slug, logo_url, color_primario')
+              .eq('id', data.socio_id).maybeSingle()
+              .then(({ data: socioData }) => { if (socioData) setSocio(socioData) })
+          }
+        }
+      })
   }, [pedidoInicial.id])
+
+  function abrirSocio() {
+    if (!socio?.slug) return
+    window.location.hash = `#/s/${socio.slug}`
+  }
+
+  function hexToRgba(hex, alpha = 0.1) {
+    if (!hex) return `rgba(255,107,44,${alpha})`
+    const h = hex.replace('#', '')
+    const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+    const r = parseInt(full.slice(0, 2), 16)
+    const g = parseInt(full.slice(2, 4), 16)
+    const b = parseInt(full.slice(4, 6), 16)
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return `rgba(255,107,44,${alpha})`
+    return `rgba(${r},${g},${b},${alpha})`
+  }
+
+  function SocioBanner() {
+    if (!socio) return null
+    const color = socio.color_primario || '#FF6B2C'
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: hexToRgba(color, 0.1),
+        border: `1px solid ${hexToRgba(color, 0.22)}`,
+        borderRadius: 12, padding: '10px 12px', marginBottom: 14,
+      }}>
+        {socio.logo_url ? (
+          <img src={socio.logo_url} alt={socio.nombre_comercial} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: '#fff', flexShrink: 0 }} />
+        ) : (
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+            {(socio.nombre_comercial || '?').charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)', lineHeight: 1.25 }}>
+            Entregado por <span style={{ color }}>{socio.nombre_comercial}</span> · Pidoo
+          </div>
+          {socio.slug && (
+            <button onClick={abrirSocio} style={{
+              background: 'none', border: 'none', padding: 0, marginTop: 2,
+              fontSize: 11, fontWeight: 700, color, cursor: 'pointer',
+              fontFamily: 'inherit', textAlign: 'left',
+            }}>
+              Volver a pedir en {socio.nombre_comercial} →
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     const uid = user?.id || pedido.usuario_id
     if (pedido.id && uid) {
       supabase.from('resenas').select('id').eq('pedido_id', pedido.id).eq('usuario_id', uid).maybeSingle()
         .then(({ data }) => { if (data) setYaValorado(true) })
+      if (pedido.socio_id) {
+        supabase.from('resenas_socio').select('id').eq('pedido_id', pedido.id).eq('usuario_id', uid).maybeSingle()
+          .then(({ data }) => { if (data) setYaValoradoSocio(true) })
+      }
     }
-  }, [pedido.id, user?.id])
+  }, [pedido.id, pedido.socio_id, user?.id])
 
   useEffect(() => {
     const channel = supabase.channel(`tracking-${pedido.id}`)
@@ -146,6 +218,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
           <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600 }}>{pedido.codigo}</span>
         </div>
+        <SocioBanner />
         <div style={{ background: 'rgba(239,68,68,0.06)', borderRadius: 14, padding: 28, textAlign: 'center', border: '1px solid rgba(239,68,68,0.15)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>{pedido.estado === 'cancelado' ? '❌' : '⚠️'}</div>
           <div style={{ fontWeight: 700, fontSize: 18, color: '#EF4444', marginBottom: 8 }}>
@@ -185,6 +258,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>Cerrar</button>
           </div>
         </div>
+
+        <SocioBanner />
 
         {/* Celebración */}
         <div style={{ position: 'relative', textAlign: 'center', padding: '32px 0 22px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 18, overflow: 'hidden' }}>
@@ -286,6 +361,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>Cerrar</button>
         </div>
       </div>
+
+      <SocioBanner />
 
       <style>{`
         @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }

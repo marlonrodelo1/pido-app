@@ -16,6 +16,7 @@ export default function MisPedidos({ onTrack }) {
   const { user } = useAuth()
   const { addItem } = useCart()
   const [pedidos, setPedidos] = useState([])
+  const [sociosMap, setSociosMap] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [repetido, setRepetido] = useState(null)
@@ -30,7 +31,21 @@ export default function MisPedidos({ onTrack }) {
       .eq('usuario_id', user.id).gte('created_at', hace90d)
       .order('created_at', { ascending: false }).limit(50)
     if (queryError) { setError('No se pudieron cargar los pedidos'); setLoading(false); return }
-    setPedidos(data || []); setLoading(false)
+    const lista = data || []
+    setPedidos(lista)
+    setLoading(false)
+
+    const socioIds = [...new Set(lista.map(p => p.socio_id).filter(Boolean))]
+    if (socioIds.length > 0) {
+      const { data: socios } = await supabase.from('socios')
+        .select('id, nombre_comercial, logo_url, color_primario')
+        .in('id', socioIds)
+      if (socios) {
+        const map = {}
+        socios.forEach(s => { map[s.id] = s })
+        setSociosMap(map)
+      }
+    }
   }
 
   async function repetirPedido(pedido) {
@@ -74,12 +89,24 @@ export default function MisPedidos({ onTrack }) {
       )}
       {pedidos.map(p => {
         const colors = ESTADO_COLORS[p.estado] || ESTADO_COLORS.nuevo
+        const socio = p.socio_id ? sociosMap[p.socio_id] : null
         return (
           <div key={p.id} style={{ background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(0,0,0,0.08)', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>{p.establecimientos?.nombre || 'Restaurante'}</span>
               <span style={{ background: colors.bg, color: colors.c, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, textTransform: 'capitalize' }}>{p.estado.replace('_', ' ')}</span>
             </div>
+            {socio && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#767575', marginBottom: 6 }}>
+                <span>vía</span>
+                {socio.logo_url ? (
+                  <img src={socio.logo_url} alt="" style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', background: '#fff' }} />
+                ) : (
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: socio.color_primario || '#FF6B2C', display: 'inline-block' }} />
+                )}
+                <span style={{ fontWeight: 700, color: socio.color_primario || 'var(--c-text)' }}>{socio.nombre_comercial}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#767575', marginBottom: 4 }}>
               <span>{p.codigo}</span>
               <span>{p.metodo_pago === 'tarjeta' ? '💳' : '💵'} {p.metodo_pago}</span>
