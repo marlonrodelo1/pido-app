@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Instagram, Facebook, Globe, ArrowLeft } from 'lucide-react'
+import { Globe, ArrowLeft } from 'lucide-react'
+
+function InstagramIcon({ size = 18, color = '#1F1F1E' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  )
+}
+
+function FacebookIcon({ size = 18, color = '#1F1F1E' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
+      <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z" />
+    </svg>
+  )
+}
 
 const SUPABASE_URL = 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
 
@@ -241,11 +259,11 @@ export default function TiendaSocio() {
           <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
             {redes.instagram && (
               <a href={redes.instagram} target="_blank" rel="noopener noreferrer"
-                 style={iconBtn}><Instagram size={18} color="#1F1F1E" /></a>
+                 style={iconBtn}><InstagramIcon size={18} color="#1F1F1E" /></a>
             )}
             {redes.facebook && (
               <a href={redes.facebook} target="_blank" rel="noopener noreferrer"
-                 style={iconBtn}><Facebook size={18} color="#1F1F1E" /></a>
+                 style={iconBtn}><FacebookIcon size={18} color="#1F1F1E" /></a>
             )}
             {redes.tiktok && (
               <a href={redes.tiktok} target="_blank" rel="noopener noreferrer"
