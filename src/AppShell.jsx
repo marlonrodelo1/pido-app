@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { Bell, Share2, CircleUser, X } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -25,7 +26,8 @@ const SuspenseFallback = (
   </div>
 )
 
-function AppContent() {
+function AppContent({ socioData = null, restaurantesFilter = null }) {
+  const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('pido_onboarded'))
   const [categoriaPadre, setCategoriaPadre] = useState(() => localStorage.getItem('pido_categoria') || null)
@@ -157,7 +159,7 @@ function AppContent() {
             : seccion === 'repartidores'
             ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'
-            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} />
+            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} socioData={socioData} restaurantesFilter={restaurantesFilter} />
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />
             : seccion === 'mapa'
@@ -183,6 +185,12 @@ function AppContent() {
         }
         if (!user && SECCIONES_PROTEGIDAS.includes(s)) {
           setLoginOpen(true)
+          return
+        }
+        if (s === 'home' && socioData) {
+          // Si está en marketplace de un socio y pulsa Inicio → Home global
+          try { sessionStorage.removeItem('pidoo_socio_id') } catch (_) {}
+          navigate('/app')
           return
         }
         setSeccion(s)
@@ -218,11 +226,11 @@ function AppContent() {
   )
 }
 
-export default function AppShell() {
+export default function AppShell({ socioData = null, restaurantesFilter = null }) {
   return (
     <AuthProvider>
       <CartProvider>
-        <AppContent />
+        <AppContent socioData={socioData} restaurantesFilter={restaurantesFilter} />
       </CartProvider>
     </AuthProvider>
   )

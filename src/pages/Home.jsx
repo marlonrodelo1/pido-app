@@ -1,11 +1,139 @@
 import { useState, useEffect, useMemo } from 'react'
-import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike } from 'lucide-react'
+import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike, Globe, ArrowLeft } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentPosition } from '../lib/geolocation'
 import Stars from '../components/Stars'
 import EntregaBadge from '../components/EntregaBadge'
 import { estaAbierto, horarioHoyTexto } from '../lib/horario'
+
+function InstagramIcon({ size = 18, color = '#1F1F1E' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  )
+}
+
+function FacebookIcon({ size = 18, color = '#1F1F1E' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
+      <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z" />
+    </svg>
+  )
+}
+
+function TikTokIcon({ size = 18, color = '#1F1F1E' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
+      <path d="M16.6 5.82s.51.5 0 0A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5 2.59 2.59 0 0 1 0-5.17c.14 0 .28.02.41.04v-3.13a5.7 5.7 0 0 0-.41-.01 5.66 5.66 0 0 0 0 11.32 5.66 5.66 0 0 0 5.66-5.66V9.14a7.3 7.3 0 0 0 4.26 1.36V7.38a4.28 4.28 0 0 0-3.18-1.56z" />
+    </svg>
+  )
+}
+
+function SocioHeader({ socio }) {
+  const navigate = useNavigate()
+  const primary = (socio?.color_primario && /^#[0-9A-Fa-f]{6}$/.test(socio.color_primario))
+    ? socio.color_primario
+    : '#FF6B2C'
+  const redes = socio?.redes || {}
+  const tieneRedes = !!(redes.instagram || redes.facebook || redes.tiktok || redes.web)
+  const iconBtn = {
+    width: 32, height: 32, borderRadius: '50%',
+    background: '#fff', border: '1px solid rgba(0,0,0,0.08)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    textDecoration: 'none',
+  }
+  return (
+    <div style={{ marginBottom: 24, marginLeft: -20, marginRight: -20, marginTop: -20 }}>
+      <div style={{ position: 'relative', height: 140, width: '100%', overflow: 'hidden' }}>
+        {socio.banner_url ? (
+          <img src={socio.banner_url} alt={socio.nombre_comercial}
+               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${primary} 0%, #F76526 100%)` }} />
+        )}
+        <button
+          onClick={() => navigate('/app')}
+          style={{
+            position: 'absolute', top: 12, left: 12,
+            background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
+            border: 'none', borderRadius: 999, width: 34, height: 34,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          aria-label="Volver"
+        >
+          <ArrowLeft size={16} color="#1F1F1E" />
+        </button>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            position: 'absolute', top: 12, right: 12,
+            background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
+            border: 'none', borderRadius: 999, padding: '6px 12px',
+            fontSize: 11, fontWeight: 700, color: '#1F1F1E',
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}
+          aria-label="Por Pidoo"
+        >
+          Por <span style={{ color: primary, fontWeight: 900 }}>Pidoo</span>
+        </button>
+      </div>
+      <div style={{ padding: '0 20px', position: 'relative' }}>
+        <div style={{ marginTop: -36, display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%',
+            background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            border: '4px solid #fff',
+            overflow: 'hidden', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {socio.logo_url ? (
+              <img src={socio.logo_url} alt={socio.nombre_comercial}
+                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{
+                width: '100%', height: '100%',
+                background: `linear-gradient(135deg, ${primary} 0%, #F76526 100%)`,
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 30, fontWeight: 900,
+              }}>{(socio.nombre_comercial || '?').slice(0, 1).toUpperCase()}</div>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 200, paddingBottom: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: '#1F1F1E', lineHeight: 1.15 }}>
+              {socio.nombre_comercial}
+            </div>
+            {socio.descripcion && (
+              <p style={{ fontSize: 13, color: '#6B6B68', lineHeight: 1.45, margin: '4px 0 0', maxWidth: 620 }}>
+                {socio.descripcion}
+              </p>
+            )}
+          </div>
+        </div>
+        {tieneRedes && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            {redes.instagram && (
+              <a href={redes.instagram} target="_blank" rel="noopener noreferrer" style={iconBtn}><InstagramIcon size={16} color="#1F1F1E" /></a>
+            )}
+            {redes.facebook && (
+              <a href={redes.facebook} target="_blank" rel="noopener noreferrer" style={iconBtn}><FacebookIcon size={16} color="#1F1F1E" /></a>
+            )}
+            {redes.tiktok && (
+              <a href={redes.tiktok} target="_blank" rel="noopener noreferrer" style={iconBtn}><TikTokIcon size={16} color="#1F1F1E" /></a>
+            )}
+            {redes.web && (
+              <a href={redes.web} target="_blank" rel="noopener noreferrer" style={iconBtn}><Globe size={16} color="#1F1F1E" /></a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371
@@ -23,8 +151,9 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores }) {
+export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, socioData = null, restaurantesFilter = null }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
+  const filterIdsKey = Array.isArray(restaurantesFilter) ? restaurantesFilter.join(',') : ''
   const { perfil, updatePerfil, user } = useAuth()
   const [establecimientos, setEstablecimientos] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -65,10 +194,15 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
     supabase.from('promociones').select('*, establecimientos(id, nombre, logo_url, banner_url, rating, total_resenas, radio_cobertura_km, activo, horario, categoria_padre)')
       .eq('activa', true)
       .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
-      .then(({ data }) => setPromociones(
-        (data || []).filter(p => p.establecimientos?.categoria_padre === (categoriaPadre || 'comida'))
-      ))
-  }, [categoriaPadre])
+      .then(({ data }) => {
+        let lista = (data || []).filter(p => p.establecimientos?.categoria_padre === (categoriaPadre || 'comida'))
+        if (Array.isArray(restaurantesFilter)) {
+          const set = new Set(restaurantesFilter)
+          lista = lista.filter(p => set.has(p.establecimientos?.id))
+        }
+        setPromociones(lista)
+      })
+  }, [categoriaPadre, filterIdsKey])
 
   // Sincronizar favoritos cuando perfil cambia
   useEffect(() => {
@@ -126,10 +260,16 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
       })
       .catch(() => { setGeoError(true) })
     fetchEstablecimientos()
-  }, [categoriaPadre])
+  }, [categoriaPadre, filterIdsKey])
 
   async function fetchEstablecimientos() {
     setLoading(true)
+    // Si venimos de un marketplace de socio con filtro vacío, no cargamos nada
+    if (Array.isArray(restaurantesFilter) && restaurantesFilter.length === 0) {
+      setEstablecimientos([])
+      setLoading(false)
+      return
+    }
     let query = supabase
       .from('establecimientos')
       .select('*')
@@ -137,6 +277,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
 
     if (categoriaPadre) {
       query = query.eq('categoria_padre', categoriaPadre)
+    }
+
+    if (Array.isArray(restaurantesFilter) && restaurantesFilter.length > 0) {
+      query = query.in('id', restaurantesFilter)
     }
 
     let { data } = await query.order('rating', { ascending: false })
@@ -262,6 +406,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores })
         .home-fade { animation: homeFadeIn 0.4s ease-out both; }
         .skeleton { background: rgba(0,0,0,0.06); border-radius: 12px; animation: skeletonPulse 1.2s ease-in-out infinite; }
       `}</style>
+      {socioData && <SocioHeader socio={socioData} />}
       {/* ── Dirección ── */}
       <div className="home-fade" style={{ animationDelay: '0s', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16 }}>
         <MapPin size={24} strokeWidth={2} color="#FF6B2C" style={{ flexShrink: 0 }} />
