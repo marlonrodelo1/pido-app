@@ -277,9 +277,14 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         } catch (e) { console.error('[Carrito] reverse geocoding', e) }
       }
     }
+    let socioIdTracking = null
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
+      if (raw) socioIdTracking = raw
+    } catch (_) {}
     const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert({
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
-      canal, socio_id: null, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
+      canal, socio_id: socioIdTracking, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
       descuento: descuento > 0 ? descuento : null,
       promo_titulo: descuento > 0 && promoActiva ? promoActiva.titulo : null, notas,

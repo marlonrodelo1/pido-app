@@ -12,6 +12,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
 const EliminarCuenta = lazy(() => import('./pages/EliminarCuenta'))
 const TiendaPublicaRoute = lazy(() => import('./pages/TiendaPublicaRoute'))
+const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 
 // Error Boundary — evita pantalla blanca si algo falla
 class ErrorBoundary extends Component {
@@ -178,6 +179,7 @@ function AppRoutes() {
         <Route path="/terminos" element={<PaginaLegal slug="terminos" onBack={() => window.history.back()} />} />
         <Route path="/privacidad" element={<PaginaLegal slug="privacidad" onBack={() => window.history.back()} />} />
         <Route path="/eliminar-cuenta" element={<EliminarCuenta />} />
+        <Route path="/s/:slug" element={<TiendaSocio />} />
         <Route path="/:slug" element={<TiendaPublicaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
