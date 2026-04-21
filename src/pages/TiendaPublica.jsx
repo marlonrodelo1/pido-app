@@ -61,6 +61,21 @@ export default function TiendaPublica({ establecimiento }) {
     setMeta('name', 'twitter:title', nombre)
     setMeta('name', 'twitter:description', desc)
     setMeta('name', 'twitter:image', img)
+
+    // Favicon dinamico = logo del restaurante
+    const logo = establecimiento?.logo_url
+    if (logo) {
+      let link = document.querySelector("link[rel='icon']")
+      if (!link) {
+        link = document.createElement('link')
+        link.rel = 'icon'
+        document.head.appendChild(link)
+      }
+      link.href = logo
+      return () => {
+        if (link) link.href = '/favicon.svg'
+      }
+    }
   }, [establecimiento?.id])
 
   // Cerrar login al iniciar sesión
