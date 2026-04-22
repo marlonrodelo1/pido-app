@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <rect width="2732" height="2732" fill="#FFFFFF"/>
+  <!-- Pidoo "Oo" logo: círculo grande (donut) + círculo pequeño, ambos naranja -->
+  <g transform="translate(1366 1366)">
+    <!-- Anillo naranja (o grande) -->
+    <circle cx="-180" cy="0" r="260" fill="none" stroke="#FF6B2C" stroke-width="120"/>
+    <!-- Círculo naranja relleno (o pequeño) -->
+    <circle cx="280" cy="0" r="140" fill="#FF6B2C"/>
+  </g>
+</svg>
