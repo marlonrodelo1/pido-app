@@ -7,8 +7,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Forzar carga del plugin Swift para que Capacitor lo registre en el bridge
-        _ = PidooFCMPlugin.self
         return true
     }
 
