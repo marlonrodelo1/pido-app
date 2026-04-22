@@ -75,6 +75,10 @@ export function AuthProvider({ children }) {
         setLoading(false)
         registerWebPush('cliente', { user_id: userId })
         registerPushNotifications('cliente', { user_id: userId })
+        // Claim de tokens huerfanos iOS (AppDelegate los guarda sin user_id antes del login)
+        setTimeout(() => { supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).catch(() => {}) }, 2000)
+        setTimeout(() => { supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).catch(() => {}) }, 6000)
+        setTimeout(() => { supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).catch(() => {}) }, 15000)
         return
       }
       setPerfil(null)
@@ -103,6 +107,14 @@ export function AuthProvider({ children }) {
     // Registrar push notifications (web + nativo)
     registerWebPush('cliente', { user_id: userId })
     registerPushNotifications('cliente', { user_id: userId })
+    // Reclamar tokens huerfanos creados por AppDelegate iOS antes del login.
+    // Se reintenta varias veces por si el FCM token llega con retraso.
+    const claimTokens = () => {
+      supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).then(() => {}).catch(() => {})
+    }
+    setTimeout(claimTokens, 2000)
+    setTimeout(claimTokens, 6000)
+    setTimeout(claimTokens, 15000)
   }
 
   async function login(email, password) {

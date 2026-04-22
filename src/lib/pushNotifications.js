@@ -29,35 +29,10 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
 
     async function linkOrphanFcmToUser() {
       if (!ids.user_id) return
-      const { data: linked, error } = await supabase
-        .from('push_subscriptions')
-        .update({ user_id: ids.user_id, establecimiento_id: ids.establecimiento_id || null })
-        .is('user_id', null)
-        .eq('user_type', userType)
-        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .select('id, created_at')
-      if (error) { await debugLog('link_orphan_error', { message: error.message }); return }
-      await debugLog('link_orphan_ok', { linked: (linked || []).length })
-
-      // Limpieza: solo mantener el FCM token mas reciente del usuario.
-      // Asi evitamos recibir N notificaciones cuando se acumulan tokens de reinstalaciones.
-      const { data: allTokens } = await supabase
-        .from('push_subscriptions')
-        .select('id, created_at')
-        .eq('user_id', ids.user_id)
-        .eq('user_type', userType)
-        .like('endpoint', 'fcm:%')
-        .order('created_at', { ascending: false })
-      if (allTokens && allTokens.length > 1) {
-        const keepId = allTokens[0].id
-        const toDelete = allTokens.slice(1).map(t => t.id)
-        const { error: delErr } = await supabase
-          .from('push_subscriptions')
-          .delete()
-          .in('id', toDelete)
-        if (delErr) await debugLog('cleanup_old_tokens_error', { message: delErr.message })
-        else await debugLog('cleanup_old_tokens_ok', { kept: keepId, deleted: toDelete.length })
-      }
+      // Usa la RPC SECURITY DEFINER que bypasea RLS y hace claim + dedupe en un solo viaje.
+      const { data, error } = await supabase.rpc('claim_orphan_push_tokens', { p_user_type: userType })
+      if (error) await debugLog('claim_rpc_error', { message: error.message })
+      else await debugLog('claim_rpc_ok', { claimed: data })
     }
 
     async function upsertAndroidToken(fcmToken) {
