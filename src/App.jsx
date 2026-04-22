@@ -11,6 +11,7 @@ import Landing from './pages/Landing'
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const PaginaLegal = lazy(() => import('./pages/PaginaLegal'))
 const EliminarCuenta = lazy(() => import('./pages/EliminarCuenta'))
+const Contacto = lazy(() => import('./pages/Contacto'))
 const TiendaPublicaRoute = lazy(() => import('./pages/TiendaPublicaRoute'))
 const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 
@@ -207,6 +208,8 @@ function AppRoutes() {
         <Route path="/terminos" element={<PaginaLegal slug="terminos" onBack={() => window.history.back()} />} />
         <Route path="/privacidad" element={<PaginaLegal slug="privacidad" onBack={() => window.history.back()} />} />
         <Route path="/eliminar-cuenta" element={<EliminarCuenta />} />
+        <Route path="/contacto" element={<Contacto />} />
+        <Route path="/soporte" element={<Contacto />} />
         <Route path="/s/:slug" element={<TiendaSocio />} />
         <Route path="/:slug" element={<TiendaPublicaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
