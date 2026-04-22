@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -24,8 +25,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
-    // APNs callbacks forwardeados al plugin @capacitor/push-notifications
+    // Proxy de Firebase desactivado (Info.plist FirebaseAppDelegateProxyEnabled=NO).
+    // Debemos asignar manualmente el APNs token a Messaging para que FCM pueda
+    // generar el registration token, y reenviar a @capacitor/push-notifications.
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
         NotificationCenter.default.post(name: Notification.Name("capacitorDidRegisterForRemoteNotifications"), object: deviceToken)
     }
 
