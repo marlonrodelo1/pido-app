@@ -98,9 +98,21 @@ function NativeBootstrap() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
 
-    StatusBar.setOverlaysWebView({ overlay: false })
-    StatusBar.setBackgroundColor({ color: '#FAFAF7' })
-    StatusBar.setStyle({ style: Style.Light })
+    // Aplicar StatusBar en cada foreground: tras OAuth (Safari/Google) iOS
+    // resetea la config de StatusBar y el webview queda desalineado hasta
+    // que relanzas la app. Reaplicando aquí arreglamos el descuadre.
+    const applyStatusBar = async () => {
+      try {
+        await StatusBar.setOverlaysWebView({ overlay: false })
+        await StatusBar.setBackgroundColor({ color: '#FAFAF7' })
+        await StatusBar.setStyle({ style: Style.Light })
+      } catch (_) {}
+    }
+    applyStatusBar()
+
+    const appStateHandle = CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) applyStatusBar()
+    })
 
     // Capturar deep link de OAuth callback
     const listenerHandle = CapApp.addListener('appUrlOpen', async ({ url }) => {
@@ -118,6 +130,7 @@ function NativeBootstrap() {
         const code = params.get('code')
         if (code) {
           await supabase.auth.exchangeCodeForSession(code)
+          await applyStatusBar()
           return
         }
 
@@ -126,8 +139,10 @@ function NativeBootstrap() {
         if (access_token && refresh_token) {
           await supabase.auth.setSession({ access_token, refresh_token })
         }
+        await applyStatusBar()
       } catch (err) {
         console.error('Error procesando deep link OAuth:', err)
+        applyStatusBar()
       }
     })
 
@@ -143,6 +158,13 @@ function NativeBootstrap() {
     })
 
     return () => {
+      try {
+        if (appStateHandle && typeof appStateHandle.then === 'function') {
+          appStateHandle.then(h => h?.remove?.())
+        } else {
+          appStateHandle?.remove?.()
+        }
+      } catch (_) {}
       try {
         if (listenerHandle && typeof listenerHandle.then === 'function') {
           listenerHandle.then(h => h?.remove?.())
