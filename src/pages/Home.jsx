@@ -151,7 +151,7 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, socioData = null, restaurantesFilter = null }) {
+export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, onOpenDirecciones, socioData = null, restaurantesFilter = null }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
   const filterIdsKey = Array.isArray(restaurantesFilter) ? restaurantesFilter.join(',') : ''
   const { perfil, updatePerfil, user } = useAuth()
@@ -408,7 +408,14 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, s
       `}</style>
       {socioData && <SocioHeader socio={socioData} />}
       {/* ── Dirección ── */}
-      <div className="home-fade" style={{ animationDelay: '0s', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16 }}>
+      <div
+        className="home-fade"
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpenDirecciones?.()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDirecciones?.() } }}
+        style={{ animationDelay: '0s', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16, cursor: 'pointer', userSelect: 'none' }}
+      >
         <MapPin size={24} strokeWidth={2} color="#FF6B2C" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6B6B68', fontWeight: 700, lineHeight: '14px' }}>Enviar a</div>

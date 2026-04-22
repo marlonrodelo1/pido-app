@@ -37,6 +37,7 @@ function AppContent({ socioData = null, restaurantesFilter = null }) {
   const [notifsNoLeidas, setNotifsNoLeidas] = useState(0)
   const [carritoOpen, setCarritoOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
+  const [perfilSubInicial, setPerfilSubInicial] = useState(null)
   const { totalItems } = useCart()
 
   const SECCIONES_PROTEGIDAS = ['favoritos', 'pedidos', 'notificaciones', 'perfil']
@@ -159,7 +160,10 @@ function AppContent({ socioData = null, restaurantesFilter = null }) {
             : seccion === 'repartidores'
             ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'
-            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} socioData={socioData} restaurantesFilter={restaurantesFilter} />
+            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} onOpenDirecciones={() => {
+                if (!user) { setLoginOpen(true); return }
+                setPerfilSubInicial('direcciones'); setSeccion('perfil'); setRestOpen(null)
+              }} socioData={socioData} restaurantesFilter={restaurantesFilter} />
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />
             : seccion === 'mapa'
@@ -169,7 +173,7 @@ function AppContent({ socioData = null, restaurantesFilter = null }) {
             : seccion === 'notificaciones'
             ? <Notificaciones />
             : seccion === 'perfil'
-            ? <Perfil />
+            ? <Perfil initialSub={perfilSubInicial} onInitialSubConsumed={() => setPerfilSubInicial(null)} />
             : null
           }
         </Suspense>

@@ -15,6 +15,13 @@ if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
   document.documentElement.classList.add('cap-android')
 }
 
+// En iOS nativo, con StatusBar.setOverlaysWebView(false) el webview también
+// arranca debajo de la status bar, por lo que el padding-top extra crea el gap
+// visible entre la barra de estado y el header sticky.
+if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
+  document.documentElement.classList.add('cap-ios')
+}
+
 // Validar variables de entorno críticas (sin ellas la app no funciona)
 const criticalEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 const missingVars = criticalEnvVars.filter(key => !import.meta.env[key])

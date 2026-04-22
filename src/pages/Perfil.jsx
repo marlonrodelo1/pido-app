@@ -5,7 +5,7 @@ import { getCurrentPosition } from '../lib/geolocation'
 import { MapPin, CreditCard, Tag, Settings, HelpCircle, LogOut, ChevronRight, X, Check, Camera, User, Phone, Mail, Navigation, Plus, Trash2, Star, AlertTriangle } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
 
-export default function Perfil() {
+export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   const { user, perfil, logout, updatePerfil, fetchPerfil } = useAuth()
   const [editando, setEditando] = useState(false)
   const [nombre, setNombre] = useState('')
@@ -105,6 +105,14 @@ export default function Perfil() {
     setDirecciones(data || [])
     setLoadingDirs(false)
   }
+
+  // Abrir subsección inicial desde navegación externa (ej. "Configura tu dirección" en Home)
+  useEffect(() => {
+    if (!initialSub) return
+    setSubSeccion(initialSub)
+    if (initialSub === 'direcciones') fetchDirecciones()
+    onInitialSubConsumed?.()
+  }, [initialSub])
 
   async function guardarDireccion(addr, lat, lng, etiqueta) {
     if (!perfil?.id) return

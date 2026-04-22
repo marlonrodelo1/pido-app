@@ -129,8 +129,10 @@ body {
 }
 
 /* En Android nativo MainActivity ya coloca el webview debajo de la status bar,
-   por lo que el padding-top adicional crea un gap visible. */
-html.cap-android body {
+   por lo que el padding-top adicional crea un gap visible. Lo mismo en iOS con
+   StatusBar.setOverlaysWebView(false): el webview arranca ya bajo la status bar. */
+html.cap-android body,
+html.cap-ios body {
   padding-top: 0;
 }
 
