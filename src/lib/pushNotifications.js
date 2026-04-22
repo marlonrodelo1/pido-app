@@ -2,9 +2,11 @@ import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 
 /**
- * Registra push notifications nativas (FCM/APNs via Capacitor).
- * Envuelto en try/catch + import dinámico para no crashear la app si
- * falta `google-services.json` o el plugin no está listo en release.
+ * Registra push notifications nativas (FCM via Capacitor).
+ *
+ * En Android, @capacitor/push-notifications devuelve directamente el token FCM.
+ * En iOS devuelve el token APNs, por lo que usamos @capacitor-community/fcm
+ * para obtener el token FCM real (requiere Firebase iOS SDK + GoogleService-Info.plist).
  */
 export async function registerPushNotifications(userType, ids = {}, onNotification) {
   if (!Capacitor.isNativePlatform()) return null
@@ -18,7 +20,6 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
     })
     if (perm.receive !== 'granted') return null
 
-    // register() puede lanzar excepción nativa en Android sin google-services.json
     try {
       await PushNotifications.register()
     } catch (err) {
@@ -26,9 +27,8 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
       return null
     }
 
-    PushNotifications.addListener('registration', async (t) => {
+    async function upsertToken(fcmToken) {
       try {
-        const fcmToken = t.value
         await supabase.from('push_subscriptions').upsert({
           endpoint: `fcm:${fcmToken}`,
           p256dh: '',
@@ -40,6 +40,24 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
         }, { onConflict: 'endpoint' })
       } catch (err) {
         console.warn('[push] upsert token failed:', err?.message || err)
+      }
+    }
+
+    PushNotifications.addListener('registration', async (t) => {
+      if (Capacitor.getPlatform() === 'ios') {
+        // En iOS t.value = APNs token; pedimos el FCM token real via @capacitor-community/fcm
+        try {
+          const { FCM } = await import('@capacitor-community/fcm')
+          const { token: fcmToken } = await FCM.getToken()
+          if (fcmToken) await upsertToken(fcmToken)
+          else console.warn('[push] FCM.getToken devolvio vacio en iOS')
+        } catch (err) {
+          console.warn('[push] FCM plugin unavailable, guardando APNs token como fallback:', err?.message || err)
+          await upsertToken(t.value)
+        }
+      } else {
+        // Android: el token de registro ya es FCM
+        await upsertToken(t.value)
       }
     })
 
