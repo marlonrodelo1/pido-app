@@ -59,11 +59,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MessagingDelegate {
     }
 
     private func saveFcmTokenToSupabase(fcmToken: String) {
-        guard let url = URL(string: "https://rmrbxrabngdmpgpfmjbo.supabase.co/rest/v1/push_subscriptions?on_conflict=endpoint") else { return }
+        // Plain INSERT (sin on_conflict). Si ya existe la fila devuelve 409 (unique
+        // violation) — no es un error real, solo significa que el token ya esta
+        // guardado. Evitamos on_conflict porque requiere UPDATE policy.
+        guard let url = URL(string: "https://rmrbxrabngdmpgpfmjbo.supabase.co/rest/v1/push_subscriptions") else { return }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.addValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
         req.addValue(anonKey, forHTTPHeaderField: "apikey")
         req.addValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         let body: [String: Any] = [
