@@ -1,17 +1,6 @@
-import { Capacitor, registerPlugin } from '@capacitor/core'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from './supabase'
 
-// Plugin iOS nativo (PidooFCMPlugin.swift) que expone el FCM token real.
-// En Android este objeto no se invoca; devolvera "not implemented".
-const PidooFCM = registerPlugin('PidooFCM')
-
-/**
- * Registra push notifications nativas (FCM via Capacitor).
- *
- * En Android, @capacitor/push-notifications devuelve directamente el token FCM.
- * En iOS devuelve el token APNs, por lo que usamos @capacitor-community/fcm
- * para obtener el token FCM real (requiere Firebase iOS SDK + GoogleService-Info.plist).
- */
 async function debugLog(event, details) {
   try {
     await supabase.from('push_debug_logs').insert({
@@ -22,6 +11,14 @@ async function debugLog(event, details) {
   } catch (_) {}
 }
 
+/**
+ * Push notifications nativas.
+ *
+ * Android: @capacitor/push-notifications devuelve directamente el FCM token.
+ * iOS: AppDelegate + FirebaseMessaging (swizzle manual) guarda el FCM token
+ *      en push_subscriptions con user_id=null. Despues de login nosotros
+ *      hacemos UPDATE enlazandolo al usuario actual.
+ */
 export async function registerPushNotifications(userType, ids = {}, onNotification) {
   if (!Capacitor.isNativePlatform()) return null
 
@@ -31,7 +28,6 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
     const { PushNotifications } = await import('@capacitor/push-notifications')
 
     const perm = await PushNotifications.requestPermissions().catch(err => {
-      console.warn('[push] requestPermissions failed:', err?.message || err)
       return { receive: 'denied' }
     })
     await debugLog('permission', { receive: perm?.receive })
@@ -44,7 +40,21 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
       return null
     }
 
-    async function upsertToken(fcmToken, source) {
+    async function linkOrphanFcmToUser() {
+      if (!ids.user_id) return
+      // Enlaza las filas recientes de user_id NULL (guardadas por AppDelegate en iOS)
+      const { data, error } = await supabase
+        .from('push_subscriptions')
+        .update({ user_id: ids.user_id, establecimiento_id: ids.establecimiento_id || null })
+        .is('user_id', null)
+        .eq('user_type', userType)
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .select('id')
+      if (error) await debugLog('link_orphan_error', { message: error.message })
+      else await debugLog('link_orphan_ok', { linked: (data || []).length })
+    }
+
+    async function upsertAndroidToken(fcmToken) {
       try {
         await supabase.from('push_subscriptions').upsert({
           endpoint: `fcm:${fcmToken}`,
@@ -55,33 +65,22 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
           user_id: ids.user_id || null,
           establecimiento_id: ids.establecimiento_id || null,
         }, { onConflict: 'endpoint' })
-        await debugLog('token_saved', { source, token_preview: fcmToken?.slice(0, 24) + '...' })
+        await debugLog('token_saved', { source: 'android_fcm' })
       } catch (err) {
-        await debugLog('token_save_error', { source, message: err?.message || String(err) })
+        await debugLog('token_save_error', { message: err?.message || String(err) })
       }
     }
 
     PushNotifications.addListener('registration', async (t) => {
       await debugLog('plugin_registration', { value_preview: t.value?.slice(0, 24) + '...' })
       if (Capacitor.getPlatform() === 'ios') {
-        // Pequeño retry: Firebase a veces tarda unos ms en tener el FCM token listo
-        let fcmToken = null
-        for (let i = 0; i < 5; i++) {
-          try {
-            const r = await PidooFCM.getToken()
-            if (r?.token) { fcmToken = r.token; break }
-          } catch (err) {
-            await debugLog('fcm_native_error', { attempt: i, message: err?.message || String(err) })
-          }
-          await new Promise(res => setTimeout(res, 500))
-        }
-        if (fcmToken) await upsertToken(fcmToken, 'pidoo_fcm_native')
-        else {
-          await debugLog('fcm_native_gave_up', null)
-          await upsertToken(t.value, 'apns_fallback')
-        }
+        // En iOS AppDelegate ya guarda el FCM token en Supabase (user_id=null).
+        // Esperamos 1.5s y linkeamos la fila huerfana al usuario actual.
+        setTimeout(() => { linkOrphanFcmToUser() }, 1500)
+        // Reintentar a los 5s por si Firebase tardo mas en devolver el token
+        setTimeout(() => { linkOrphanFcmToUser() }, 5000)
       } else {
-        await upsertToken(t.value, 'android_fcm')
+        await upsertAndroidToken(t.value)
       }
     })
 
@@ -97,7 +96,7 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
       if (onNotification) onNotification(action.notification, true)
     })
   } catch (err) {
-    console.warn('[push] plugin init error, push disabled in this session:', err?.message || err)
+    await debugLog('plugin_init_error', { message: err?.message || String(err) })
   }
 }
 
@@ -106,7 +105,5 @@ export async function unregisterPushNotifications() {
   try {
     const { PushNotifications } = await import('@capacitor/push-notifications')
     await PushNotifications.removeAllListeners()
-  } catch (err) {
-    console.warn('[push] removeAllListeners failed:', err?.message || err)
-  }
+  } catch (_) {}
 }
