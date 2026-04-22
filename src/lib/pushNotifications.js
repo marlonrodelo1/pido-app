@@ -1,5 +1,9 @@
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { supabase } from './supabase'
+
+// Plugin iOS nativo (PidooFCMPlugin.swift) que expone el FCM token real.
+// En Android este objeto no se invoca; devolvera "not implemented".
+const PidooFCM = registerPlugin('PidooFCM')
 
 /**
  * Registra push notifications nativas (FCM via Capacitor).
@@ -60,13 +64,20 @@ export async function registerPushNotifications(userType, ids = {}, onNotificati
     PushNotifications.addListener('registration', async (t) => {
       await debugLog('plugin_registration', { value_preview: t.value?.slice(0, 24) + '...' })
       if (Capacitor.getPlatform() === 'ios') {
-        try {
-          const { FCM } = await import('@capacitor-community/fcm')
-          const { token: fcmToken } = await FCM.getToken()
-          if (fcmToken) await upsertToken(fcmToken, 'fcm_plugin')
-          else await debugLog('fcm_gettoken_empty', null)
-        } catch (err) {
-          await debugLog('fcm_plugin_error', { message: err?.message || String(err) })
+        // Pequeño retry: Firebase a veces tarda unos ms en tener el FCM token listo
+        let fcmToken = null
+        for (let i = 0; i < 5; i++) {
+          try {
+            const r = await PidooFCM.getToken()
+            if (r?.token) { fcmToken = r.token; break }
+          } catch (err) {
+            await debugLog('fcm_native_error', { attempt: i, message: err?.message || String(err) })
+          }
+          await new Promise(res => setTimeout(res, 500))
+        }
+        if (fcmToken) await upsertToken(fcmToken, 'pidoo_fcm_native')
+        else {
+          await debugLog('fcm_native_gave_up', null)
           await upsertToken(t.value, 'apns_fallback')
         }
       } else {
