@@ -103,8 +103,14 @@ function NativeBootstrap() {
     // que relanzas la app. Reaplicando aquí arreglamos el descuadre.
     const applyStatusBar = async () => {
       try {
-        await StatusBar.setOverlaysWebView({ overlay: false })
-        await StatusBar.setBackgroundColor({ color: '#FAFAF7' })
+        if (Capacitor.getPlatform() === 'ios') {
+          // iOS: webview fullscreen + safe-area-inset-top en CSS (evita que
+          // el webview se descuadre tras volver de OAuth/Safari).
+          await StatusBar.setOverlaysWebView({ overlay: true })
+        } else {
+          await StatusBar.setOverlaysWebView({ overlay: false })
+          await StatusBar.setBackgroundColor({ color: '#FAFAF7' })
+        }
         await StatusBar.setStyle({ style: Style.Light })
       } catch (_) {}
     }
