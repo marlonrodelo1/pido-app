@@ -64,5 +64,12 @@
 	<string>Pidoo accede a tus fotos para establecer tu avatar.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Pidoo guarda imágenes que tomas como avatar.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
 </dict>
 </plist>
