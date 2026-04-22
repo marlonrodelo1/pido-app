@@ -4,7 +4,8 @@ import FirebaseCore
 import FirebaseMessaging
 
 /// Plugin Capacitor interno para obtener el FCM token en iOS.
-/// Sustituye a @capacitor-community/fcm que no tiene build para Capacitor 8.
+/// Firebase se configura lazily en el primer getToken() para no tocar
+/// nada en el arranque (evita crashes).
 @objc(PidooFCMPlugin)
 public class PidooFCMPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "PidooFCMPlugin"
@@ -14,20 +15,21 @@ public class PidooFCMPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     @objc func getToken(_ call: CAPPluginCall) {
-        // Asegura que Firebase esta configurado
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
-        Messaging.messaging().token { token, error in
-            if let error = error {
-                call.reject("Error obteniendo FCM token: \(error.localizedDescription)")
-                return
+        DispatchQueue.main.async {
+            if FirebaseApp.app() == nil {
+                FirebaseApp.configure()
             }
-            guard let token = token, !token.isEmpty else {
-                call.reject("FCM token vacio")
-                return
+            Messaging.messaging().token { token, error in
+                if let error = error {
+                    call.reject("FCM error: \(error.localizedDescription)")
+                    return
+                }
+                guard let token = token, !token.isEmpty else {
+                    call.reject("FCM token vacio")
+                    return
+                }
+                call.resolve(["token": token])
             }
-            call.resolve(["token": token])
         }
     }
 }
