@@ -69,6 +69,28 @@ function Paused({ nombre, onVolver }) {
   )
 }
 
+function Desactivado({ onVolver }) {
+  return (
+    <div style={{
+      minHeight: '100vh', background: '#FAFAF7', color: '#1F1F1E',
+      fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: 32, textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>🔒</div>
+      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Este marketplace no está disponible</div>
+      <p style={{ fontSize: 14, color: '#6B6B68', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
+        Este marketplace está cerrado. Puedes seguir pidiendo en Pidoo con normalidad.
+      </p>
+      <button onClick={onVolver} style={{
+        padding: '14px 32px', borderRadius: 14, border: 'none',
+        background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+        cursor: 'pointer', fontFamily: 'inherit',
+      }}>Ir a Pidoo</button>
+    </div>
+  )
+}
+
 function RiderOffline({ onVolver }) {
   return (
     <div style={{
@@ -94,7 +116,7 @@ function RiderOffline({ onVolver }) {
 export default function TiendaSocio() {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const [estado, setEstado] = useState('loading') // loading | ok | notfound | paused | rider_offline
+  const [estado, setEstado] = useState('loading') // loading | ok | notfound | paused | rider_offline | desactivado
   const [socio, setSocio] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
   const pollRef = useRef(null)
@@ -119,10 +141,12 @@ export default function TiendaSocio() {
           if (!s) { if (!isRefetch) setEstado('notfound'); return }
           setSocio(s)
           setRestaurantes(rs)
-          if (s.marketplace_activo === false) {
+          if (s.activo === false) {
+            setEstado('desactivado')
+          } else if (s.marketplace_activo === false) {
             setEstado('paused')
           } else if (s.rider_online === false) {
-            setEstado('rider_offline')
+            setEstado('desactivado')
           } else {
             setEstado('ok')
             try {
@@ -183,7 +207,8 @@ export default function TiendaSocio() {
   if (estado === 'loading') return <Skeleton />
   if (estado === 'notfound') return <NotFound onVolver={() => navigate('/')} />
   if (estado === 'paused') return <Paused nombre={socio?.nombre_comercial} onVolver={() => navigate('/')} />
-  if (estado === 'rider_offline') return <RiderOffline onVolver={() => navigate('/')} />
+  if (estado === 'desactivado') return <Desactivado onVolver={() => navigate('/')} />
+  if (estado === 'rider_offline') return <Desactivado onVolver={() => navigate('/')} />
 
   return <AppShell socioData={socio} restaurantesFilter={restaurantesFilter} />
 }
