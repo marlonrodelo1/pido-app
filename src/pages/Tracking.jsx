@@ -470,16 +470,23 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         </>
       )}
 
-      {/* Estado 2: Recogido / En camino */}
-      {(pedido.estado === 'recogido' || pedido.estado === 'en_camino') && esDelivery && (
+      {/* Estado 2: Rider asignado o ya en ruta. Aparece desde que el restaurante acepto */}
+      {(pedido.estado === 'aceptado' || pedido.estado === 'preparando' || pedido.estado === 'listo' || pedido.estado === 'recogido' || pedido.estado === 'en_camino') && esDelivery && pedido.shipday_tracking_url && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ borderRadius: 14, padding: '14px 16px', background: 'linear-gradient(135deg, rgba(255,107,44,0.15), rgba(255,107,44,0.05))', border: '1px solid rgba(255,107,44,0.2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 32, animation: 'moto 0.9s ease-in-out infinite alternate' }}>🛵</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--c-text)' }}>¡Tu pedido está en camino!</div>
-              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>Sigue al repartidor en tiempo real</div>
-            </div>
-          </div>
+          {(() => {
+            const enRuta = pedido.estado === 'recogido' || pedido.estado === 'en_camino'
+            const titulo = enRuta ? '¡Tu pedido está en camino!' : 'Repartidor asignado'
+            const sub = enRuta ? 'Sigue al repartidor en tiempo real' : 'Tu repartidor recogerá el pedido cuando esté listo'
+            return (
+              <div style={{ borderRadius: 14, padding: '14px 16px', background: 'linear-gradient(135deg, rgba(255,107,44,0.15), rgba(255,107,44,0.05))', border: '1px solid rgba(255,107,44,0.2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ fontSize: 32, animation: enRuta ? 'moto 0.9s ease-in-out infinite alternate' : 'none' }}>🛵</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--c-text)' }}>{titulo}</div>
+                  <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>{sub}</div>
+                </div>
+              </div>
+            )
+          })()}
 
           {pedido.shipday_tracking_url ? (
             <>
