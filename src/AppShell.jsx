@@ -26,7 +26,7 @@ const SuspenseFallback = (
   </div>
 )
 
-function AppContent({ socioData = null, restaurantesFilter = null }) {
+function AppContent({ socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('pido_onboarded'))
@@ -163,7 +163,7 @@ function AppContent({ socioData = null, restaurantesFilter = null }) {
             ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} onOpenDirecciones={() => {
                 if (!user) { setLoginOpen(true); return }
                 setPerfilSubInicial('direcciones'); setSeccion('perfil'); setRestOpen(null)
-              }} socioData={socioData} restaurantesFilter={restaurantesFilter} />
+              }} socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />
             : seccion === 'mapa'
@@ -230,11 +230,11 @@ function AppContent({ socioData = null, restaurantesFilter = null }) {
   )
 }
 
-export default function AppShell({ socioData = null, restaurantesFilter = null }) {
+export default function AppShell({ socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   return (
     <AuthProvider>
       <CartProvider>
-        <AppContent socioData={socioData} restaurantesFilter={restaurantesFilter} />
+        <AppContent socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />
       </CartProvider>
     </AuthProvider>
   )

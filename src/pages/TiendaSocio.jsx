@@ -204,11 +204,18 @@ export default function TiendaSocio() {
     [restaurantes]
   )
 
+  // Mapa id -> { destacado, orden_destacado } para el listado destacados del socio
+  const restaurantesFlags = useMemo(() => {
+    const m = {}
+    for (const r of restaurantes) m[r.id] = { destacado: !!r.destacado, orden_destacado: r.orden_destacado ?? 999 }
+    return m
+  }, [restaurantes])
+
   if (estado === 'loading') return <Skeleton />
   if (estado === 'notfound') return <NotFound onVolver={() => navigate('/')} />
   if (estado === 'paused') return <Paused nombre={socio?.nombre_comercial} onVolver={() => navigate('/')} />
   if (estado === 'desactivado') return <Desactivado onVolver={() => navigate('/')} />
   if (estado === 'rider_offline') return <Desactivado onVolver={() => navigate('/')} />
 
-  return <AppShell socioData={socio} restaurantesFilter={restaurantesFilter} />
+  return <AppShell socioData={socio} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />
 }

@@ -151,7 +151,7 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, onOpenDirecciones, socioData = null, restaurantesFilter = null }) {
+export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, onOpenDirecciones, socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
   const filterIdsKey = Array.isArray(restaurantesFilter) ? restaurantesFilter.join(',') : ''
   const { perfil, updatePerfil, user } = useAuth()
@@ -358,12 +358,30 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       }
       return { ...r, _fueraDeRadio: false, _distancia: null }
     })
-    // Dentro del radio primero, fuera del radio después
-    lista.sort((a, b) => (a._fueraDeRadio ? 1 : 0) - (b._fueraDeRadio ? 1 : 0))
+    if (restaurantesFlags) {
+      // Modo socio: orden alfabetico, dentro de radio primero
+      lista.sort((a, b) => {
+        const fr = (a._fueraDeRadio ? 1 : 0) - (b._fueraDeRadio ? 1 : 0)
+        if (fr !== 0) return fr
+        return (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
+      })
+    } else {
+      // Dentro del radio primero, fuera del radio después
+      lista.sort((a, b) => (a._fueraDeRadio ? 1 : 0) - (b._fueraDeRadio ? 1 : 0))
+    }
     return lista
-  }, [establecimientos, busqueda, catActiva, categoriasGenerales, userLocation])
+  }, [establecimientos, busqueda, catActiva, categoriasGenerales, userLocation, restaurantesFlags])
 
-  const destacados = establecimientos.filter(r => r.rating >= 4.5).slice(0, 5)
+  // Destacados:
+  // - Modo marketplace de socio: usa el flag `destacado` de socio_establecimiento
+  //   (ordenado por orden_destacado ASC). NO se aplica el filtro de rating.
+  // - Modo global pidoo.es: comportamiento legacy por rating >= 4.5.
+  const destacados = restaurantesFlags
+    ? establecimientos
+        .filter(r => restaurantesFlags[r.id]?.destacado)
+        .sort((a, b) => (restaurantesFlags[a.id]?.orden_destacado ?? 999) - (restaurantesFlags[b.id]?.orden_destacado ?? 999))
+        .slice(0, 10)
+    : establecimientos.filter(r => r.rating >= 4.5).slice(0, 5)
 
   const promoBadge = (promo) => {
     if (promo.tipo === 'descuento_porcentaje') return `-${promo.valor}%`
@@ -511,10 +529,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
               const sinRidersDest = estDest.abierto && r.tiene_delivery && (driversMap[r.id] ?? 0) === 0
               return (
                 <div key={r.id} onClick={() => onOpenRest(r)} style={{ minWidth: 280, cursor: 'pointer', flexShrink: 0 }}>
-                  {/* Image container — glass card */}
+                  {/* Image container — glass card (con borde naranja en modo socio destacado) */}
                   <div style={{
                     position: 'relative', height: 176, borderRadius: 22, overflow: 'hidden',
-                    ...G, marginBottom: 16,
+                    ...G,
+                    border: restaurantesFlags ? '2px solid #FF6B2C' : G.border,
+                    marginBottom: 16,
                   }}>
                     <div style={{
                       width: '100%', height: '100%',
@@ -531,6 +551,17 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: estDest.abierto ? '#22c55e' : '#ef4444' }} />
                       {estDest.abierto ? 'Abierto' : 'Cerrado'}
                     </div>
+                    {restaurantesFlags && (
+                      <div style={{
+                        position: 'absolute', bottom: 16, left: 16,
+                        background: '#FF6B2C',
+                        padding: '4px 10px', borderRadius: 999,
+                        fontSize: 10, fontWeight: 800, color: '#fff',
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                      }}>
+                        ★ Destacado
+                      </div>
+                    )}
                     {sinRidersDest && (
                       <div style={{
                         position: 'absolute', top: 16, right: 16,
