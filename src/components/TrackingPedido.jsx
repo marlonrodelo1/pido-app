@@ -129,7 +129,7 @@ function ModalValoracion({ pedidoId, socioId, establecimientoId, onClose }) {
   )
 }
 
-const SHIPDAY_ESTADOS_NO_VALIDOS = [null, undefined, 'NOT_ASSIGNED', 'NOT_ACCEPTED']
+const TRACKING_ESTADOS_NO_VALIDOS = [null, undefined, 'NOT_ASSIGNED', 'NOT_ACCEPTED']
 
 export default function TrackingPedido({ pedidoId, socioId, establecimientoId, codigo, onVolver }) {
   const [estado, setEstado] = useState('nuevo')
@@ -139,8 +139,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
   const [etaMin, setEtaMin] = useState(null)
   const [showValoracion, setShowValoracion] = useState(false)
   const [leafletListo, setLeafletListo] = useState(false)
-  const [shipdayUrl, setShipdayUrl] = useState(null)
-  const [shipdayStatus, setShipdayStatus] = useState(null)
+  const [trackingUrl, setTrackingUrl] = useState(null)
+  const [trackingStatus, setTrackingStatus] = useState(null)
 
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
@@ -155,20 +155,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
     loadLeaflet().then(() => setLeafletListo(true))
   }, [])
 
-  // Polling Shipday cada 8 s
-  useEffect(() => {
-    if (estado === 'entregado' || estado === 'cancelado' || estado === 'rechazado') return
-    const interval = setInterval(() => {
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-shipday-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pedido_id: pedidoId }),
-      }).catch(() => {})
-    }, 8000)
-    return () => clearInterval(interval)
-  }, [pedidoId, estado])
-
-  // Subscripciones Realtime
+  // Subscripciones Realtime — el dispatcher propio actualiza shipday_status y
+  // shipday_tracking_url (columnas legacy; la URL apunta a socio.pidoo.es/seguir/<codigo>).
   useEffect(() => {
     const subPedido = supabase
       .channel(`pedido-${pedidoId}`)
@@ -177,8 +165,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
       }, payload => {
         setEstado(payload.new.estado)
         if (payload.new.estado === 'entregado') setShowValoracion(true)
-        setShipdayUrl(payload.new.shipday_tracking_url || null)
-        setShipdayStatus(payload.new.shipday_status || null)
+        setTrackingUrl(payload.new.shipday_tracking_url || null)
+        setTrackingStatus(payload.new.shipday_status || null)
       })
       .subscribe()
 
@@ -279,8 +267,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
     ])
     if (pedidoRes.data) {
       setEstado(pedidoRes.data.estado)
-      setShipdayUrl(pedidoRes.data.shipday_tracking_url || null)
-      setShipdayStatus(pedidoRes.data.shipday_status || null)
+      setTrackingUrl(pedidoRes.data.shipday_tracking_url || null)
+      setTrackingStatus(pedidoRes.data.shipday_status || null)
     }
     if (riderRes.data) setRider(riderRes.data)
     if (estRes.data) setEstablecimiento(estRes.data)
@@ -295,7 +283,7 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
   }
 
   const etapaActual = getEtapaIndex(estado)
-  const shipdayListo = shipdayUrl && !SHIPDAY_ESTADOS_NO_VALIDOS.includes(shipdayStatus)
+  const trackingListo = trackingUrl && !TRACKING_ESTADOS_NO_VALIDOS.includes(trackingStatus)
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAF7', fontFamily: "'DM Sans', sans-serif" }}>
@@ -466,10 +454,10 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
           </div>
         )}
 
-        {/* Shipday tracking */}
-        {shipdayListo ? (
+        {/* Tracking del repartidor */}
+        {trackingListo ? (
           <button
-            onClick={() => window.open(shipdayUrl, '_blank')}
+            onClick={() => window.open(trackingUrl, '_blank')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',

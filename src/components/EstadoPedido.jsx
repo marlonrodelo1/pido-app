@@ -33,14 +33,14 @@ function getTextoEstado(estado) {
   return textos[estado] || 'Actualizando estado...'
 }
 
-const SHIPDAY_ESTADOS_NO_VALIDOS = [null, undefined, 'NOT_ASSIGNED', 'NOT_ACCEPTED']
+const TRACKING_ESTADOS_NO_VALIDOS = [null, undefined, 'NOT_ASSIGNED', 'NOT_ACCEPTED']
 
 export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minutosPrepacion = 20, onVolver }) {
   const [estado, setEstado] = useState('nuevo')
   const [establecimiento, setEstablecimiento] = useState(null)
   const [tiempoRestante, setTiempoRestante] = useState(minutosPrepacion)
-  const [shipdayUrl, setShipdayUrl] = useState(null)
-  const [shipdayStatus, setShipdayStatus] = useState(null)
+  const [trackingUrl, setTrackingUrl] = useState(null)
+  const [trackingStatus, setTrackingStatus] = useState(null)
 
   // Carga inicial
   useEffect(() => {
@@ -51,8 +51,8 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
       ])
       if (pedidoRes.data) {
         setEstado(pedidoRes.data.estado)
-        setShipdayUrl(pedidoRes.data.shipday_tracking_url || null)
-        setShipdayStatus(pedidoRes.data.shipday_status || null)
+        setTrackingUrl(pedidoRes.data.shipday_tracking_url || null)
+        setTrackingStatus(pedidoRes.data.shipday_status || null)
       }
       if (estRes.data) {
         setEstablecimiento(estRes.data)
@@ -62,7 +62,9 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
     cargar()
   }, [pedidoId, establecimientoId])
 
-  // Realtime subscription
+  // Realtime subscription — el dispatcher propio actualiza shipday_status y
+  // shipday_tracking_url (columnas legacy reusadas; la URL apunta al tracking
+  // propio en socio.pidoo.es/seguir/<codigo>).
   useEffect(() => {
     const sub = supabase
       .channel(`estado-pedido-${pedidoId}`)
@@ -70,25 +72,12 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
         event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${pedidoId}`,
       }, payload => {
         setEstado(payload.new.estado)
-        setShipdayUrl(payload.new.shipday_tracking_url || null)
-        setShipdayStatus(payload.new.shipday_status || null)
+        setTrackingUrl(payload.new.shipday_tracking_url || null)
+        setTrackingStatus(payload.new.shipday_status || null)
       })
       .subscribe()
     return () => supabase.removeChannel(sub)
   }, [pedidoId])
-
-  // Polling Shipday cada 8 s
-  useEffect(() => {
-    if (estado === 'entregado' || estado === 'cancelado' || estado === 'rechazado') return
-    const interval = setInterval(() => {
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-shipday-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pedido_id: pedidoId }),
-      }).catch(() => {})
-    }, 8000)
-    return () => clearInterval(interval)
-  }, [pedidoId, estado])
 
   // Countdown del tiempo estimado
   useEffect(() => {
@@ -102,7 +91,7 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
   const progreso = getProgreso(estado)
   const terminado = estado === 'listo' || estado === 'entregado'
   const cancelado = estado === 'cancelado' || estado === 'rechazado'
-  const shipdayListo = shipdayUrl && !SHIPDAY_ESTADOS_NO_VALIDOS.includes(shipdayStatus)
+  const trackingListo = trackingUrl && !TRACKING_ESTADOS_NO_VALIDOS.includes(trackingStatus)
 
   return (
     <div style={{ minHeight: '100vh', background: '#FAFAF7', fontFamily: "'DM Sans', sans-serif", padding: '0 0 40px' }}>
@@ -212,10 +201,10 @@ export default function EstadoPedido({ pedidoId, codigo, establecimientoId, minu
           </a>
         )}
 
-        {/* Shipday tracking */}
-        {shipdayListo ? (
+        {/* Tracking del repartidor */}
+        {trackingListo ? (
           <button
-            onClick={() => window.open(shipdayUrl, '_blank')}
+            onClick={() => window.open(trackingUrl, '_blank')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',

@@ -3,9 +3,6 @@ import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-
 const AUTO_CLOSE_SECONDS = 8
 
 function estadoToStep(estado) {
@@ -141,23 +138,9 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       if (data) setPedido(prev => ({ ...prev, ...data }))
     }, 4000)
 
-    const shipdaySyncInterval = setInterval(async () => {
-      if (esTerminado) return
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const token = session?.access_token || SUPABASE_ANON_KEY
-        await fetch(`${SUPABASE_URL}/functions/v1/sync-shipday-status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ pedido_id: pedido.id }),
-        })
-      } catch (_) { /* non-blocking */ }
-    }, 8000)
-
     return () => {
       supabase.removeChannel(channel)
       clearInterval(pollInterval)
-      clearInterval(shipdaySyncInterval)
     }
   }, [pedido.id, esTerminado])
 

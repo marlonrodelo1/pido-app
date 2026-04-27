@@ -121,7 +121,7 @@ export default function TiendaSocio() {
   const [restaurantes, setRestaurantes] = useState([])
   const pollRef = useRef(null)
 
-  // Fetch socio + restaurantes (con live=1 para forzar chequeo real a Shipday)
+  // Fetch socio + restaurantes (live=1 fuerza un chequeo en vivo del estado online de los riders)
   useEffect(() => {
     if (!slug) { setEstado('notfound'); return }
     let cancelled = false

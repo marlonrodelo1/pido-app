@@ -19,7 +19,7 @@ const DEFAULT_CONFIG = {
     titulo_linea2: 'repartiendo con',
     titulo_highlight: 'Pidoo',
     cta_texto: 'Empezar ahora',
-    cta_url: 'https://dispatch.shipday.com/signUp/mcFdlOIL19',
+    cta_url: 'https://socio.pidoo.es/',
   },
   ganancia: {
     visible: true,

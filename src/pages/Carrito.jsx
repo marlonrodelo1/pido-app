@@ -146,7 +146,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const { online: driversOnline, loading: driversLoading } = useDriversOnline(establecimientoCarritoId, { enabled: open, refreshIntervalMs: 30000 })
   const deliveryDisponible = tieneDelivery && (driversLoading || driversOnline > 0)
 
-  // Comprobar si el restaurante tiene Shipday configurado
+  // Comprobar si el restaurante tiene delivery configurado
   useEffect(() => {
     if (!open || carrito.length === 0) return
     const estId = carrito[0].establecimiento_id
