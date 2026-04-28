@@ -32,3 +32,9 @@ android/keystore.properties
 
 # Stitch
 stitch-home.html
+
+# Firebase config con API keys — no commitear
+GoogleService-Info.plist
+ios/App/App/GoogleService-Info.plist
+google-services.json
+android/app/google-services.json
