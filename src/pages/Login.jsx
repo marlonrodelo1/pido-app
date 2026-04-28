@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Capacitor } from '@capacitor/core'
 import { Mail, Lock, User, Phone, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
-export default function Login() {
+export default function Login({ nextPath = null }) {
   const { login, registro, resetPassword, authError, setAuthError } = useAuth()
   const [modo, setModo] = useState('login')
   const [email, setEmail] = useState('')
@@ -263,7 +263,16 @@ export default function Login() {
               setError(null); setLoading(true)
               try {
                 const isNative = Capacitor.isNativePlatform()
-                const redirectTo = isNative ? 'co.median.ios.bnlkxpx://login' : window.location.origin
+                // Web: callback unico /auth/callback?next=<destino> (1 sola URL en whitelist Supabase).
+                // Si nextPath no llega como prop, usamos pathname+search actual para no perder contexto.
+                let webNext = nextPath
+                if (!webNext && !isNative) {
+                  const cur = window.location.pathname + window.location.search
+                  webNext = cur && cur !== '/auth/callback' ? cur : '/'
+                }
+                const safeNext = webNext && webNext.startsWith('/') && !webNext.startsWith('//') ? webNext : '/'
+                const webRedirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
+                const redirectTo = isNative ? 'co.median.ios.bnlkxpx://login' : webRedirect
                 const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
                   provider: 'google', options: { redirectTo, skipBrowserRedirect: isNative },
                 })

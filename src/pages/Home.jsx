@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike, Globe, ArrowLeft } from 'lucide-react'
+import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike, Globe } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -56,18 +56,6 @@ function SocioHeader({ socio }) {
         ) : (
           <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${primary} 0%, #F76526 100%)` }} />
         )}
-        <button
-          onClick={() => navigate('/app')}
-          style={{
-            position: 'absolute', top: 12, left: 12,
-            background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
-            border: 'none', borderRadius: 999, width: 34, height: 34,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-          aria-label="Volver"
-        >
-          <ArrowLeft size={16} color="#1F1F1E" />
-        </button>
         <button
           onClick={() => navigate('/')}
           style={{
@@ -635,8 +623,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         </div>
       )}
 
-      {/* ── CTA Repartidores ── */}
-      {!busqueda && !catActiva && landingRiders.activa && landingRiders.config.visible && (
+      {/* ── CTA Repartidores (oculto en marketplace de socio) ── */}
+      {!socioData && !busqueda && !catActiva && landingRiders.activa && landingRiders.config.visible && (
         <div
           className="home-fade"
           onClick={() => onOpenRepartidores?.()}

@@ -94,14 +94,16 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => setOnboarded(false)} style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-            borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
-            fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
-          }}>
-            {catEmoji} {catLabel}
-            <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
-          </button>
+          {!socioData && (
+            <button onClick={() => setOnboarded(false)} style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+              borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
+            }}>
+              {catEmoji} {catLabel}
+              <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {pedidoActivo && !['cancelado', 'fallido', 'entregado'].includes(pedidoActivo.estado) && (
@@ -128,9 +130,21 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
             )}
           </button>
           <button onClick={async () => {
-            const shareData = { title: 'Pidoo', text: 'Descubre pidoo 🍕 Tus restaurantes, locales y farmacias más cerca. 100% canario 🌴', url: 'https://pidoo.es' }
+            const socioSlug = socioData?.slug
+            const socioNombre = socioData?.nombre_comercial
+            const shareData = socioSlug
+              ? {
+                  title: `${socioNombre || 'Pidoo'} · Pidoo`,
+                  text: `Mira la tienda de ${socioNombre || 'este socio'} en Pidoo`,
+                  url: `https://pidoo.es/s/${socioSlug}`,
+                }
+              : {
+                  title: 'Pidoo',
+                  text: 'Descubre pidoo 🍕 Tus restaurantes, locales y farmacias más cerca. 100% canario 🌴',
+                  url: 'https://pidoo.es',
+                }
             if (navigator.share) { try { await navigator.share(shareData) } catch (_) {} }
-            else { try { await navigator.clipboard.writeText('https://pidoo.es') } catch (_) {} }
+            else { try { await navigator.clipboard.writeText(shareData.url) } catch (_) {} }
           }} style={{
             width: 34, height: 34, borderRadius: 10, background: 'var(--c-surface2)',
             border: 'none', cursor: 'pointer',
@@ -192,9 +206,9 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           return
         }
         if (s === 'home' && socioData) {
-          // Si está en marketplace de un socio y pulsa Inicio → Home global
-          try { sessionStorage.removeItem('pidoo_socio_id') } catch (_) {}
-          navigate('/app')
+          // Si está en marketplace de un socio y pulsa Inicio → home del socio (cierra ficha de restaurante abierta)
+          setSeccion('home')
+          setRestOpen(null)
           return
         }
         setSeccion(s)
@@ -223,7 +237,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           >
             <X size={18} strokeWidth={2.2} />
           </button>
-          <Login />
+          <Login nextPath={socioData?.slug ? `/s/${socioData.slug}` : null} />
         </div>
       )}
     </div>
