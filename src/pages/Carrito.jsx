@@ -134,7 +134,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
   const tieneDireccion = () => !!(perfil?.latitud && perfil?.longitud && perfil?.direccion)
-  const [sinDireccion, setSinDireccion] = useState(() => !tieneDireccion())
+  // Optimista: arranca en false (no mostrar aviso) hasta que perfil cargue
+  // y confirme. Si arrancase en true cuando perfil aun es null, mostraria
+  // el aviso "Anade tu direccion" durante el render inicial aunque el usuario
+  // si tenga direccion guardada — bug que solo se "arreglaba" saliendo y
+  // volviendo a la pagina.
+  const [sinDireccion, setSinDireccion] = useState(false)
   const [fueraDeRadio, setFueraDeRadio] = useState(false)
   const [errorMsg, setErrorMsg] = useState(null)
   const [mostrarAddDir, setMostrarAddDir] = useState(false)
@@ -170,6 +175,16 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       setModoEntrega('recogida')
     }
   }, [driversLoading, driversOnline, modoEntrega])
+
+  // Sincronizar sinDireccion con el perfil real cada vez que cambian sus campos
+  // de direccion. Independiente de si el modal esta abierto, asi cuando el
+  // perfil termina de cargar (AuthContext lo carga async tras login) el flag
+  // se actualiza correctamente y NO aparece el aviso falso "Anade tu direccion"
+  // mientras perfil aun era null.
+  useEffect(() => {
+    if (!perfil) return // perfil no cargado todavia → no decidir
+    setSinDireccion(!tieneDireccion())
+  }, [perfil?.latitud, perfil?.longitud, perfil?.direccion])
 
   useEffect(() => {
     if (!open || carrito.length === 0) return
@@ -387,16 +402,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           }
         }
 
-        // Tarjeta nueva: obtener clientSecret, mostrar formulario
-        // NO insertamos pedido aún — el restaurante NO debe verlo
+        // Tarjeta nueva: insertar pedido como 'pendiente_pago' (el panel
+        // restaurante filtra solo 'nuevo' asi que NO lo ve), pedir clientSecret
+        // y mostrar formulario. crear_pago_stripe v22 (HARDENED) requiere que
+        // el pedido exista en BD para validar total/propietario/radio. Al
+        // confirmarse el pago, onSuccess llama a confirmarPago() que pasa
+        // el pedido a 'nuevo' + agrega stripe_payment_id.
+        const pedidoTmp = await insertarPedidoEnBD('pendiente_pago')
+        if (!pedidoTmp) { setLoading(false); isPaying.current = false; return }
+        setPedidoPendiente(pedidoTmp)
         const result = await crearPagoStripe({
-          amount: totalConDescuento, pedidoCodigo: codigo,
+          amount: totalConDescuento, pedidoCodigo: pedidoTmp.codigo,
           customerEmail: user?.email, userId: user?.id,
         })
         pagoEnviado.current = true
         setClientSecret(result.clientSecret)
         setPasoTarjeta(true)
-        // El pedido se creará en onSuccess del FormularioPago
+        // El pedido pasa a 'nuevo' en onSuccess del FormularioPago
       } else {
         // Efectivo: crear pedido directamente como 'nuevo'
         const pedido = await insertarPedidoEnBD('nuevo')
@@ -472,9 +494,16 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   clientSecret={clientSecret}
                   total={Math.max(0, total - descuento)}
                   onSuccess={async (paymentId) => {
-                    // Pago confirmado por Stripe → AHORA crear el pedido en BD
+                    // Pago confirmado por Stripe → confirmar el pedido pendiente
+                    // (pasarlo de 'pendiente_pago' a 'nuevo' + stripe_payment_id).
+                    // Fallback: si por algun motivo no hay pedidoPendiente,
+                    // crearlo ahora con estado 'nuevo' (caso edge).
                     try {
-                      await crearPedidoYFinalizar(paymentId)
+                      if (pedidoPendiente) {
+                        await confirmarPago(pedidoPendiente, paymentId)
+                      } else {
+                        await crearPedidoYFinalizar(paymentId)
+                      }
                     } catch (err) {
                       // Si el pago fue enviado pero falla la creación del pedido
                       if (codigoPedido) {
