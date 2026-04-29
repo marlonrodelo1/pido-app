@@ -9,7 +9,6 @@ import { crearPagoStripe, listarTarjetas, pagarConTarjetaGuardada } from '../lib
 import { sendPush } from '../lib/webPush'
 import { estaAbierto } from '../lib/horario'
 import { getCurrentPosition } from '../lib/geolocation'
-import { useDriversOnline } from '../lib/driversStatus'
 import { CreditCard, Lock, X, ArrowLeft, Check, Navigation, MapPin } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
 
@@ -148,33 +147,48 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [dirMsg, setDirMsg] = useState(null)
   const [tieneDelivery, setTieneDelivery] = useState(true)
   const establecimientoCarritoId = carrito.length > 0 ? carrito[0].establecimiento_id : null
-  const { online: driversOnline, loading: driversLoading } = useDriversOnline(establecimientoCarritoId, { enabled: open, refreshIntervalMs: 30000 })
-  const deliveryDisponible = tieneDelivery && (driversLoading || driversOnline > 0)
+  // Modelo Shipday: deliveryDisponible deriva 100% de tiene_delivery del
+  // establecimiento (sincronizado con socios.marketplace_activo via cron+triggers).
+  const deliveryDisponible = tieneDelivery
 
-  // Comprobar si el restaurante tiene delivery configurado
+  // Comprobar tiene_delivery + tarifa fija. Reactiva cuando el cron actualiza
+  // tiene_delivery (Realtime sobre la fila concreta del establecimiento).
   useEffect(() => {
     if (!open || carrito.length === 0) return
     const estId = carrito[0].establecimiento_id
-    supabase.from('establecimientos').select('tiene_delivery, tarifa_envio_fija, plan_pro').eq('id', estId).single()
-      .then(({ data }) => {
-        const td = data?.tiene_delivery ?? true
-        setTieneDelivery(td)
-        if (!td) setModoEntrega('recogida')
-        // Si viene de tienda pública y hay tarifa fija → usarla
-        if (origenPedido === 'tienda_publica' && data?.tarifa_envio_fija != null) {
-          setTarifaEnvioFija(Number(data.tarifa_envio_fija))
-        } else {
-          setTarifaEnvioFija(null)
-        }
-      })
+    let cancel = false
+    function refetch() {
+      supabase.from('establecimientos').select('tiene_delivery, tarifa_envio_fija, plan_pro').eq('id', estId).single()
+        .then(({ data }) => {
+          if (cancel) return
+          const td = data?.tiene_delivery ?? true
+          setTieneDelivery(td)
+          if (!td) setModoEntrega('recogida')
+          if (origenPedido === 'tienda_publica' && data?.tarifa_envio_fija != null) {
+            setTarifaEnvioFija(Number(data.tarifa_envio_fija))
+          } else {
+            setTarifaEnvioFija(null)
+          }
+        })
+    }
+    refetch()
+    const ch = supabase
+      .channel(`carrito-est-${estId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'establecimientos',
+        filter: `id=eq.${estId}`,
+      }, () => refetch())
+      .subscribe()
+    return () => { cancel = true; try { supabase.removeChannel(ch) } catch (_) {} }
   }, [open, carrito.length > 0 ? carrito[0]?.establecimiento_id : null, origenPedido])
 
-  // Forzar recogida si no hay repartidores en línea
+  // Forzar recogida si el establecimiento pierde reparto mientras el carrito
+  // esta abierto (socio se desconecto o restaurante quito delivery).
   useEffect(() => {
-    if (!driversLoading && driversOnline === 0 && modoEntrega === 'delivery') {
+    if (!tieneDelivery && modoEntrega === 'delivery') {
       setModoEntrega('recogida')
     }
-  }, [driversLoading, driversOnline, modoEntrega])
+  }, [tieneDelivery, modoEntrega])
 
   // Sincronizar sinDireccion con el perfil real cada vez que cambian sus campos
   // de direccion. Independiente de si el modal esta abierto, asi cuando el
@@ -614,16 +628,6 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   {!tieneDelivery && (
                     <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 8 }}>
                       Este restaurante solo ofrece recogida en local
-                    </div>
-                  )}
-                  {tieneDelivery && !driversLoading && driversOnline === 0 && (
-                    <div style={{
-                      fontSize: 12, color: 'var(--c-danger)', marginBottom: 8,
-                      padding: '10px 12px', borderRadius: 10,
-                      background: 'var(--c-danger-soft)', border: '1px solid var(--c-danger)',
-                      fontWeight: 600,
-                    }}>
-                      No hay repartidores disponibles ahora mismo. Puedes pedir para recogida.
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>

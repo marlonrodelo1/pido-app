@@ -152,7 +152,6 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   const [geoError, setGeoError] = useState(false)
   const [categoriasGenerales, setCategoriasGenerales] = useState([])
   const [promociones, setPromociones] = useState([])
-  const [driversMap, setDriversMap] = useState({})
   const [landingRiders, setLandingRiders] = useState({ activa: true, config: { titulo: 'Gana dinero repartiendo', subtitulo: 'Crea tu propio negocio', boton: 'APLICAR' } })
 
   useEffect(() => {
@@ -322,14 +321,9 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         catMap[ec.establecimiento_id].push(ec.categoria_id)
       }
       setEstablecimientos(data.map(e => ({ ...e, _catIds: catMap[e.id] || [] })))
-
-      const { data: ds } = await supabase
-        .from('drivers_status')
-        .select('establecimiento_id, online_count')
-        .in('establecimiento_id', estIds)
-      const dsMap = {}
-      for (const d of (ds || [])) dsMap[d.establecimiento_id] = d.online_count ?? 0
-      setDriversMap(dsMap)
+      // En modelo Shipday la disponibilidad de delivery vive en
+      // establecimientos.tiene_delivery (sincronizado por cron + triggers
+      // con socios.marketplace_activo). Ya no usamos drivers_status legacy.
     } else {
       setEstablecimientos(data || [])
     }
@@ -539,7 +533,9 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {
               const estDest = estaAbierto(r)
-              const sinRidersDest = estDest.abierto && r.tiene_delivery && (driversMap[r.id] ?? 0) === 0
+              // 'Solo recogida' = restaurante abierto pero sin reparto activo
+              // (tiene_delivery=false → socio offline en Shipday o no configurado).
+              const sinRidersDest = estDest.abierto && !r.tiene_delivery
               return (
                 <div key={r.id} onClick={() => onOpenRest(r)} style={{ minWidth: 280, cursor: 'pointer', flexShrink: 0 }}>
                   {/* Image container — glass card (con borde naranja en modo socio destacado) */}
@@ -732,7 +728,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
               </div>
             )
           }
-          const sinRiders = estado.abierto && r.tiene_delivery && (driversMap[r.id] ?? 0) === 0
+          const sinRiders = estado.abierto && !r.tiene_delivery
           items.push(
             <div
               key={r.id}
