@@ -32,14 +32,33 @@ export default function PaginaLegal({ slug, onBack }) {
   if (!pagina) return <div style={{ textAlign: 'center', padding: '60px 20px' }}><div style={{ fontSize: 48, marginBottom: 12 }}>📄</div><div style={{ fontSize: 16, fontWeight: 700 }}>Página no encontrada</div></div>
 
   return (
-    <div className="legal-content" style={{ padding: '20px', maxWidth: 420, margin: '0 auto', animation: 'fadeIn 0.3s ease' }}>
+    <div
+      className="legal-content"
+      style={{
+        // Padding responsive: 20px en móvil, hasta 40px en desktop
+        padding: 'clamp(20px, 4vw, 40px) clamp(20px, 5vw, 40px)',
+        // maxWidth 720px es ideal para texto largo (60-80 chars/línea legibles)
+        maxWidth: 720,
+        margin: '0 auto',
+        // Asegura que ocupe todo el ancho disponible hasta el max
+        width: '100%',
+        boxSizing: 'border-box',
+        animation: 'fadeIn 0.3s ease',
+      }}
+    >
       {onBack && (
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#FF6B2C', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16, padding: 0 }}>
           <ArrowLeft size={16} strokeWidth={2.5} /> Volver
         </button>
       )}
       <div
-        style={{ fontSize: 14, lineHeight: 1.7, color: '#1F1F1E' }}
+        style={{
+          // Font ligeramente mayor en desktop para legibilidad
+          fontSize: 'clamp(14px, 1.6vw, 16px)',
+          lineHeight: 1.7,
+          color: '#1F1F1E',
+          wordWrap: 'break-word',
+        }}
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pagina.contenido) }}
       />
       <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.35)', marginTop: 24, textAlign: 'center' }}>
