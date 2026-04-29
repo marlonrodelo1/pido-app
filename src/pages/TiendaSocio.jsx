@@ -163,8 +163,9 @@ export default function TiendaSocio() {
 
     fetchData(false)
 
-    // Refetch cada 60s para detectar cambios de disponibilidad del rider
-    pollRef.current = setInterval(() => fetchData(true), 60000)
+    // Refetch cada 20s para detectar cambios de disponibilidad del rider en
+    // Shipday casi al instante (combinado con el cron 30s en backend).
+    pollRef.current = setInterval(() => fetchData(true), 20000)
 
     return () => {
       cancelled = true

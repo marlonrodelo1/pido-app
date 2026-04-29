@@ -177,6 +177,17 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
   useEffect(() => { fetchCarta() }, [est.id])
 
+  // Al abrir el restaurante, fuerza una verificacion en directo a Shipday
+  // del estado del socio. La edge actualiza socios.en_servicio si difiere
+  // → triggers cascada → tiene_delivery → Realtime refresca esta misma
+  // pantalla en <2s. Latencia percibida casi cero.
+  useEffect(() => {
+    if (!est.id) return
+    supabase.functions.invoke('check-socio-availability-now', {
+      body: { establecimiento_id: est.id },
+    }).catch(() => {})
+  }, [est.id])
+
   // tiene_delivery refrescado en vivo: si el socio del establecimiento se
   // desconecta de Shipday, este valor cambia y la UI reacciona al instante.
   const [tieneDeliveryLive, setTieneDeliveryLive] = useState(est.tiene_delivery)
