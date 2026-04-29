@@ -475,7 +475,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
       {avisoCerrado && (
         <div style={{
-          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 20px)', left: '50%', transform: 'translateX(-50%)',
           zIndex: 300, padding: '10px 16px', borderRadius: 10,
           background: 'rgba(239,68,68,0.95)', color: '#1F1F1E',
           fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
@@ -490,7 +490,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
       {toastAdded && (
         <div style={{
-          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 20px)', left: '50%', transform: 'translateX(-50%)',
           zIndex: 300, padding: '10px 16px', borderRadius: 10,
           background: '#FF6B2C', color: '#fff',
           fontSize: 13, fontWeight: 700, fontFamily: 'inherit',

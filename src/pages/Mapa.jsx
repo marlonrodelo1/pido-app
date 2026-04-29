@@ -6,16 +6,24 @@ import { getCurrentPosition } from '../lib/geolocation'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 160px)', borderRadius: 16 }
 
-const darkMapStyles = [
-  { elementType: 'geometry', stylers: [{ color: '#1d1d1d' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1d1d1d' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#252525' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
+// Modo claro tipo Pidoo (#FAFAF7). Suaviza colores Google por defecto y
+// quita POIs ruidosos para que el mapa pegue con el resto de la app.
+const lightMapStyles = [
+  { elementType: 'geometry', stylers: [{ color: '#F5F2EC' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#5C5C5C' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#FAFAF7' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#E8E5DF' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#E5EBDA' }, { visibility: 'on' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#FFFFFF' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#FFFFFF' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#FFD89E' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#5C5C5C' }] },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#7A7A7A' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#C9DDEB' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#5C7A8C' }] },
 ]
 
 export default function Mapa({ onOpenRest }) {
@@ -89,7 +97,7 @@ export default function Mapa({ onOpenRest }) {
         zoom={14}
         onLoad={onLoad}
         options={{
-          styles: darkMapStyles,
+          styles: lightMapStyles,
           disableDefaultUI: true,
           zoomControl: true,
           mapTypeControl: false,
