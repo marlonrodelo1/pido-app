@@ -153,6 +153,17 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   const [categoriasGenerales, setCategoriasGenerales] = useState([])
   const [promociones, setPromociones] = useState([])
   const [landingRiders, setLandingRiders] = useState({ activa: true, config: { titulo: 'Gana dinero repartiendo', subtitulo: 'Crea tu propio negocio', boton: 'APLICAR' } })
+  // Radio global de descubrimiento (km). Configurable por superadmin.
+  const [radioDescubrimientoKm, setRadioDescubrimientoKm] = useState(15)
+
+  useEffect(() => {
+    supabase.from('configuracion_plataforma')
+      .select('valor').eq('clave', 'radio_descubrimiento_km').maybeSingle()
+      .then(({ data }) => {
+        const v = parseFloat(data?.valor)
+        if (Number.isFinite(v) && v > 0) setRadioDescubrimientoKm(v)
+      })
+  }, [])
 
   useEffect(() => {
     // Config landing repartidores (para CTA del Home)
@@ -356,6 +367,13 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       if (catActiva) {
         const cat = categoriasGenerales.find(c => c.nombre === catActiva)
         if (cat && !(r._catIds || []).includes(cat.id)) return false
+      }
+      // Radio descubrimiento: si tenemos ubicacion del cliente y del
+      // restaurante, ocultamos los que esten mas lejos que el radio global.
+      // Si no hay ubicacion no filtramos (se muestran todos).
+      if (userLocation && r.latitud && r.longitud) {
+        const dist = haversineKm(userLocation.lat, userLocation.lng, r.latitud, r.longitud)
+        if (dist > radioDescubrimientoKm) return false
       }
       return true
     }).map(r => {

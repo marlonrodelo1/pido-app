@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import AppShell from '../AppShell'
+import { useAuth } from '../context/AuthContext'
 
 const SUPABASE_URL = 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
 
@@ -116,18 +117,25 @@ function RiderOffline({ onVolver }) {
 export default function TiendaSocio() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const { perfil } = useAuth()
   const [estado, setEstado] = useState('loading') // loading | ok | notfound | paused | rider_offline | desactivado
   const [socio, setSocio] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
   const pollRef = useRef(null)
 
-  // Fetch socio + restaurantes (live=1 fuerza un chequeo en vivo del estado online de los riders)
+  // Fetch socio + restaurantes. Pasamos lat/lng del cliente si los tenemos
+  // para que el backend filtre por socios.radio_marketplace_km.
   useEffect(() => {
     if (!slug) { setEstado('notfound'); return }
     let cancelled = false
 
     const fetchData = (isRefetch = false) => {
-      const url = `${SUPABASE_URL}/functions/v1/get-socio-marketplace?slug=${encodeURIComponent(slug)}&live=1`
+      const params = new URLSearchParams({ slug, live: '1' })
+      if (perfil?.latitud != null && perfil?.longitud != null) {
+        params.set('lat', String(perfil.latitud))
+        params.set('lng', String(perfil.longitud))
+      }
+      const url = `${SUPABASE_URL}/functions/v1/get-socio-marketplace?${params.toString()}`
       fetch(url)
         .then(async (res) => {
           if (res.status === 404) { if (!cancelled) setEstado('notfound'); return null }
@@ -171,7 +179,7 @@ export default function TiendaSocio() {
       cancelled = true
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [slug])
+  }, [slug, perfil?.latitud, perfil?.longitud])
 
   // Meta tags
   useEffect(() => {

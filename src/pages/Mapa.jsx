@@ -50,17 +50,43 @@ export default function Mapa({ onOpenRest }) {
     }
   }, [])
 
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371
+    const toRad = d => d * Math.PI / 180
+    const dLat = toRad(lat2 - lat1)
+    const dLng = toRad(lng2 - lng1)
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  }
+
   async function fetchData() {
-    // Obtener centro actual para filtro geográfico (~0.5° ≈ 55km)
+    // Radio global de descubrimiento (configurable por superadmin).
+    let radioKm = 15
+    const { data: cfg } = await supabase.from('configuracion_plataforma')
+      .select('valor').eq('clave', 'radio_descubrimiento_km').maybeSingle()
+    const v = parseFloat(cfg?.valor)
+    if (Number.isFinite(v) && v > 0) radioKm = v
+
     const c = perfil?.latitud ? { lat: perfil.latitud, lng: perfil.longitud } : center
-    const delta = 0.5
+    // Bounding box generoso (~1° ≈ 111km) para no perder bordes; el filtro
+    // fino con Haversine lo aplicamos despues.
+    const delta = Math.max(1, radioKm / 80)
     const { data: estData } = await supabase
       .from('establecimientos')
       .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
       .eq('activo', true)
       .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
       .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta)
-    setEstablecimientos(estData || [])
+
+    // Si tenemos ubicacion del cliente, filtrar por radio global. Si no,
+    // mostrar todo el bounding box.
+    const filtered = (perfil?.latitud && perfil?.longitud)
+      ? (estData || []).filter(e =>
+          e.latitud != null && e.longitud != null &&
+          haversineKm(perfil.latitud, perfil.longitud, e.latitud, e.longitud) <= radioKm
+        )
+      : (estData || [])
+    setEstablecimientos(filtered)
   }
 
   const onLoad = useCallback(m => setMap(m), [])
