@@ -381,6 +381,26 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     } catch (e) {
       console.warn('[Carrito] revalidación rider socio falló', e)
     }
+
+    // Verificacion en tiempo real con Shipday: el socio del establecimiento
+    // tiene riders online ahora mismo. Bloquea el pago si no.
+    if (modoEntrega === 'delivery' && carrito[0]?.establecimiento_id) {
+      try {
+        const { data: avail, error: availErr } = await supabase.functions.invoke(
+          'check-socio-availability-now',
+          { body: { establecimiento_id: carrito[0].establecimiento_id } },
+        )
+        if (!availErr && avail && avail.available === false) {
+          setErrorMsg('No hay repartidores disponibles en este momento. Vuelve a intentarlo en unos minutos o elige Recogida.')
+          return
+        }
+      } catch (e) {
+        console.warn('[Carrito] check-socio-availability-now falló', e)
+        // Si la edge falla, dejamos que siga (no queremos bloquear pagos por
+        // un fallo transitorio de Shipday — el create-shipday-order ya
+        // manejará el caso 'no rider' al aceptar el restaurante).
+      }
+    }
     isPaying.current = true; pagoEnviado.current = false; setLoading(true); setErrorMsg(null)
     try {
       const totalConDescuento = Math.max(0, total - descuento)
