@@ -272,7 +272,12 @@ export default function Login({ nextPath = null }) {
                 }
                 const safeNext = webNext && webNext.startsWith('/') && !webNext.startsWith('//') ? webNext : '/'
                 const webRedirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
-                const redirectTo = isNative ? 'co.median.ios.bnlkxpx://login' : webRedirect
+                // Deep link nativo: matchea AndroidManifest <data android:scheme="com.pidoo.app" android:host="login"/>
+                // (en iOS Info.plist tiene URLScheme equivalente). El valor anterior
+                // 'co.median.ios.bnlkxpx://login' era de un empaquetado previo via Median.co
+                // y dejaba el OAuth colgado tras "Elige una cuenta" porque Android/iOS
+                // no encontraban ninguna app que manejara ese scheme.
+                const redirectTo = isNative ? 'com.pidoo.app://login' : webRedirect
                 const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
                   provider: 'google', options: { redirectTo, skipBrowserRedirect: isNative },
                 })
