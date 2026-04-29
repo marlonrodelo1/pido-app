@@ -163,11 +163,14 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     if (!url) return
     if (Capacitor.isNativePlatform()) {
       const { Browser } = await import('@capacitor/browser')
-      await Browser.open({ url, presentationStyle: 'popover' })
+      await Browser.open({ url, presentationStyle: 'popover', windowName: '_self' })
     } else {
       window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
+
+  // Botón prominente cuando hay shipday_tracking_url y el rider ya aceptó / recogió / está en camino
+  const mostrarBotonTrackingMapa = !!pedido.shipday_tracking_url && riderAsignado(pedido)
 
   async function enviarValoracion() {
     if (!valoracion || yaValorado || resenaEnviada) return
@@ -449,6 +452,19 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               </div>
               <span style={{ fontSize: 14, animation: 'pulse2 1.5s ease-in-out infinite' }}>🔍</span>
             </div>
+          )}
+
+          {esDelivery && mostrarBotonTrackingMapa && (
+            <button onClick={abrirTrackingExterno} style={{
+              width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
+              background: 'var(--c-btn-gradient)', color: '#fff',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: '0 4px 16px rgba(255,107,44,0.3)', marginBottom: 16,
+            }}>
+              <span style={{ fontSize: 18 }}>🗺️</span>
+              Ver mapa de seguimiento en vivo
+            </button>
           )}
         </>
       )}
