@@ -136,7 +136,6 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const [catFiltro, setCatFiltro] = useState(null)
   const [prodTamanosMap, setProdTamanosMap] = useState({})
   const [prodExtrasSet, setProdExtrasSet] = useState(new Set())
-  const [ridersOnline, setRidersOnline] = useState(null)
   const [avisoCerrado, setAvisoCerrado] = useState(false)
   const [toastAdded, setToastAdded] = useState(false)
 
@@ -178,28 +177,42 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
   useEffect(() => { fetchCarta() }, [est.id])
 
+  // tiene_delivery refrescado en vivo: si el socio del establecimiento se
+  // desconecta de Shipday, este valor cambia y la UI reacciona al instante.
+  const [tieneDeliveryLive, setTieneDeliveryLive] = useState(est.tiene_delivery)
+
   useEffect(() => {
-    if (!est.id || !est.tiene_delivery) { setRidersOnline(null); return }
+    setTieneDeliveryLive(est.tiene_delivery)
+    if (!est.id) return
+    // Refresco al volver a foreground (por si Realtime perdio algun evento).
     let cancel = false
-    supabase
-      .from('drivers_status')
-      .select('online_count')
-      .eq('establecimiento_id', est.id)
-      .maybeSingle()
-      .then(({ data }) => { if (!cancel) setRidersOnline(data?.online_count ?? 0) })
+    function refetch() {
+      supabase.from('establecimientos').select('tiene_delivery').eq('id', est.id).maybeSingle()
+        .then(({ data }) => { if (!cancel && data) setTieneDeliveryLive(!!data.tiene_delivery) })
+    }
     const channel = supabase
-      .channel(`drivers_status_det_${est.id}`)
+      .channel(`est_live_${est.id}`)
       .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'drivers_status',
-        filter: `establecimiento_id=eq.${est.id}`,
+        event: 'UPDATE', schema: 'public', table: 'establecimientos',
+        filter: `id=eq.${est.id}`,
       }, (payload) => {
-        if (!cancel) setRidersOnline(payload.new?.online_count ?? 0)
+        if (!cancel && payload?.new) setTieneDeliveryLive(!!payload.new.tiene_delivery)
       })
       .subscribe()
-    return () => { cancel = true; supabase.removeChannel(channel) }
+    function onVisible() { if (document.visibilityState === 'visible') refetch() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      cancel = true
+      supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
   }, [est.id, est.tiene_delivery])
 
-  const sinRiders = est.tiene_delivery && ridersOnline === 0
+  // sinRiders ahora es: el restaurante declara delivery pero el socio esta
+  // offline en Shipday (tiene_delivery=false en BD).
+  const sinRiders = est.tiene_delivery && !tieneDeliveryLive
 
   async function fetchCarta() {
     setLoading(true)

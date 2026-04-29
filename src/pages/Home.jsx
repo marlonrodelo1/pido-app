@@ -250,6 +250,31 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
     fetchEstablecimientos()
   }, [categoriaPadre, filterIdsKey])
 
+  // Realtime: cuando un establecimiento cambia (tiene_delivery se sincroniza
+  // con el estado del socio en Shipday), refresca el listado.
+  useEffect(() => {
+    const ch = supabase
+      .channel('home-establecimientos-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'establecimientos' }, () => {
+        fetchEstablecimientos()
+      })
+      .subscribe()
+    return () => { try { supabase.removeChannel(ch) } catch (_) {} }
+  }, [categoriaPadre, filterIdsKey])
+
+  // Refrescar al volver al foreground.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') fetchEstablecimientos()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [categoriaPadre, filterIdsKey])
+
   async function fetchEstablecimientos() {
     setLoading(true)
     // Si venimos de un marketplace de socio con filtro vacío, no cargamos nada
