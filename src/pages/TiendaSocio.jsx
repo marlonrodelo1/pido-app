@@ -19,7 +19,7 @@ function setMeta(attr, key, value) {
 function Skeleton() {
   return (
     <div style={{
-      minHeight: '100vh', background: '#FAFAF7', color: '#6B6B68',
+      minHeight: '100vh', background: '#F7F3EC', color: '#6B6356',
       fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
     }}>Cargando…</div>
@@ -29,19 +29,19 @@ function Skeleton() {
 function NotFound({ onVolver }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#FAFAF7', color: '#1F1F1E',
+      minHeight: '100vh', background: '#F7F3EC', color: '#1A1815',
       fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 32, textAlign: 'center',
     }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>🔎</div>
       <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Socio no encontrado</div>
-      <p style={{ fontSize: 14, color: '#6B6B68', maxWidth: 320, lineHeight: 1.5, marginBottom: 24 }}>
+      <p style={{ fontSize: 14, color: '#6B6356', maxWidth: 320, lineHeight: 1.5, marginBottom: 24 }}>
         El enlace que has abierto no corresponde a ningún socio activo de Pidoo.
       </p>
       <button onClick={onVolver} style={{
         padding: '14px 32px', borderRadius: 14, border: 'none',
-        background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+        background: '#C5562C', color: '#fff', fontSize: 15, fontWeight: 800,
         cursor: 'pointer', fontFamily: 'inherit',
       }}>Volver a Pidoo</button>
     </div>
@@ -51,19 +51,19 @@ function NotFound({ onVolver }) {
 function Paused({ nombre, onVolver }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#FAFAF7', color: '#1F1F1E',
+      minHeight: '100vh', background: '#F7F3EC', color: '#1A1815',
       fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 32, textAlign: 'center',
     }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>⏸️</div>
       <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Este marketplace está pausado</div>
-      <p style={{ fontSize: 14, color: '#6B6B68', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
+      <p style={{ fontSize: 14, color: '#6B6356', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
         {nombre ? `${nombre} ha puesto` : 'El socio ha puesto'} su marketplace en pausa temporalmente. Vuelve pronto.
       </p>
       <button onClick={onVolver} style={{
         padding: '14px 32px', borderRadius: 14, border: 'none',
-        background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+        background: '#C5562C', color: '#fff', fontSize: 15, fontWeight: 800,
         cursor: 'pointer', fontFamily: 'inherit',
       }}>Ir a Pidoo</button>
     </div>
@@ -73,19 +73,19 @@ function Paused({ nombre, onVolver }) {
 function Desactivado({ onVolver }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#FAFAF7', color: '#1F1F1E',
+      minHeight: '100vh', background: '#F7F3EC', color: '#1A1815',
       fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 32, textAlign: 'center',
     }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>🔒</div>
       <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Este marketplace no está disponible</div>
-      <p style={{ fontSize: 14, color: '#6B6B68', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
+      <p style={{ fontSize: 14, color: '#6B6356', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
         Este marketplace está cerrado. Puedes seguir pidiendo en Pidoo con normalidad.
       </p>
       <button onClick={onVolver} style={{
         padding: '14px 32px', borderRadius: 14, border: 'none',
-        background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+        background: '#C5562C', color: '#fff', fontSize: 15, fontWeight: 800,
         cursor: 'pointer', fontFamily: 'inherit',
       }}>Ir a Pidoo</button>
     </div>
@@ -95,19 +95,19 @@ function Desactivado({ onVolver }) {
 function RiderOffline({ onVolver }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#FAFAF7', color: '#1F1F1E',
+      minHeight: '100vh', background: '#F7F3EC', color: '#1A1815',
       fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 32, textAlign: 'center',
     }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>🛵</div>
       <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Este marketplace está cerrado</div>
-      <p style={{ fontSize: 14, color: '#6B6B68', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
+      <p style={{ fontSize: 14, color: '#6B6356', maxWidth: 340, lineHeight: 1.5, marginBottom: 24 }}>
         Nuestro repartidor no está disponible en este momento. Vuelve pronto o pide directamente desde Pidoo.
       </p>
       <button onClick={onVolver} style={{
         padding: '14px 32px', borderRadius: 14, border: 'none',
-        background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+        background: '#C5562C', color: '#fff', fontSize: 15, fontWeight: 800,
         cursor: 'pointer', fontFamily: 'inherit',
       }}>Ir a Pidoo</button>
     </div>

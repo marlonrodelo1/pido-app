@@ -55,10 +55,10 @@ export default function ResetPassword() {
     return (
       <div style={containerStyle}>
         <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#1F1F1E', marginBottom: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1815', marginBottom: 8, textAlign: 'center' }}>
           Contrasena actualizada
         </div>
-        <p style={{ fontSize: 14, color: '#3D3D3B', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: '#2B2823', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
           Tu contrasena se ha cambiado correctamente. Redirigiendo al inicio de sesion...
         </p>
         <a href="/" style={btnStyle}>
@@ -71,23 +71,23 @@ export default function ResetPassword() {
   if (!sessionReady) {
     return (
       <div style={containerStyle}>
-        <div style={{ fontSize: 48, fontWeight: 800, color: '#FF6B2C', letterSpacing: -2, marginBottom: 16 }}>pidoo</div>
-        <div style={{ color: '#6B6B68', fontSize: 13 }}>Verificando enlace...</div>
+        <div style={{ fontSize: 48, fontWeight: 800, color: '#C5562C', letterSpacing: -2, marginBottom: 16 }}>pidoo</div>
+        <div style={{ color: '#6B6356', fontSize: 13 }}>Verificando enlace...</div>
       </div>
     )
   }
 
   return (
     <div style={containerStyle}>
-      <div style={{ fontSize: 48, fontWeight: 800, color: '#FF6B2C', letterSpacing: -2, marginBottom: 8 }}>pidoo</div>
-      <p style={{ fontSize: 13, color: '#6B6B68', marginBottom: 32, textAlign: 'center' }}>
+      <div style={{ fontSize: 48, fontWeight: 800, color: '#C5562C', letterSpacing: -2, marginBottom: 8 }}>pidoo</div>
+      <p style={{ fontSize: 13, color: '#6B6356', marginBottom: 32, textAlign: 'center' }}>
         Introduce tu nueva contrasena
       </p>
 
       <div className="login-form" style={{ width: '100%', maxWidth: 340 }}>
         <a href="/" style={{
           display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-          color: '#FF6B2C', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          color: '#C5562C', fontSize: 13, fontWeight: 700, cursor: 'pointer',
           fontFamily: "'DM Sans', sans-serif", marginBottom: 16, padding: 0, textDecoration: 'none',
         }}>
           <ArrowLeft size={16} strokeWidth={2.5} /> Volver al login
@@ -127,7 +127,7 @@ export default function ResetPassword() {
 
         {error && (
           <div style={{
-            background: '#FEF2F2', color: '#DC2626', fontSize: 12, padding: '10px 14px',
+            background: '#FEF2F2', color: '#B5564A', fontSize: 12, padding: '10px 14px',
             borderRadius: 10, marginBottom: 12, textAlign: 'center', fontWeight: 600,
           }}>
             {error}
@@ -136,7 +136,7 @@ export default function ResetPassword() {
 
         <button onClick={handleSubmit} disabled={loading} style={{
           width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
-          background: loading ? '#6B6B68' : '#FF6B2C', color: '#fff',
+          background: loading ? '#6B6356' : '#C5562C', color: '#fff',
           fontSize: 16, fontWeight: 800, cursor: loading ? 'default' : 'pointer',
           fontFamily: "'DM Sans', sans-serif", marginTop: 6, transition: 'background 0.2s',
         }}>
@@ -149,29 +149,29 @@ export default function ResetPassword() {
 
 const containerStyle = {
   minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center',
-  justifyContent: 'center', padding: '40px 20px', background: '#FAFAF7',
-  fontFamily: "'DM Sans', sans-serif", color: '#1F1F1E',
+  justifyContent: 'center', padding: '40px 20px', background: '#F7F3EC',
+  fontFamily: "'DM Sans', sans-serif", color: '#1A1815',
 }
 
 const inputWrap = { position: 'relative', marginBottom: 12 }
 
-const iconStyle = { position: 'absolute', left: 14, top: 14, color: '#6B6B68' }
+const iconStyle = { position: 'absolute', left: 14, top: 14, color: '#6B6356' }
 
 const inputStyle = {
   width: '100%', padding: '14px 16px 14px 44px', borderRadius: 12,
   border: '1px solid rgba(0,0,0,0.08)', fontSize: 14,
   fontFamily: "'DM Sans', sans-serif",
-  background: 'rgba(0,0,0,0.06)', color: '#1F1F1E', outline: 'none',
+  background: 'rgba(0,0,0,0.06)', color: '#1A1815', outline: 'none',
   boxSizing: 'border-box', transition: 'border 0.2s',
 }
 
 const eyeBtn = {
   position: 'absolute', right: 12, top: 12, background: 'none', border: 'none',
-  cursor: 'pointer', color: '#6B6B68', padding: 4,
+  cursor: 'pointer', color: '#6B6356', padding: 4,
 }
 
 const btnStyle = {
   display: 'inline-block', padding: '16px 40px', borderRadius: 14, border: 'none',
-  background: '#FF6B2C', color: '#fff', fontSize: 16, fontWeight: 800,
+  background: '#C5562C', color: '#fff', fontSize: 16, fontWeight: 800,
   textDecoration: 'none', fontFamily: "'DM Sans', sans-serif",
 }

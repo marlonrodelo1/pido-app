@@ -8,7 +8,7 @@ import Stars from '../components/Stars'
 import EntregaBadge from '../components/EntregaBadge'
 import { estaAbierto, horarioHoyTexto } from '../lib/horario'
 
-function InstagramIcon({ size = 18, color = '#1F1F1E' }) {
+function InstagramIcon({ size = 18, color = '#1A1815' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
@@ -18,7 +18,7 @@ function InstagramIcon({ size = 18, color = '#1F1F1E' }) {
   )
 }
 
-function FacebookIcon({ size = 18, color = '#1F1F1E' }) {
+function FacebookIcon({ size = 18, color = '#1A1815' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
       <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z" />
@@ -26,7 +26,7 @@ function FacebookIcon({ size = 18, color = '#1F1F1E' }) {
   )
 }
 
-function TikTokIcon({ size = 18, color = '#1F1F1E' }) {
+function TikTokIcon({ size = 18, color = '#1A1815' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={color} xmlns="http://www.w3.org/2000/svg">
       <path d="M16.6 5.82s.51.5 0 0A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5 2.59 2.59 0 0 1 0-5.17c.14 0 .28.02.41.04v-3.13a5.7 5.7 0 0 0-.41-.01 5.66 5.66 0 0 0 0 11.32 5.66 5.66 0 0 0 5.66-5.66V9.14a7.3 7.3 0 0 0 4.26 1.36V7.38a4.28 4.28 0 0 0-3.18-1.56z" />
@@ -38,7 +38,7 @@ function SocioHeader({ socio }) {
   const navigate = useNavigate()
   const primary = (socio?.color_primario && /^#[0-9A-Fa-f]{6}$/.test(socio.color_primario))
     ? socio.color_primario
-    : '#FF6B2C'
+    : '#C5562C'
   const redes = socio?.redes || {}
   const tieneRedes = !!(redes.instagram || redes.facebook || redes.tiktok || redes.web)
   const iconBtn = {
@@ -62,7 +62,7 @@ function SocioHeader({ socio }) {
             position: 'absolute', top: 12, right: 12,
             background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
             border: 'none', borderRadius: 999, padding: '6px 12px',
-            fontSize: 11, fontWeight: 700, color: '#1F1F1E',
+            fontSize: 11, fontWeight: 700, color: '#1A1815',
             cursor: 'pointer', fontFamily: 'inherit',
           }}
           aria-label="Por Pidoo"
@@ -92,11 +92,11 @@ function SocioHeader({ socio }) {
             )}
           </div>
           <div style={{ flex: 1, minWidth: 200, paddingBottom: 4 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: '#1F1F1E', lineHeight: 1.15 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: '#1A1815', lineHeight: 1.15 }}>
               {socio.nombre_comercial}
             </div>
             {socio.descripcion && (
-              <p style={{ fontSize: 13, color: '#6B6B68', lineHeight: 1.45, margin: '4px 0 0', maxWidth: 620 }}>
+              <p style={{ fontSize: 13, color: '#6B6356', lineHeight: 1.45, margin: '4px 0 0', maxWidth: 620 }}>
                 {socio.descripcion}
               </p>
             )}
@@ -105,16 +105,16 @@ function SocioHeader({ socio }) {
         {tieneRedes && (
           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {redes.instagram && (
-              <a href={redes.instagram} target="_blank" rel="noopener noreferrer" style={iconBtn}><InstagramIcon size={16} color="#1F1F1E" /></a>
+              <a href={redes.instagram} target="_blank" rel="noopener noreferrer" style={iconBtn}><InstagramIcon size={16} color="#1A1815" /></a>
             )}
             {redes.facebook && (
-              <a href={redes.facebook} target="_blank" rel="noopener noreferrer" style={iconBtn}><FacebookIcon size={16} color="#1F1F1E" /></a>
+              <a href={redes.facebook} target="_blank" rel="noopener noreferrer" style={iconBtn}><FacebookIcon size={16} color="#1A1815" /></a>
             )}
             {redes.tiktok && (
-              <a href={redes.tiktok} target="_blank" rel="noopener noreferrer" style={iconBtn}><TikTokIcon size={16} color="#1F1F1E" /></a>
+              <a href={redes.tiktok} target="_blank" rel="noopener noreferrer" style={iconBtn}><TikTokIcon size={16} color="#1A1815" /></a>
             )}
             {redes.web && (
-              <a href={redes.web} target="_blank" rel="noopener noreferrer" style={iconBtn}><Globe size={16} color="#1F1F1E" /></a>
+              <a href={redes.web} target="_blank" rel="noopener noreferrer" style={iconBtn}><Globe size={16} color="#1A1815" /></a>
             )}
           </div>
         )}
@@ -431,7 +431,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   const G = {
     background: '#FFFFFF',
     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid #E8E6E0',
+    border: '1px solid #E8E1D3',
     boxShadow: '0 1px 2px rgba(15,15,15,0.04), 0 1px 3px rgba(15,15,15,0.06)',
   }
 
@@ -459,21 +459,21 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenDirecciones?.() } }}
         style={{ animationDelay: '0s', display: 'flex', alignItems: 'center', gap: 8, paddingTop: 16, paddingBottom: 16, cursor: 'pointer', userSelect: 'none' }}
       >
-        <MapPin size={24} strokeWidth={2} color="#FF6B2C" style={{ flexShrink: 0 }} />
+        <MapPin size={24} strokeWidth={2} color="#C5562C" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6B6B68', fontWeight: 700, lineHeight: '14px' }}>Enviar a</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: '#1F1F1E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6B6356', fontWeight: 700, lineHeight: '14px' }}>Enviar a</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: '#1A1815', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {perfil?.direccion || 'Configura tu dirección'}
           </div>
         </div>
-        <ChevronRight size={12} strokeWidth={2} color="#6B6B68" style={{ flexShrink: 0 }} />
+        <ChevronRight size={12} strokeWidth={2} color="#6B6356" style={{ flexShrink: 0 }} />
       </div>
 
       {/* Aviso geolocalización */}
       {geoError && (
         <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 22, ...G, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14 }}>📍</span>
-          <span style={{ fontSize: 11, color: '#D97706', fontWeight: 600 }}>Activa tu ubicación para ver restaurantes cerca de ti</span>
+          <span style={{ fontSize: 11, color: '#C99551', fontWeight: 600 }}>Activa tu ubicación para ver restaurantes cerca de ti</span>
         </div>
       )}
 
@@ -488,19 +488,19 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           borderRadius: 16,
           ...G,
         }}>
-          <Search size={20} strokeWidth={1.8} color="#6B6B68" style={{ marginRight: 12, flexShrink: 0 }} />
+          <Search size={20} strokeWidth={1.8} color="#6B6356" style={{ marginRight: 12, flexShrink: 0 }} />
           <input
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             placeholder={ctx.placeholder}
-            style={{ border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', flex: 1, color: '#1F1F1E', fontWeight: 500 }}
+            style={{ border: 'none', outline: 'none', fontSize: 14, fontFamily: 'inherit', background: 'transparent', flex: 1, color: '#1A1815', fontWeight: 500 }}
           />
           {busqueda ? (
             <button onClick={() => setBusqueda('')} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 50, width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <X size={10} color="#6B6B68" />
+              <X size={10} color="#6B6356" />
             </button>
           ) : (
-            <SlidersHorizontal size={20} strokeWidth={1.8} color="#FF6B2C" style={{ flexShrink: 0 }} />
+            <SlidersHorizontal size={20} strokeWidth={1.8} color="#C5562C" style={{ flexShrink: 0 }} />
           )}
         </div>
       </div>
@@ -524,7 +524,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 24, transition: 'all 0.2s',
                 ...(isActive
-                  ? { background: 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)', boxShadow: '0 10px 15px -3px rgba(255,144,102,0.1)' }
+                  ? { background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)', boxShadow: '0 10px 15px -3px rgba(255,144,102,0.1)' }
                   : { ...G }
                 ),
               }}>
@@ -533,7 +533,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
               <span style={{
                 fontSize: 10, fontWeight: 700,
                 textTransform: 'uppercase', letterSpacing: '0.1em',
-                color: isActive ? '#FF6B2C' : '#6B6B68',
+                color: isActive ? '#C5562C' : '#6B6356',
               }}>
                 {c.nombre}
               </span>
@@ -546,7 +546,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       {!busqueda && !catActiva && destacados.length > 0 && (
         <div className="home-fade" style={{ animationDelay: '0.15s', marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
-            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', margin: 0 }}>Destacados</h2>
+            <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', margin: 0 }}>Destacados</h2>
           </div>
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {
@@ -560,12 +560,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                   <div style={{
                     position: 'relative', height: 176, borderRadius: 22, overflow: 'hidden',
                     ...G,
-                    border: restaurantesFlags ? '2px solid #FF6B2C' : G.border,
+                    border: restaurantesFlags ? '2px solid #C5562C' : G.border,
                     marginBottom: 16,
                   }}>
                     <div style={{
                       width: '100%', height: '100%',
-                      background: r.banner_url ? `url(${r.banner_url}) center/cover` : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+                      background: r.banner_url ? `url(${r.banner_url}) center/cover` : 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)',
                     }} />
                     {/* Status badge */}
                     <div style={{
@@ -581,7 +581,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                     {restaurantesFlags && (
                       <div style={{
                         position: 'absolute', bottom: 16, left: 16,
-                        background: '#FF6B2C',
+                        background: '#C5562C',
                         padding: '4px 10px', borderRadius: 999,
                         fontSize: 10, fontWeight: 800, color: '#fff',
                         textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -615,8 +615,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                   </div>
                   {/* Text below */}
                   <div style={{ padding: '0 4px' }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1F1F1E', lineHeight: 1.25 }}>{r.nombre}</div>
-                    <div style={{ fontSize: 10, color: '#6B6B68', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#1A1815', lineHeight: 1.25 }}>{r.nombre}</div>
+                    <div style={{ fontSize: 10, color: '#6B6356', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
                       {r.tipo || 'Restaurante'} {r._distancia ? `• ${r._distancia.toFixed(0)}-${Math.round(r._distancia * 5 + 15)} min` : ''}
                     </div>
                   </div>
@@ -630,7 +630,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       {/* ── Ofertas Irresistibles (gradient cards, 128px, 22px radius) ── */}
       {!busqueda && !catActiva && promociones.length > 0 && (
         <div className="home-fade" style={{ animationDelay: '0.2s', marginBottom: 24 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
           <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollSnapType: 'x mandatory' }}>
             {promociones.map((promo, idx) => {
               const est = promo.establecimientos
@@ -671,7 +671,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
             animationDelay: '0.25s',
             position: 'relative', overflow: 'hidden',
             borderRadius: 22, padding: 20, marginBottom: 24,
-            background: 'linear-gradient(135deg, #FF6B2C 0%, #FF4500 100%)',
+            background: 'linear-gradient(135deg, #C5562C 0%, #FF4500 100%)',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
           }}
@@ -707,7 +707,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
 
       {/* ── Cerca de ti (vertical stack, glass cards, 192px image, text overlay) ── */}
       <div className="home-fade" style={{ animationDelay: '0.3s', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1F1F1E', margin: 0 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', margin: 0 }}>
           {busqueda ? 'Resultados' : catActiva ? ctx.titulo : 'Cerca de ti'}
         </h2>
       </div>
@@ -725,7 +725,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       )}
 
       {!loading && filtrados.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#6B6B68' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#6B6356' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
           <div style={{ fontSize: 14, fontWeight: 600 }}>No hay resultados</div>
         </div>
@@ -740,9 +740,9 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           if (r._fueraDeRadio && (i === 0 || !filtrados[i - 1]._fueraDeRadio)) {
             items.push(
               <div key="fuera-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
-                <div style={{ flex: 1, height: 1, background: '#E8E6E0' }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#6B6B68', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Más restaurantes</span>
-                <div style={{ flex: 1, height: 1, background: '#E8E6E0' }} />
+                <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#6B6356', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Más restaurantes</span>
+                <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
               </div>
             )
           }
@@ -765,7 +765,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                   width: '100%', height: '100%',
                   background: r.banner_url
                     ? `url(${r.banner_url}) center/cover`
-                    : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
+                    : 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)',
                 }} />
                 {/* Gradient overlay */}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />

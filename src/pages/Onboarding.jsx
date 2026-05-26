@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 const CATS = [
-  { id: 'comida',      nombre: 'Comida',       emoji: '🍕', desc: 'Restaurantes y cafeterías', color: '#FF6B2C' },
+  { id: 'comida',      nombre: 'Comida',       emoji: '🍕', desc: 'Restaurantes y cafeterías', color: '#C5562C' },
   { id: 'farmacia',    nombre: 'Farmacia',     emoji: '💊', desc: 'Medicamentos e higiene',    color: '#22C55E' },
   { id: 'marketplace', nombre: 'Marketplace',  emoji: '🛒', desc: 'Minimarkets y tiendas',     color: '#3B82F6' },
 ]
@@ -90,7 +90,7 @@ export default function Onboarding({ onComplete }) {
             style={{
               display: 'flex', alignItems: 'center', gap: 16, width: '100%',
               padding: '20px 18px', borderRadius: 16,
-              border: hovered === c.id ? `1.5px solid ${c.color}` : '1.5px solid #F4F2EC',
+              border: hovered === c.id ? `1.5px solid ${c.color}` : '1.5px solid #EFE9DD',
               background: '#FFFFFF', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
               transform: hovered === c.id ? 'scale(1.02)' : 'scale(1)',
               boxShadow: hovered === c.id ? `0 8px 30px ${c.color}15` : 'none',
@@ -100,7 +100,7 @@ export default function Onboarding({ onComplete }) {
             }}>
             <div style={{
               width: 56, height: 56, borderRadius: 14,
-              background: '#F4F2EC',
+              background: '#EFE9DD',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 28, flexShrink: 0,
               animation: hovered === c.id ? 'emojiBounce 0.4s ease' : 'none',
@@ -111,7 +111,7 @@ export default function Onboarding({ onComplete }) {
             </div>
             <div style={{
               width: 34, height: 34, borderRadius: 10,
-              background: hovered === c.id ? c.color : '#F4F2EC',
+              background: hovered === c.id ? c.color : '#EFE9DD',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.25s ease', flexShrink: 0,
             }}>

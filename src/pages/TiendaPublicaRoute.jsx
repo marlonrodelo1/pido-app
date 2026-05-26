@@ -8,8 +8,8 @@ import TiendaPublica from './TiendaPublica'
 const fallback = (
   <div style={{
     minHeight: '100vh',
-    background: '#FAFAF7',
-    color: '#6B6B68',
+    background: '#F7F3EC',
+    color: '#6B6356',
     fontFamily: "'DM Sans', sans-serif",
     display: 'flex',
     alignItems: 'center',

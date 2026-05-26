@@ -22,7 +22,7 @@ const LandingRepartidores = lazy(() => import('./pages/LandingRepartidores'))
 
 const SuspenseFallback = (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-    <div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div>
+    <div style={{ color: '#6B6356', fontSize: 13 }}>Cargando...</div>
   </div>
 )
 
@@ -112,7 +112,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
               borderRadius: 10, border: 'none', background: '#DCFCE7',
               fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: '#166534',
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: 3, background: '#16A34A', animation: 'pulse 1.5s infinite' }} />
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: '#8B9D7A', animation: 'pulse 1.5s infinite' }} />
               En curso
             </button>
           )}
@@ -229,8 +229,8 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
               position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 14, zIndex: 310,
               width: 36, height: 36, borderRadius: 999,
               background: 'rgba(255,255,255,0.95)',
-              border: '1px solid #E8E6E0',
-              color: '#1F1F1E', cursor: 'pointer',
+              border: '1px solid #E8E1D3',
+              color: '#1A1815', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backdropFilter: 'blur(10px)',
             }}
@@ -255,15 +255,15 @@ export default function AppShell({ socioData = null, restaurantesFilter = null, 
 }
 
 const shellStyle = {
-  '--c-primary': '#FF6B2C',
+  '--c-primary': '#C5562C',
   '--c-primary-light': 'rgba(255,107,44,0.10)',
   '--c-primary-soft': 'rgba(255,107,44,0.18)',
-  '--c-bg': '#FAFAF7',
+  '--c-bg': '#F7F3EC',
   '--c-surface': '#FFFFFF',
-  '--c-surface2': '#F4F2EC',
-  '--c-border': '#E8E6E0',
-  '--c-text': '#1F1F1E',
-  '--c-muted': '#6B6B68',
+  '--c-surface2': '#EFE9DD',
+  '--c-border': '#E8E1D3',
+  '--c-text': '#1A1815',
+  '--c-muted': '#6B6356',
   '--c-glass': 'rgba(255,255,255,0.7)',
   '--c-glass-border': 'rgba(0,0,0,0.06)',
   fontFamily: "'DM Sans', sans-serif",
@@ -280,7 +280,7 @@ const globalCss = `
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 *{box-sizing:border-box;margin:0;padding:0}
 ::-webkit-scrollbar{display:none}
-body{background:#FAFAF7;color:#1F1F1E;margin:0}
+body{background:#F7F3EC;color:#1A1815;margin:0}
 @media(min-width:768px){
   .tablet-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:14px!important}
   .tablet-grid>*{margin-bottom:0!important}

@@ -26,15 +26,15 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FAFAF7', color: '#1F1F1E', fontFamily: "'DM Sans', sans-serif", padding: 32, textAlign: 'center' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F7F3EC', color: '#1A1815', fontFamily: "'DM Sans', sans-serif", padding: 32, textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>😵</div>
           <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Algo salio mal</div>
-          <p style={{ fontSize: 13, color: '#6B6B68', marginBottom: 24, maxWidth: 300, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 13, color: '#6B6356', marginBottom: 24, maxWidth: 300, lineHeight: 1.5 }}>
             Ha ocurrido un error inesperado. Intenta recargar la pagina.
           </p>
           <button onClick={() => window.location.reload()} style={{
             padding: '14px 32px', borderRadius: 14, border: 'none',
-            background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+            background: '#C5562C', color: '#fff', fontSize: 15, fontWeight: 800,
             cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
           }}>
             Recargar
@@ -52,8 +52,8 @@ const SuspenseFallback = (
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#FAFAF7',
-    color: '#6B6B68',
+    background: '#F7F3EC',
+    color: '#6B6356',
     fontFamily: "'DM Sans', sans-serif",
     fontSize: 13,
   }}>
@@ -66,27 +66,27 @@ function EmailConfirmadoScreen({ onClose }) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#FAFAF7',
-      color: '#1F1F1E',
+      background: '#F7F3EC',
+      color: '#1A1815',
       fontFamily: "'DM Sans', sans-serif",
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32,
     }}>
       <div style={{ fontSize: 56, marginBottom: 20 }}>✅</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: '#1F1F1E', marginBottom: 8, textAlign: 'center' }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color: '#1A1815', marginBottom: 8, textAlign: 'center' }}>
         Cuenta confirmada
       </div>
-      <p style={{ fontSize: 14, color: '#6B6B68', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 14, color: '#6B6356', marginBottom: 32, textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
         Tu cuenta ha sido verificada correctamente. Ya puedes iniciar sesion en pidoo.
       </p>
       <button onClick={() => { onClose(); window.location.hash = ''; navigate('/app') }} style={{
         display: 'inline-block', padding: '16px 40px', borderRadius: 14, border: 'none',
-        background: '#FF6B2C', color: '#fff', fontSize: 16, fontWeight: 800,
+        background: '#C5562C', color: '#fff', fontSize: 16, fontWeight: 800,
         cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
       }}>
         Iniciar sesion
       </button>
       <button onClick={() => { onClose(); window.location.hash = '' }} style={{
-        marginTop: 16, background: 'none', border: 'none', color: '#6B6B68',
+        marginTop: 16, background: 'none', border: 'none', color: '#6B6356',
         fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
       }}>
         Continuar en la web
@@ -111,7 +111,7 @@ function NativeBootstrap() {
           await StatusBar.setOverlaysWebView({ overlay: true })
         } else {
           await StatusBar.setOverlaysWebView({ overlay: false })
-          await StatusBar.setBackgroundColor({ color: '#FAFAF7' })
+          await StatusBar.setBackgroundColor({ color: '#F7F3EC' })
         }
         await StatusBar.setStyle({ style: Style.Light })
       } catch (_) {}

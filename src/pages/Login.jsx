@@ -71,7 +71,7 @@ export default function Login({ nextPath = null }) {
   const inputStyle = {
     width: '100%', padding: '14px 16px 14px 44px', borderRadius: 14,
     border: '1px solid transparent', fontSize: 14, fontFamily: 'inherit',
-    background: '#F4F2EC', color: 'var(--c-text)', outline: 'none',
+    background: '#EFE9DD', color: 'var(--c-text)', outline: 'none',
     boxSizing: 'border-box', transition: 'border 0.2s',
   }
   const inputFocus = { borderColor: 'var(--c-primary)' }
@@ -139,7 +139,7 @@ export default function Login({ nextPath = null }) {
               <button key={m} onClick={() => { setModo(m); setError(null); setErrores({}) }} style={{
                 flex: 1, padding: '10px 0', borderRadius: 12, border: 'none',
                 background: modo === m ? 'var(--c-btn-gradient)' : 'transparent',
-                color: modo === m ? '#fff' : '#3D3D3B',
+                color: modo === m ? '#fff' : '#2B2823',
                 fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 transition: 'all 0.2s ease',
               }}>
@@ -244,7 +244,7 @@ export default function Login({ nextPath = null }) {
         <button onClick={handleSubmit} disabled={loading || !!(blockedUntil && Date.now() < blockedUntil)} style={{
           width: '100%', padding: '16px 0', borderRadius: 12, border: 'none',
           background: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)',
-          color: '#1F1F1E', fontSize: 15, fontWeight: 700,
+          color: '#1A1815', fontSize: 15, fontWeight: 700,
           cursor: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'default' : 'pointer',
           fontFamily: 'inherit', marginTop: 4, letterSpacing: '0.01em',
         }}>
@@ -297,8 +297,8 @@ export default function Login({ nextPath = null }) {
               } catch (err) { setError('Error al conectar con Google: ' + err.message); setLoading(false) }
             }} style={{
               width: '100%', padding: '14px 0', borderRadius: 14,
-              border: '1px solid #D4D2CC',
-              background: '#FFFFFF', color: '#1F1F1E',
+              border: '1px solid #D8CDB8',
+              background: '#FFFFFF', color: '#1A1815',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               transition: 'border-color 0.2s',
@@ -334,7 +334,7 @@ export default function Login({ nextPath = null }) {
                 border: aceptaTerminos ? 'none' : errores.terminos ? '1.5px solid #EF4444' : '1.5px solid rgba(0,0,0,0.08)',
                 background: aceptaTerminos ? 'var(--c-primary)' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, color: '#1F1F1E', transition: 'all 0.15s',
+                fontSize: 12, color: '#1A1815', transition: 'all 0.15s',
               }}>
                 {aceptaTerminos && '✓'}
               </div>

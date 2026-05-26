@@ -102,7 +102,7 @@ export default function MisPedidos({ onTrack }) {
                 {socio.logo_url ? (
                   <img src={socio.logo_url} alt="" style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', background: '#fff' }} />
                 ) : (
-                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: socio.color_primario || '#FF6B2C', display: 'inline-block' }} />
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: socio.color_primario || '#C5562C', display: 'inline-block' }} />
                 )}
                 <span style={{ fontWeight: 700, color: socio.color_primario || 'var(--c-text)' }}>{socio.nombre_comercial}</span>
               </div>

@@ -10,12 +10,30 @@ const Carrito = lazy(() => import('./Carrito'))
 const MisPedidos = lazy(() => import('./MisPedidos'))
 const Perfil = lazy(() => import('./Perfil'))
 const Tracking = lazy(() => import('./Tracking'))
+const TiendaDesktop = lazy(() => import('./TiendaDesktop'))
 
 const fallback = (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-    <div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div>
+    <div style={{ color: '#6B6356', fontSize: 13 }}>Cargando...</div>
   </div>
 )
+
+// Hook que devuelve isDesktop = window.innerWidth >= 1024 con listener resize
+function useIsDesktop(breakpoint = 1024) {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth >= breakpoint
+  })
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    function onResize() {
+      setIsDesktop(window.innerWidth >= breakpoint)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [breakpoint])
+  return isDesktop
+}
 
 export default function TiendaPublica({ establecimiento }) {
   const { user } = useAuth()
@@ -24,6 +42,7 @@ export default function TiendaPublica({ establecimiento }) {
   const [carritoOpen, setCarritoOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const [pedidoActivo, setPedidoActivo] = useState(null)
+  const isDesktop = useIsDesktop(1024)
 
   // Setear origen del pedido a 'tienda_publica' al montar
   useEffect(() => {
@@ -94,6 +113,66 @@ export default function TiendaPublica({ establecimiento }) {
     setSeccion('carta')
   }
 
+  // ─── Render DESKTOP ≥1024px ────────────────────────────────
+  // Solo cuando estamos en la sección "carta" (catálogo). En tracking,
+  // pedidos y perfil reutilizamos la UI mobile centrada (es suficiente).
+  if (isDesktop && seccion === 'carta') {
+    return (
+      <div style={{
+        ...shellStyle,
+        minHeight: '100vh', position: 'relative',
+        background: '#F7F3EC',
+      }}>
+        <style>{globalCss}</style>
+        <Suspense fallback={fallback}>
+          <TiendaDesktop
+            establecimiento={establecimiento}
+            onCheckout={() => {
+              if (!user) { setLoginOpen(true); return }
+              setCarritoOpen(true)
+            }}
+            onRequireLogin={() => setLoginOpen(true)}
+          />
+        </Suspense>
+
+        {/* Carrito modal (lógica completa de checkout sigue aquí) */}
+        <Suspense fallback={null}>
+          <Carrito
+            onPedidoCreado={handlePedidoCreado}
+            open={carritoOpen}
+            setOpen={setCarritoOpen}
+            onRequireLogin={() => setLoginOpen(true)}
+          />
+        </Suspense>
+
+        {loginOpen && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+            overflowY: 'auto', animation: 'fadeIn 0.25s ease',
+          }}>
+            <button
+              onClick={() => setLoginOpen(false)}
+              aria-label="Cerrar"
+              style={{
+                position: 'fixed', top: 16, right: 16, zIndex: 310,
+                width: 36, height: 36, borderRadius: 999,
+                background: 'rgba(255,255,255,0.95)',
+                border: '1px solid #E8E1D3',
+                color: '#1A1815', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <X size={18} strokeWidth={2.2}/>
+            </button>
+            <Login />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ─── Render MOBILE (≤1023px) o secciones no-carta ─────────
   return (
     <div style={{
       ...shellStyle,
@@ -136,7 +215,7 @@ export default function TiendaPublica({ establecimiento }) {
             right: 20, zIndex: 55,
             padding: '12px 18px',
             borderRadius: 999, border: 'none',
-            background: '#FF6B2C', color: '#fff',
+            background: '#C5562C', color: '#fff',
             fontSize: 14, fontWeight: 800,
             cursor: 'pointer', fontFamily: 'inherit',
             boxShadow: '0 8px 24px rgba(255,107,44,0.35)',
@@ -181,7 +260,7 @@ export default function TiendaPublica({ establecimiento }) {
               width: 36, height: 36, borderRadius: 999,
               background: 'rgba(0,0,0,0.08)',
               border: '1px solid rgba(0,0,0,0.10)',
-              color: '#1F1F1E', cursor: 'pointer',
+              color: '#1A1815', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backdropFilter: 'blur(10px)',
             }}
@@ -196,15 +275,15 @@ export default function TiendaPublica({ establecimiento }) {
 }
 
 const shellStyle = {
-  '--c-primary': '#FF6B2C',
+  '--c-primary': '#C5562C',
   '--c-primary-light': 'rgba(255,107,44,0.15)',
   '--c-primary-soft': 'rgba(255,107,44,0.25)',
-  '--c-bg': '#FAFAF7',
+  '--c-bg': '#F7F3EC',
   '--c-surface': 'rgba(0,0,0,0.06)',
   '--c-surface2': 'rgba(0,0,0,0.04)',
   '--c-border': 'rgba(0,0,0,0.08)',
-  '--c-text': '#1F1F1E',
-  '--c-muted': '#6B6B68',
+  '--c-text': '#1A1815',
+  '--c-muted': '#6B6356',
   '--c-glass': 'rgba(0,0,0,0.05)',
   '--c-glass-border': 'rgba(0,0,0,0.08)',
   fontFamily: "'DM Sans', sans-serif",
@@ -221,7 +300,7 @@ const globalCss = `
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 *{box-sizing:border-box;margin:0;padding:0}
 ::-webkit-scrollbar{display:none}
-body{background:#FAFAF7;margin:0}
+body{background:#F7F3EC;margin:0}
 @media(min-width:768px){
   .tablet-pad{padding:24px 32px!important}
   .modal-sheet{max-width:560px!important}

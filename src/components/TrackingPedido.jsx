@@ -70,20 +70,20 @@ function ModalValoracion({ pedidoId, socioId, establecimientoId, onClose }) {
     }}>
       <div style={{
         background: '#FFFFFF', borderRadius: '20px 20px 0 0', padding: '24px 20px 36px',
-        width: '100%', maxWidth: 420, border: '1px solid #E8E6E0', borderBottom: 'none',
+        width: '100%', maxWidth: 420, border: '1px solid #E8E1D3', borderBottom: 'none',
         animation: 'slideUp 0.35s ease',
       }}>
         {enviado ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1F1F1E' }}>¡Gracias por tu reseña!</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1815' }}>¡Gracias por tu reseña!</div>
           </div>
         ) : (
           <>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#1F1F1E' }}>¡Pedido entregado!</div>
-              <div style={{ fontSize: 13, color: '#6B6B68', marginTop: 4 }}>¿Cómo ha sido la experiencia?</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#1A1815' }}>¡Pedido entregado!</div>
+              <div style={{ fontSize: 13, color: '#6B6356', marginTop: 4 }}>¿Cómo ha sido la experiencia?</div>
             </div>
 
             {/* Estrellas */}
@@ -103,21 +103,21 @@ function ModalValoracion({ pedidoId, socioId, establecimientoId, onClose }) {
               placeholder="Cuéntanos tu experiencia (opcional)..."
               rows={3}
               style={{
-                width: '100%', background: '#F4F2EC', border: '1px solid #E8E6E0',
-                borderRadius: 12, padding: '12px 14px', color: '#1F1F1E', fontSize: 14,
+                width: '100%', background: '#EFE9DD', border: '1px solid #E8E1D3',
+                borderRadius: 12, padding: '12px 14px', color: '#1A1815', fontSize: 14,
                 fontFamily: "'DM Sans', sans-serif", resize: 'none', outline: 'none', marginBottom: 16,
               }}
             />
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={onClose} style={{
-                flex: 1, padding: '13px 0', borderRadius: 12, border: '1px solid #E8E6E0',
-                background: 'transparent', color: '#6B6B68',
+                flex: 1, padding: '13px 0', borderRadius: 12, border: '1px solid #E8E1D3',
+                background: 'transparent', color: '#6B6356',
                 fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
               }}>Omitir</button>
               <button onClick={enviar} disabled={rating === 0 || enviando} style={{
                 flex: 2, padding: '13px 0', borderRadius: 12, border: 'none',
-                background: rating === 0 ? '#E8E6E0' : '#FF6B2C', color: rating === 0 ? '#9A9A95' : '#fff',
+                background: rating === 0 ? '#E8E1D3' : '#C5562C', color: rating === 0 ? '#9A9A95' : '#fff',
                 fontSize: 14, fontWeight: 800, cursor: rating === 0 ? 'default' : 'pointer', fontFamily: 'inherit',
                 transition: 'background 0.2s',
               }}>{enviando ? 'Enviando...' : 'Enviar reseña'}</button>
@@ -286,32 +286,32 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
   const trackingListo = trackingUrl && !TRACKING_ESTADOS_NO_VALIDOS.includes(trackingStatus)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FAFAF7', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#F7F3EC', fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes pulseRider { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
       `}</style>
 
       {/* Header */}
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, background: '#FFFFFF', borderBottom: '1px solid #E8E6E0' }}>
+      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, background: '#FFFFFF', borderBottom: '1px solid #E8E1D3' }}>
         <button onClick={onVolver} style={{
-          background: '#F4F2EC', border: 'none', borderRadius: 10,
-          width: 36, height: 36, cursor: 'pointer', fontSize: 16, color: '#1F1F1E',
+          background: '#EFE9DD', border: 'none', borderRadius: 10,
+          width: 36, height: 36, cursor: 'pointer', fontSize: 16, color: '#1A1815',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>←</button>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 15, color: '#1F1F1E' }}>Seguimiento del pedido</div>
-          <div style={{ fontSize: 12, color: '#6B6B68' }}>{codigo}</div>
+          <div style={{ fontWeight: 800, fontSize: 15, color: '#1A1815' }}>Seguimiento del pedido</div>
+          <div style={{ fontSize: 12, color: '#6B6356' }}>{codigo}</div>
         </div>
       </div>
 
       {/* Mapa */}
-      <div style={{ height: 220, position: 'relative', background: '#F4F2EC' }}>
+      <div style={{ height: 220, position: 'relative', background: '#EFE9DD' }}>
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
         {!leafletListo && (
           <div style={{
             position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#F4F2EC', color: '#6B6B68', fontSize: 13,
+            background: '#EFE9DD', color: '#6B6356', fontSize: 13,
           }}>Cargando mapa...</div>
         )}
       </div>
@@ -321,12 +321,12 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
             {/* Línea de fondo */}
-            <div style={{ position: 'absolute', top: 16, left: '10%', right: '10%', height: 3, background: '#E8E6E0', borderRadius: 2, zIndex: 0 }} />
+            <div style={{ position: 'absolute', top: 16, left: '10%', right: '10%', height: 3, background: '#E8E1D3', borderRadius: 2, zIndex: 0 }} />
             {/* Línea progreso */}
             <div style={{
               position: 'absolute', top: 16, left: '10%', height: 3,
               width: `${(etapaActual / (ETAPAS.length - 1)) * 80}%`,
-              background: '#FF6B2C', borderRadius: 2, zIndex: 0,
+              background: '#C5562C', borderRadius: 2, zIndex: 0,
               transition: 'width 0.5s ease',
             }} />
             {ETAPAS.map((etapa, i) => {
@@ -336,13 +336,13 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
                 <div key={etapa.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, zIndex: 1, flex: 1 }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: '50%',
-                    background: activa ? '#FF6B2C' : '#E8E6E0',
+                    background: activa ? '#C5562C' : '#E8E1D3',
                     border: esActual ? '3px solid rgba(255,107,44,0.30)' : '2px solid transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 14, transition: 'all 0.3s',
                     animation: esActual && estado !== 'entregado' ? 'pulseRider 1.5s infinite' : 'none',
                   }}>{activa ? etapa.icon : <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#9A9A95' }} />}</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: activa ? '#1F1F1E' : '#9A9A95', textAlign: 'center', lineHeight: 1.2, letterSpacing: 0.3 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: activa ? '#1A1815' : '#9A9A95', textAlign: 'center', lineHeight: 1.2, letterSpacing: 0.3 }}>
                     {etapa.label}
                   </div>
                 </div>
@@ -360,8 +360,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
           }}>
             <span style={{ fontSize: 24 }}>⏱️</span>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 18, color: '#FF6B2C' }}>~{etaMin} min</div>
-              <div style={{ fontSize: 12, color: '#6B6B68' }}>Tiempo estimado de llegada</div>
+              <div style={{ fontWeight: 800, fontSize: 18, color: '#C5562C' }}>~{etaMin} min</div>
+              <div style={{ fontSize: 12, color: '#6B6356' }}>Tiempo estimado de llegada</div>
             </div>
           </div>
         )}
@@ -369,13 +369,13 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
         {/* Card del rider */}
         {rider && (
           <div style={{
-            background: '#FFFFFF', borderRadius: 16, padding: '16px', border: '1px solid #E8E6E0', marginBottom: 16,
+            background: '#FFFFFF', borderRadius: 16, padding: '16px', border: '1px solid #E8E1D3', marginBottom: 16,
             boxShadow: '0 1px 2px rgba(15,15,15,0.04), 0 1px 3px rgba(15,15,15,0.06)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{
                 width: 52, height: 52, borderRadius: 14, overflow: 'hidden',
-                background: '#F4F2EC', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#EFE9DD', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 22, flexShrink: 0, border: '2px solid rgba(255,107,44,0.25)',
               }}>
                 {rider.foto_url
@@ -384,11 +384,11 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
                 }
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#1F1F1E' }}>{rider.nombre_comercial || 'Tu repartidor'}</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#1A1815' }}>{rider.nombre_comercial || 'Tu repartidor'}</div>
                 {rider.rating > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                     <Stars rating={rider.rating} size={11} />
-                    <span style={{ fontSize: 11, color: '#6B6B68' }}>{rider.rating?.toFixed(1)}</span>
+                    <span style={{ fontSize: 11, color: '#6B6356' }}>{rider.rating?.toFixed(1)}</span>
                   </div>
                 )}
               </div>
@@ -421,8 +421,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
             border: '1px solid rgba(255,107,44,0.20)', textAlign: 'center',
           }}>
             <div style={{ fontSize: 36, marginBottom: 8, animation: 'pulseRider 1.5s infinite' }}>🕐</div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#1F1F1E', marginBottom: 6 }}>Esperando confirmación</div>
-            <div style={{ fontSize: 13, color: '#3D3D3B', lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#1A1815', marginBottom: 6 }}>Esperando confirmación</div>
+            <div style={{ fontSize: 13, color: '#2B2823', lineHeight: 1.5 }}>
               El restaurante está revisando tu pedido.<br />Te avisaremos cuando lo acepten.
             </div>
           </div>
@@ -432,20 +432,20 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
             border: '1px solid rgba(22,163,74,0.22)', textAlign: 'center',
           }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#1F1F1E', marginBottom: 6 }}>¡El restaurante confirmó tu pedido!</div>
-            <div style={{ fontSize: 13, color: '#3D3D3B', lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#1A1815', marginBottom: 6 }}>¡El restaurante confirmó tu pedido!</div>
+            <div style={{ fontSize: 13, color: '#2B2823', lineHeight: 1.5 }}>
               El repartidor irá a recogerlo en cuanto esté listo.
             </div>
           </div>
         ) : (
           <div style={{
-            background: '#FFFFFF', borderRadius: 16, padding: '16px', border: '1px solid #E8E6E0',
+            background: '#FFFFFF', borderRadius: 16, padding: '16px', border: '1px solid #E8E1D3',
             textAlign: 'center',
             boxShadow: '0 1px 2px rgba(15,15,15,0.04), 0 1px 3px rgba(15,15,15,0.06)',
           }}>
             <div style={{ fontSize: 28, marginBottom: 6 }}>{ETAPAS[etapaActual]?.icon}</div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: '#1F1F1E' }}>{ETAPAS[etapaActual]?.label}</div>
-            <div style={{ fontSize: 12, color: '#6B6B68', marginTop: 4 }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: '#1A1815' }}>{ETAPAS[etapaActual]?.label}</div>
+            <div style={{ fontSize: 12, color: '#6B6356', marginTop: 4 }}>
               {estado === 'preparando' && 'El restaurante está preparando tu pedido'}
               {estado === 'listo' && 'Tu pedido está listo, el repartidor va a recogerlo'}
               {estado === 'en_camino' && 'Tu repartidor va de camino'}
@@ -461,7 +461,7 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
-              background: '#FF6B2C', color: '#fff',
+              background: '#C5562C', color: '#fff',
               fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
               marginTop: 16,
               boxShadow: '0 4px 16px rgba(255,107,44,0.30)',
@@ -473,8 +473,8 @@ export default function TrackingPedido({ pedidoId, socioId, establecimientoId, c
         ) : (
           <div style={{
             marginTop: 16, padding: '13px 16px', borderRadius: 14,
-            background: '#F4F2EC', border: '1px solid #E8E6E0',
-            textAlign: 'center', color: '#6B6B68', fontSize: 13,
+            background: '#EFE9DD', border: '1px solid #E8E1D3',
+            textAlign: 'center', color: '#6B6356', fontSize: 13,
           }}>
             El seguimiento estará disponible cuando el repartidor acepte el pedido
           </div>

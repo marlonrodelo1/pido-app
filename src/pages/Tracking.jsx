@@ -1,7 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { Star, Phone, MapPin, CheckCircle2, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+
+// Paleta directa
+const C = {
+  cream: '#F7F3EC', cream2: '#EFE9DD', paper: '#FBF8F2',
+  ink: '#1A1815', ink2: '#2B2823', stone: '#6B6356', stone2: '#8A8174',
+  terracotta: '#C5562C', terracotta2: '#A8451F', terracottaSoft: '#F1D9CC',
+  sage: '#8B9D7A', sage2: '#6F8460', sageSoft: '#DDE3D3',
+  warning: '#C99551', warningSoft: '#F0E1C8',
+  danger: '#B5564A', dangerSoft: '#F1D0CB',
+  border: '#E8E1D3',
+}
+const SH = {
+  sm: '0 1px 2px rgba(26,24,21,0.06)',
+  md: '0 4px 14px rgba(26,24,21,0.08)',
+  glossy: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.18)',
+}
 
 const AUTO_CLOSE_SECONDS = 8
 
@@ -74,29 +91,40 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
   function SocioBanner() {
     if (!socio) return null
-    const color = socio.color_primario || '#FF6B2C'
+    const color = socio.color_primario || C.terracotta
+    const initials = (socio.nombre_comercial || '?').charAt(0).toUpperCase()
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        background: hexToRgba(color, 0.1),
-        border: `1px solid ${hexToRgba(color, 0.22)}`,
-        borderRadius: 12, padding: '10px 12px', marginBottom: 14,
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: C.terracottaSoft,
+        border: `1px solid ${C.terracotta}`,
+        borderRadius: 14, padding: '12px 14px', marginBottom: 14,
       }}>
         {socio.logo_url ? (
-          <img src={socio.logo_url} alt={socio.nombre_comercial} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: '#fff', flexShrink: 0 }} />
+          <img src={socio.logo_url} alt={socio.nombre_comercial} style={{
+            width: 40, height: 40, borderRadius: '50%', objectFit: 'cover',
+            background: '#fff', flexShrink: 0,
+          }} />
         ) : (
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-            {(socio.nombre_comercial || '?').charAt(0).toUpperCase()}
-          </div>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%',
+            background: color, color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 800, fontSize: 14, flexShrink: 0,
+          }}>{initials}</div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)', lineHeight: 1.25 }}>
-            Entregado por <span style={{ color }}>{socio.nombre_comercial}</span> · Pidoo
+          <div style={{
+            fontSize: 11, color: C.terracotta2, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}>Entregado por</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>
+            {socio.nombre_comercial} · Pidoo
           </div>
           {socio.slug && (
             <button onClick={abrirSocio} style={{
               background: 'none', border: 'none', padding: 0, marginTop: 2,
-              fontSize: 11, fontWeight: 700, color, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, color: C.terracotta2, cursor: 'pointer',
               fontFamily: 'inherit', textAlign: 'left',
             }}>
               Volver a pedir en {socio.nombre_comercial} →
@@ -200,25 +228,44 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   if (pedido.estado === 'cancelado' || pedido.estado === 'fallido') {
     return (
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
-          <span style={{ fontSize: 11, color: 'var(--c-muted)', fontWeight: 600 }}>{pedido.codigo}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0, letterSpacing: '-0.02em' }}>Tu pedido</h2>
+          <span style={{ fontSize: 12, color: C.stone, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }}>{pedido.codigo}</span>
         </div>
         <SocioBanner />
-        <div style={{ background: 'rgba(239,68,68,0.06)', borderRadius: 14, padding: 28, textAlign: 'center', border: '1px solid rgba(239,68,68,0.15)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>{pedido.estado === 'cancelado' ? '❌' : '⚠️'}</div>
-          <div style={{ fontWeight: 700, fontSize: 18, color: '#EF4444', marginBottom: 8 }}>
+        <div style={{
+          background: C.dangerSoft, borderRadius: 14, padding: 28,
+          textAlign: 'center', border: 'none',
+        }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%', background: '#fff',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: C.danger, marginBottom: 14,
+          }}>
+            <XIcon size={36} strokeWidth={2} />
+          </div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: C.danger, marginBottom: 8 }}>
             {pedido.estado === 'cancelado' ? 'Pedido cancelado' : 'Entrega fallida'}
           </div>
           {pedido.motivo_cancelacion && (
-            <div style={{ fontSize: 14, color: 'var(--c-text)', marginBottom: 12, fontWeight: 600, background: 'rgba(0,0,0,0.06)', borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{
+              fontSize: 13, color: C.ink, marginBottom: 14, fontWeight: 600,
+              background: C.paper, borderRadius: 10, padding: '10px 14px',
+            }}>
               {pedido.motivo_cancelacion}
             </div>
           )}
-          <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 20 }}>
-            {pedido.metodo_pago === 'tarjeta' ? 'Si se realizó el cobro, el reembolso se procesará automáticamente.' : 'No se ha realizado ningún cobro.'}
+          <div style={{ fontSize: 12, color: C.danger, opacity: 0.85, marginBottom: 20 }}>
+            {pedido.metodo_pago === 'tarjeta'
+              ? 'Si se realizó el cobro, el reembolso se procesará automáticamente.'
+              : 'No se ha realizado ningún cobro.'}
           </div>
-          <button onClick={onClose} style={{ padding: '12px 28px', borderRadius: 10, border: 'none', background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={onClose} style={{
+            padding: '12px 28px', borderRadius: 12, border: 'none',
+            background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+            color: C.cream, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'inherit', boxShadow: SH.glossy,
+          }}>
             Entendido
           </button>
         </div>
@@ -229,6 +276,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   // ==================== ENTREGADO ====================
   if (pedido.estado === 'entregado') {
     const mostrarContador = !autoCloseCancelled && !yaValorado && !resenaEnviada
+    // Paleta de confetti — colores cálidos del design system
+    const confettiColors = ['#C5562C', '#8B9D7A', '#C99551', '#7B8FA8', '#F7F3EC', '#6B6356']
 
     return (
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
@@ -237,20 +286,26 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(280px) rotate(720deg);opacity:0} }
         `}</style>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: '#767575', fontWeight: 600 }}>{pedido.codigo}</span>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>Cerrar</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0, letterSpacing: '-0.02em' }}>Tu pedido</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: C.stone, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }}>{pedido.codigo}</span>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', fontSize: 12, fontWeight: 700,
+              color: C.terracotta, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Cerrar</button>
           </div>
         </div>
 
         <SocioBanner />
 
         {/* Celebración */}
-        <div style={{ position: 'relative', textAlign: 'center', padding: '32px 0 22px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 18, overflow: 'hidden' }}>
+        <div style={{
+          position: 'relative', textAlign: 'center', padding: '36px 0 26px',
+          marginBottom: 18, overflow: 'hidden',
+        }}>
           {/* Confetti */}
-          {['#10B981','#FBBF24','#FF6B2C','#60A5FA','#A78BFA','#F472B6'].map((c, i) => (
+          {confettiColors.map((c, i) => (
             <div key={i} style={{
               position: 'absolute',
               top: -10,
@@ -262,58 +317,98 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             }} />
           ))}
           <div style={{
-            width: 72, height: 72, borderRadius: '50%',
-            background: 'rgba(16,185,129,0.15)',
+            width: 96, height: 96, margin: '0 auto', borderRadius: '50%',
+            background: C.sageSoft,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 10, animation: 'popCheck 0.6s ease-out',
+            color: C.sage2, animation: 'popCheck 0.6s ease-out',
           }}>
-            <span style={{ fontSize: 40 }}>✓</span>
+            <CheckCircle2 size={56} strokeWidth={1.5} />
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#10B981', marginBottom: 4 }}>¡Pedido entregado!</div>
-          <div style={{ fontSize: 13, color: 'var(--c-muted)' }}>Esperamos que lo disfrutes 🎉</div>
+          <div style={{
+            fontSize: 26, fontWeight: 800, color: C.ink, marginTop: 18,
+            letterSpacing: '-0.02em',
+          }}>¡Pedido entregado!</div>
+          <div style={{ fontSize: 14, color: C.stone, marginTop: 6 }}>
+            Esperamos que lo disfrutes 🍕
+          </div>
         </div>
 
         {/* Contador auto-cierre */}
         {mostrarContador && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 16 }}>
-            <span style={{ fontSize: 11, color: 'var(--c-muted)' }}>Cerrando en {secondsLeft}s...</span>
-            <button onClick={() => setAutoCloseCancelled(true)} style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+            padding: '10px 14px', borderRadius: 10,
+            background: C.cream2, marginBottom: 16,
+          }}>
+            <span style={{ fontSize: 11, color: C.stone }}>Cerrando en {secondsLeft}s...</span>
+            <button onClick={() => setAutoCloseCancelled(true)} style={{
+              background: 'none', border: 'none', fontSize: 11, fontWeight: 700,
+              color: C.terracotta, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
               Dejar valoración
             </button>
           </div>
         )}
 
-        {/* Formulario valoración (solo si el usuario cancela el cierre o ya interactuó) */}
+        {/* Formulario valoración */}
         {(autoCloseCancelled || yaValorado || resenaEnviada) && (
-          <div style={{ background: 'rgba(0,0,0,0.06)', borderRadius: 14, padding: 20, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <div style={{
+            background: C.paper, border: `1px solid ${C.border}`,
+            borderRadius: 14, padding: 20,
+          }}>
             {yaValorado || resenaEnviada ? (
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-primary-light)' }}>Gracias por tu valoración</div>
-                <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Tu opinión nos ayuda a mejorar</div>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%', background: C.sageSoft,
+                  color: C.sage2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 10,
+                }}>
+                  <Star size={26} fill={C.sage2} />
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>Gracias por tu valoración</div>
+                <div style={{ fontSize: 12, color: C.stone, marginTop: 4 }}>Tu opinión nos ayuda a mejorar</div>
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, textAlign: 'center' }}>¿Cómo fue tu experiencia?</div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: C.ink, marginBottom: 14, textAlign: 'center', letterSpacing: '-0.01em' }}>
+                  ¿Cómo fue?
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 14 }}>
                   {[1, 2, 3, 4, 5].map(i => (
                     <button key={i} onClick={() => setValoracion(i)} style={{
-                      width: 40, height: 40, borderRadius: 10,
-                      border: i <= valoracion ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.08)',
-                      background: i <= valoracion ? 'var(--c-primary)' : 'rgba(0,0,0,0.06)',
-                      cursor: 'pointer', fontSize: 18, color: i <= valoracion ? '#fff' : '#767575', transition: 'all 0.15s',
-                    }}>★</button>
+                      width: 44, height: 44, borderRadius: '50%',
+                      border: 'none', background: 'transparent', cursor: 'pointer',
+                      color: C.warning,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Star size={36} strokeWidth={1.3} fill={i <= valoracion ? C.warning : 'none'} />
+                    </button>
                   ))}
                 </div>
                 {valoracion > 0 && (
                   <>
-                    <textarea value={textoResena} onChange={e => setTextoResena(e.target.value)} placeholder="Cuéntanos más sobre tu experiencia (opcional)..." rows={3} style={{
-                      width: '100%', padding: '12px 14px', borderRadius: 10, border: 'none',
-                      fontSize: 13, fontFamily: 'inherit', background: '#F4F2EC',
-                      color: 'var(--c-text)', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 12,
-                    }} />
-                    {errorResena && <div style={{ fontSize: 12, color: '#EF4444', textAlign: 'center', marginBottom: 10, fontWeight: 600 }}>{errorResena}</div>}
-                    <button onClick={enviarValoracion} style={{ width: '100%', padding: '14px 0', borderRadius: 12, border: 'none', background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <textarea
+                      value={textoResena} onChange={e => setTextoResena(e.target.value)}
+                      placeholder="Cuéntanos cómo fue tu experiencia…" rows={3}
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 10,
+                        border: `1px solid ${C.border}`, background: C.cream,
+                        fontSize: 13, fontFamily: 'inherit', color: C.ink,
+                        outline: 'none', boxSizing: 'border-box', resize: 'vertical',
+                        marginBottom: 12,
+                      }}
+                    />
+                    {errorResena && (
+                      <div style={{ fontSize: 12, color: C.danger, textAlign: 'center', marginBottom: 10, fontWeight: 600 }}>
+                        {errorResena}
+                      </div>
+                    )}
+                    <button onClick={enviarValoracion} style={{
+                      width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
+                      background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                      color: C.cream, fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit', boxShadow: SH.glossy,
+                    }}>
                       Enviar valoración
                     </button>
                   </>
@@ -323,7 +418,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#767575' }}>
+        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: C.stone }}>
           {pedido.metodo_pago === 'tarjeta' ? '💳 Pagado con tarjeta' : '💵 Pago en efectivo'}
         </div>
       </div>
@@ -335,16 +430,19 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const riderOk = riderAsignado(pedido)
 
   const stepLabels = esPickup
-    ? ['Confirmado', 'Preparando', 'Listo', 'Recogido']
-    : ['Confirmado', 'Preparando', 'En camino', 'Entregado']
+    ? ['Aceptado', 'Preparando', 'Listo', 'Recogido']
+    : ['Aceptado', 'Preparando', 'En camino', 'Entregado']
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: 0 }}>Tu pedido</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#767575', fontWeight: 600 }}>{pedido.codigo}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'var(--c-primary-light)', cursor: 'pointer', fontFamily: 'inherit' }}>Cerrar</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0, letterSpacing: '-0.02em' }}>Tu pedido</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, color: C.stone, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }}>{pedido.codigo}</span>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', fontSize: 12, fontWeight: 700,
+            color: C.terracotta, cursor: 'pointer', fontFamily: 'inherit',
+          }}>Cerrar</button>
         </div>
       </div>
 
@@ -353,6 +451,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       <style>{`
         @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse2 { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.12);opacity:0.7} }
+        @keyframes tckPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:0.5} }
         @keyframes chopChop { 0%{transform:rotate(0deg)} 100%{transform:rotate(-22deg)} }
         @keyframes chopChop2 { 0%{transform:rotate(0deg) scaleX(-1)} 100%{transform:rotate(22deg) scaleX(-1)} }
         @keyframes steamRise { 0%{opacity:0.6;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-22px) scale(1.4)} }
@@ -361,94 +460,110 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         @keyframes moto { 0%{transform:translateX(-10px)} 100%{transform:translateX(10px)} }
       `}</style>
 
-      {/* STEPPER */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 22, padding: '0 4px' }}>
-        {stepLabels.map((label, idx) => {
-          const done = idx < currentStep
-          const active = idx === currentStep
-          const future = idx > currentStep
-          const bg = done ? '#10B981' : active ? 'var(--c-primary)' : 'rgba(0,0,0,0.06)'
-          const textColor = future ? '#767575' : '#fff'
-          return (
-            <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-              {idx < stepLabels.length - 1 && (
+      {/* Subtítulo + ETA */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>
+          {pedido.estado === 'nuevo' || pedido.estado === 'aceptado'
+            ? 'Esperando confirmación'
+            : pedido.estado === 'preparando' || pedido.estado === 'listo'
+              ? esPickup ? 'Tu pedido se está preparando' : 'Preparando tu pedido'
+              : esDelivery ? 'Va de camino' : 'Recogiendo tu pedido'}
+        </div>
+        {pedido.minutos_preparacion && (pedido.estado === 'preparando' || pedido.estado === 'aceptado' || pedido.estado === 'nuevo') && (
+          <div style={{ fontSize: 13, color: C.stone, marginTop: 4 }}>
+            Estimación: <b style={{ color: C.ink }}>{pedido.minutos_preparacion} min</b>
+          </div>
+        )}
+      </div>
+
+      {/* STEPPER — card paper con 4 segmentos sage */}
+      <div style={{
+        background: C.paper, border: `1px solid ${C.border}`,
+        borderRadius: 14, padding: 16, marginBottom: 14,
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stepLabels.length}, 1fr)`, gap: 8 }}>
+          {stepLabels.map((label, idx) => {
+            const done = idx < currentStep
+            const current = idx === currentStep
+            return (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  position: 'absolute', top: 12, left: '55%', right: '-45%', height: 2,
-                  background: done ? '#10B981' : 'rgba(0,0,0,0.06)',
-                  zIndex: 0,
+                  width: '100%', height: 6, borderRadius: 999,
+                  background: done || current ? C.sage : C.cream2,
                 }} />
-              )}
-              <div style={{
-                width: 26, height: 26, borderRadius: '50%', background: bg,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: textColor, fontWeight: 700, fontSize: 12, zIndex: 1,
-                boxShadow: active ? '0 0 0 4px rgba(255,107,44,0.2)' : 'none',
-                transition: 'all 0.2s ease',
-              }}>
-                {done ? '✓' : idx + 1}
+                <div style={{
+                  width: 12, height: 12, borderRadius: '50%',
+                  background: current ? C.terracotta : done ? C.sage : C.stone2,
+                  animation: current ? 'tckPulse 1.8s infinite' : 'none',
+                }} />
+                <div style={{
+                  fontSize: 11, fontWeight: 600, textAlign: 'center',
+                  color: current ? C.terracotta : done ? C.sage2 : C.stone,
+                }}>{label}</div>
               </div>
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: textColor,
-                marginTop: 6, textAlign: 'center', lineHeight: 1.2,
-              }}>{label}</div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {/* Estado 0: Esperando al restaurante */}
       {(pedido.estado === 'nuevo' || pedido.estado === 'aceptado') && (
-        <div style={{ borderRadius: 16, marginBottom: 16, overflow: 'hidden', background: 'linear-gradient(135deg, #0f172a 0%, #1e2a3a 100%)', border: '1px solid rgba(0,0,0,0.06)', height: 180, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          {[...Array(8)].map((_, i) => (
-            <div key={i} style={{ position: 'absolute', top: 8 + (i * 11) % 60, left: `${8 + (i * 19) % 84}%`, width: 2, height: 2, borderRadius: '50%', background: '#fff', opacity: 0.25 + (i % 3) * 0.15, animation: `pulse2 ${1.8 + i * 0.4}s ease-in-out infinite ${i * 0.3}s` }} />
-          ))}
-          <div style={{ fontSize: 44, animation: 'pulse2 2s ease-in-out infinite' }}>⏳</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1F1F1E' }}>Esperando al restaurante...</div>
-          <div style={{ fontSize: 11, color: '#6B6B68' }}>Te avisaremos cuando acepten tu pedido</div>
+        <div style={{
+          borderRadius: 14, marginBottom: 14, padding: '28px 18px',
+          background: C.paper, border: `1px solid ${C.border}`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%', background: C.terracottaSoft,
+            color: C.terracotta2,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 30, animation: 'pulse2 2s ease-in-out infinite',
+          }}>⏳</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>Esperando al restaurante</div>
+          <div style={{ fontSize: 12, color: C.stone, textAlign: 'center' }}>
+            Te avisaremos cuando acepten tu pedido
+          </div>
         </div>
       )}
 
       {/* Estado 1: Preparando / Listo */}
       {(pedido.estado === 'preparando' || pedido.estado === 'listo') && (
         <>
-          <div style={{ borderRadius: 16, marginBottom: 12, overflow: 'hidden', background: 'linear-gradient(135deg, #1a1207 0%, #2d1f0e 50%, #1a1207 100%)', border: '1px solid rgba(0,0,0,0.06)', height: 180, position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%),repeating-linear-gradient(0deg,rgba(255,255,255,0.025) 0,rgba(255,255,255,0.025) 49%,transparent 49%,transparent 50%)', backgroundSize: '22px 22px' }} />
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(180deg,#5C4033,#4A3428)', borderTop: '3px solid #6B4F3A' }} />
-            <div style={{ position: 'absolute', bottom: '40%', left: '10%', animation: 'floatPan 2s ease-in-out infinite' }}>
-              <span style={{ fontSize: 36 }}>🍳</span>
-              <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', animation: 'sizzle 0.35s ease-in-out infinite alternate', fontSize: 9, color: '#FFD700' }}>✦</div>
-            </div>
-            <div style={{ position: 'absolute', bottom: '70%', left: '18%', fontSize: 13, opacity: 0.5, animation: 'steamRise 2s ease-out infinite' }}>💨</div>
-            <div style={{ position: 'absolute', bottom: '72%', left: '25%', fontSize: 10, opacity: 0.35, animation: 'steamRise 2.4s ease-out infinite 0.6s' }}>💨</div>
-            <div style={{ position: 'absolute', bottom: '40%', left: '42%', animation: 'chopChop 0.38s ease-in-out infinite', transformOrigin: 'bottom right' }}>
-              <span style={{ fontSize: 28 }}>🔪</span>
-            </div>
-            <div style={{ position: 'absolute', bottom: '40%', left: '56%', animation: 'chopChop2 0.38s ease-in-out infinite 0.19s', transformOrigin: 'bottom left', display: 'inline-block' }}>
-              <span style={{ fontSize: 28 }}>🔪</span>
-            </div>
-            <div style={{ position: 'absolute', bottom: '40%', right: '8%', display: 'flex', gap: 4 }}>
-              <span style={{ fontSize: 20 }}>🍅</span>
-              <span style={{ fontSize: 18 }}>🧅</span>
-            </div>
-            <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 10, padding: '7px 13px', display: 'flex', alignItems: 'center', gap: 7 }}>
-                <span style={{ fontSize: 15 }}>👨‍🍳</span>
-                <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>
-                  {pedido.estado === 'listo' ? 'Pedido listo' : 'Preparando tu pedido...'}
-                </span>
+          <div style={{
+            borderRadius: 14, marginBottom: 12, padding: '24px 18px',
+            background: C.paper, border: `1px solid ${C.border}`,
+            display: 'flex', alignItems: 'center', gap: 16,
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%', background: C.warningSoft,
+              color: '#8B6126',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontSize: 30, animation: 'floatPan 2s ease-in-out infinite',
+            }}>👨‍🍳</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.25 }}>
+                {pedido.estado === 'listo' ? 'Pedido listo' : 'Preparando tu pedido'}
               </div>
-              {pedido.minutos_preparacion && pedido.estado === 'preparando' && (
-                <div style={{ background: 'rgba(0,0,0,0.65)', borderRadius: 8, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#FFD700' }}>~{pedido.minutos_preparacion} min</div>
-              )}
+              <div style={{ fontSize: 12, color: C.stone, marginTop: 4, lineHeight: 1.4 }}>
+                {pedido.estado === 'listo'
+                  ? esPickup ? 'Puedes pasar a recogerlo cuando quieras' : 'El rider lo recogerá enseguida'
+                  : pedido.minutos_preparacion ? `~ ${pedido.minutos_preparacion} min` : 'En la cocina'}
+              </div>
             </div>
           </div>
 
           {esDelivery && !riderOk && (
-            <div style={{ borderRadius: 12, padding: '12px 14px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              borderRadius: 12, padding: '12px 14px',
+              background: C.warningSoft,
+              marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10,
+            }}>
               <span style={{ fontSize: 18 }}>🛵</span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-text)' }}>Buscando repartidor...</div>
-                <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>Te avisaremos en cuanto uno acepte tu pedido</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#8B6126' }}>Buscando repartidor…</div>
+                <div style={{ fontSize: 11, color: '#8B6126', opacity: 0.85 }}>
+                  Te avisaremos en cuanto uno acepte tu pedido
+                </div>
               </div>
               <span style={{ fontSize: 14, animation: 'pulse2 1.5s ease-in-out infinite' }}>🔍</span>
             </div>
@@ -456,14 +571,13 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
           {esDelivery && mostrarBotonTrackingMapa && (
             <button onClick={abrirTrackingExterno} style={{
-              width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
-              background: 'var(--c-btn-gradient)', color: '#fff',
+              width: '100%', padding: '14px 18px', borderRadius: 14, border: `1px solid ${C.border}`,
+              background: C.paper, color: C.ink,
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: '0 4px 16px rgba(255,107,44,0.3)', marginBottom: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              marginBottom: 16,
             }}>
-              <span style={{ fontSize: 18 }}>🗺️</span>
-              Ver mapa de seguimiento en vivo
+              <MapPin size={14} strokeWidth={2.4} /> Ver mapa en vivo
             </button>
           )}
         </>
@@ -472,11 +586,15 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       {/* Estado 2: Recogido / En camino */}
       {(pedido.estado === 'recogido' || pedido.estado === 'en_camino') && esDelivery && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ borderRadius: 14, padding: '14px 16px', background: 'linear-gradient(135deg, rgba(255,107,44,0.15), rgba(255,107,44,0.05))', border: '1px solid rgba(255,107,44,0.2)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ fontSize: 32, animation: 'moto 0.9s ease-in-out infinite alternate' }}>🛵</div>
+          <div style={{
+            borderRadius: 14, padding: '14px 16px',
+            background: C.terracottaSoft, border: `1px solid ${C.terracotta}`,
+            marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{ fontSize: 30, animation: 'moto 0.9s ease-in-out infinite alternate' }}>🛵</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--c-text)' }}>¡Tu pedido está en camino!</div>
-              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>Sigue al repartidor en tiempo real</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>¡Tu pedido está en camino!</div>
+              <div style={{ fontSize: 11, color: C.terracotta2, marginTop: 2 }}>Sigue al repartidor en tiempo real</div>
             </div>
           </div>
 
@@ -484,29 +602,41 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             <>
               {Capacitor.isNativePlatform() ? (
                 <button onClick={abrirTrackingExterno} style={{
-                  width: '100%', padding: '18px 20px', borderRadius: 14, border: 'none',
-                  background: 'var(--c-btn-gradient)', color: '#fff',
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
+                  background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                  color: C.cream, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  boxShadow: '0 4px 16px rgba(255,107,44,0.3)',
+                  boxShadow: SH.glossy,
                 }}>
-                  <span style={{ fontSize: 20 }}>📍</span>
+                  <MapPin size={16} strokeWidth={2.4} />
                   Ver ubicación en tiempo real
                 </button>
               ) : iframeError ? (
-                <div style={{ borderRadius: 14, padding: 20, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 14 }}>Abre el seguimiento en una nueva pestaña</div>
+                <div style={{
+                  borderRadius: 14, padding: 20,
+                  background: C.paper, border: `1px solid ${C.border}`,
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 13, color: C.stone, marginBottom: 14 }}>
+                    Abre el seguimiento en una nueva pestaña
+                  </div>
                   <button onClick={abrirTrackingExterno} style={{
                     padding: '14px 26px', borderRadius: 12, border: 'none',
-                    background: 'var(--c-btn-gradient)', color: '#fff',
-                    fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                    color: C.cream, fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
                     display: 'inline-flex', alignItems: 'center', gap: 8,
+                    boxShadow: SH.glossy,
                   }}>
-                    <span>📍</span> Ver tracking
+                    <MapPin size={14} strokeWidth={2.4} /> Ver tracking
                   </button>
                 </div>
               ) : (
-                <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', position: 'relative', background: '#FFFFFF' }}>
+                <div style={{
+                  borderRadius: 14, overflow: 'hidden',
+                  border: `1px solid ${C.border}`,
+                  position: 'relative', background: '#fff',
+                }}>
                   <iframe
                     src={pedido.shipday_tracking_url}
                     title="Seguimiento del repartidor"
@@ -517,7 +647,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                   <button onClick={abrirTrackingExterno} style={{
                     position: 'absolute', top: 10, right: 10,
                     padding: '7px 12px', borderRadius: 8, border: 'none',
-                    background: 'rgba(0,0,0,0.72)', color: '#fff',
+                    background: 'rgba(26,24,21,0.78)', color: '#fff',
                     fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                     backdropFilter: 'blur(8px)',
                     display: 'flex', alignItems: 'center', gap: 5,
@@ -528,22 +658,36 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               )}
             </>
           ) : (
-            <div style={{ borderRadius: 14, padding: 20, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: 'var(--c-muted)' }}>Preparando el seguimiento en tiempo real...</div>
+            <div style={{
+              borderRadius: 14, padding: 20,
+              background: C.paper, border: `1px solid ${C.border}`,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 13, color: C.stone }}>Preparando el seguimiento en tiempo real…</div>
             </div>
           )}
         </div>
       )}
 
       {pedido.estado === 'listo' && esPickup && (
-        <div style={{ borderRadius: 14, padding: '16px 18px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>📦</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#10B981' }}>¡Tu pedido está listo!</div>
-          <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 4 }}>Puedes pasar a recogerlo cuando quieras</div>
+        <div style={{
+          borderRadius: 14, padding: '18px 18px',
+          background: C.sageSoft, marginBottom: 16, textAlign: 'center',
+        }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: '50%', background: '#fff',
+            color: C.sage2,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 10, fontSize: 26,
+          }}>📦</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: C.sage2 }}>¡Tu pedido está listo!</div>
+          <div style={{ fontSize: 12, color: C.sage2, opacity: 0.85, marginTop: 4 }}>
+            Puedes pasar a recogerlo cuando quieras
+          </div>
         </div>
       )}
 
-      <div style={{ textAlign: 'center', fontSize: 12, color: '#767575' }}>
+      <div style={{ textAlign: 'center', fontSize: 12, color: C.stone }}>
         {pedido.metodo_pago === 'tarjeta' ? '💳 Pagado con tarjeta' : '💵 Pago en efectivo'}
       </div>
     </div>

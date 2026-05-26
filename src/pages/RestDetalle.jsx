@@ -1,9 +1,48 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, MapPin } from 'lucide-react'
+import { ArrowLeft, MapPin, Star, Bike, ShoppingBag, UtensilsCrossed, Plus, Minus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { estaAbierto } from '../lib/horario'
+import { FoodIcon } from '../lib/food'
+
+// Paleta directa (alineada con bundle s4-tienda + sx-extras)
+const C = {
+  cream: '#F7F3EC', cream2: '#EFE9DD', paper: '#FBF8F2',
+  ink: '#1A1815', ink2: '#2B2823', stone: '#6B6356', stone2: '#8A8174',
+  terracotta: '#C5562C', terracotta2: '#A8451F', terracottaSoft: '#F1D9CC',
+  sage: '#8B9D7A', sage2: '#6F8460', sageSoft: '#DDE3D3',
+  warning: '#C99551', warningSoft: '#F0E1C8',
+  danger: '#B5564A', dangerSoft: '#F1D0CB',
+  border: '#E8E1D3',
+}
+const SH = {
+  sm: '0 1px 2px rgba(26,24,21,0.06)',
+  md: '0 4px 14px rgba(26,24,21,0.08)',
+  glossy: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.18)',
+}
+const fmt = (n) => `${(n || 0).toFixed(2).replace('.', ',')} €`
+
+/* ─── Chip ────────────────────────────────────────────────── */
+function Chip({ children, tone, dot }) {
+  const styles = {
+    sage:    { background: C.sageSoft,      color: C.sage2 },
+    danger:  { background: C.dangerSoft,    color: C.danger },
+    paper:   { background: C.paper,         color: C.ink,    border: `1px solid ${C.border}` },
+    warning: { background: C.warningSoft,   color: '#8B6126' },
+  }[tone] || { background: C.cream2, color: C.stone }
+  const dotColor = tone === 'sage' ? C.sage : tone === 'danger' ? C.danger : C.terracotta
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      fontSize: 11, fontWeight: 700, padding: '4px 10px',
+      borderRadius: 999, whiteSpace: 'nowrap', ...styles,
+    }}>
+      {dot && <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor }} />}
+      {children}
+    </span>
+  )
+}
 
 /* ─── ProductoCard ────────────────────────────────────────── */
 function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos = [], tieneExtras = false, cerrado = false, onIntentoCerrado, getPrecio }) {
@@ -32,33 +71,39 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
   }
 
   return (
-    <div style={{
-      display: 'flex', gap: 14, alignItems: 'stretch',
-      padding: '12px', marginBottom: 10,
-      background: 'rgba(0,0,0,0.04)',
-      borderRadius: 14,
-      border: '1px solid rgba(0,0,0,0.05)',
-      cursor: 'pointer',
-    }} onClick={cerrado ? onIntentoCerrado : onOpen}>
-      {p.imagen_url && (
-        <img
-          src={p.imagen_url}
-          alt=""
-          style={{
-            width: 86, height: 86,
-            borderRadius: 12, objectFit: 'cover', flexShrink: 0,
-          }}
-        />
-      )}
+    <div
+      onClick={cerrado ? onIntentoCerrado : onOpen}
+      style={{
+        display: 'flex', gap: 14, alignItems: 'stretch',
+        padding: 12, marginBottom: 10,
+        background: C.cream2,
+        borderRadius: 14,
+        cursor: cerrado ? 'default' : 'pointer',
+        opacity: cerrado ? 0.65 : 1,
+        position: 'relative',
+      }}
+    >
+      <div style={{
+        width: 86, height: 86, borderRadius: 10,
+        background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, overflow: 'hidden',
+      }}>
+        {p.imagen_url
+          ? <img src={p.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <FoodIcon kw={p.nombre} size={70} />
+        }
+      </div>
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--c-text)', marginBottom: 4, lineHeight: 1.25 }}>
+          <div style={{
+            fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 3, lineHeight: 1.25,
+          }}>
             {p.nombre}
           </div>
           {p.descripcion && (
             <div style={{
-              fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.4,
+              fontSize: 12, color: C.stone, lineHeight: 1.4,
               overflow: 'hidden', textOverflow: 'ellipsis',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
             }}>
@@ -67,8 +112,8 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-          <span style={{ fontWeight: 800, fontSize: 16, color: '#FF6B2C' }}>
-            {minPrecio !== null ? `${minPrecio.toFixed(2)} €` : `${precioBase.toFixed(2)} €`}
+          <span style={{ fontWeight: 800, fontSize: 17, color: C.terracotta }}>
+            {minPrecio !== null ? fmt(minPrecio) : fmt(precioBase)}
           </span>
 
           {enCarrito ? (
@@ -77,41 +122,37 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
                 onClick={handleDecrementar}
                 aria-label="Restar"
                 style={{
-                  width: 34, height: 34, borderRadius: 10, border: 'none',
-                  background: 'rgba(0,0,0,0.06)',
-                  color: 'var(--c-text)', fontSize: 20, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit',
+                  width: 32, height: 32, borderRadius: '50%', border: `1px solid ${C.border}`,
+                  background: C.paper, color: C.ink, cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
-              >−</button>
-              <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: 15, color: 'var(--c-text)' }}>
+              ><Minus size={14} strokeWidth={2.4} /></button>
+              <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: 15, color: C.ink }}>
                 {enCarrito.cantidad}
               </span>
               <button
                 onClick={handleIncrementar}
                 aria-label="Sumar"
                 style={{
-                  width: 34, height: 34, borderRadius: 10, border: 'none',
-                  background: 'var(--c-primary)',
-                  color: '#fff', fontSize: 20, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit',
+                  width: 32, height: 32, borderRadius: '50%', border: 'none',
+                  background: C.terracotta, color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
-              >+</button>
+              ><Plus size={14} strokeWidth={2.4} /></button>
             </div>
           ) : (
             <button
               onClick={handleIncrementar}
               aria-label="Añadir"
+              disabled={cerrado}
               style={{
-                width: 36, height: 36, borderRadius: 11, border: 'none',
-                background: 'var(--c-primary)',
-                color: '#fff', fontSize: 22, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+                width: 38, height: 38, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.4)',
+                background: cerrado ? C.cream2 : `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                color: cerrado ? C.stone2 : '#fff', cursor: cerrado ? 'not-allowed' : 'pointer',
+                boxShadow: cerrado ? 'none' : SH.glossy, flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                lineHeight: 1,
               }}
-            >+</button>
+            ><Plus size={18} strokeWidth={2.4} /></button>
           )}
         </div>
       </div>
@@ -359,104 +400,123 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const cantDeEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.cantidad, 0)
 
   return (
-    <div style={{ animation: 'slideIn 0.3s ease', paddingBottom: cantDeEsteResto > 0 ? 90 : 0 }}>
+    <div style={{
+      animation: 'slideIn 0.3s ease', paddingBottom: cantDeEsteResto > 0 ? 90 : 0,
+      background: C.cream, minHeight: '100vh',
+    }}>
 
-      {/* ── Banner con botón volver superpuesto ── */}
-      <div style={{ position: 'relative', marginBottom: 0 }}>
-        <div
-          className="banner-responsive"
-          style={{
-            height: 200, borderRadius: '22px 22px 0 0',
-            background: est.banner_url
-              ? `url(${est.banner_url}) center/cover`
-              : 'linear-gradient(135deg, #FF6B2C 0%, #F76526 100%)',
-          }}
-        />
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 80,
-          background: 'linear-gradient(180deg, rgba(14,14,14,0.75) 0%, transparent 100%)',
-          borderRadius: '22px 22px 0 0',
-        }} />
+      {/* ── Banner (terracotta + circles fallback o banner_url) ── */}
+      <div style={{ position: 'relative' }}>
+        {est.banner_url ? (
+          <div
+            className="banner-responsive"
+            style={{
+              height: 200, borderRadius: '0 0 0 0',
+              background: `url(${est.banner_url}) center/cover`,
+            }}
+          />
+        ) : (
+          <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `linear-gradient(135deg, ${C.terracotta} 0%, ${C.terracotta2} 100%)`,
+            }} />
+            <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: 0.18 }}>
+              <circle cx="60" cy="40" r="80" fill="#fff" />
+              <circle cx="380" cy="80" r="100" fill="#fff" opacity="0.4" />
+              <circle cx="300" cy="180" r="60" fill="#fff" opacity="0.3" />
+            </svg>
+          </div>
+        )}
         {!modoTienda && (
           <button
             onClick={onBack}
             style={{
               position: 'absolute', top: 14, left: 14,
               display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(0,0,0,0.10)',
-              border: '1px solid rgba(0,0,0,0.08)',
+              background: 'rgba(255,255,255,0.92)',
+              border: 'none',
               backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-              color: '#1F1F1E', padding: '7px 12px',
-              borderRadius: 12, cursor: 'pointer',
-              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+              color: C.ink, padding: '8px 14px',
+              borderRadius: 999, cursor: 'pointer',
+              fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+              boxShadow: SH.sm,
             }}
           >
             <ArrowLeft size={15} strokeWidth={2.5} />
             Volver
           </button>
         )}
-        {est.logo_url && (
-          <div style={{
-            position: 'absolute', bottom: -24, left: 16,
-            width: 56, height: 56, borderRadius: 14,
-            border: '3px solid #FAFAF7',
-            overflow: 'hidden', background: '#FFFFFF',
-            boxShadow: '0 4px 12px rgba(255,107,44,0.06)',
-          }}>
-            <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-        )}
       </div>
 
-      {/* ── Info del restaurante ── */}
-      <div style={{
-        background: '#FAFAF7',
-        padding: est.logo_url ? '34px 16px 20px' : '20px 16px',
-        marginBottom: 0,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
-            {est.nombre}
-          </h2>
-          {est.rating > 0 && (
+      {/* ── Identidad: avatar + nombre + chips ── */}
+      <div style={{ padding: '0 18px', marginTop: -38 }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: '#fff', border: `4px solid ${C.cream}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: SH.md, overflow: 'hidden',
+        }}>
+          {est.logo_url
+            ? <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <FoodIcon kw={est.tipo || ''} size={56} />
+          }
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <h1 style={{
+            fontSize: 24, fontWeight: 800, color: C.ink,
+            letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15,
+          }}>{est.nombre}</h1>
+          {(est.tipo || est.direccion) && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-              background: 'rgba(0,0,0,0.04)', padding: '4px 10px',
-              borderRadius: 8, border: '1px solid rgba(0,0,0,0.05)',
+              fontSize: 12, color: C.stone2, marginTop: 3,
+              fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase',
             }}>
-              <span style={{ fontSize: 13 }}>⭐</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>
-                {est.rating?.toFixed(1)}
-              </span>
+              {est.tipo}{est.tipo && est.direccion ? ' · ' : ''}{est.direccion?.split(',')[0]}
             </div>
           )}
-        </div>
-        {est.direccion && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c-muted)', marginBottom: 8 }}>
-            <MapPin size={13} strokeWidth={2} color="var(--c-muted)" />
-            {est.direccion}
+          <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+            <Chip tone={cerrado ? 'danger' : 'sage'} dot>
+              {cerrado ? (estadoAbierto.proximaApertura || 'Cerrado') : 'Abierto'}
+            </Chip>
+            {est.rating > 0 && (
+              <Chip tone="paper">
+                <Star size={11} fill={C.warning} color={C.warning} style={{ marginRight: 2 }} />
+                {est.rating.toFixed(1)}
+              </Chip>
+            )}
+            {est.tiene_delivery && (
+              <Chip tone="paper">
+                <Bike size={11} style={{ marginRight: 4 }} /> Delivery
+              </Chip>
+            )}
+            <Chip tone="paper">
+              <ShoppingBag size={11} style={{ marginRight: 4 }} /> Recogida
+            </Chip>
           </div>
-        )}
-        {est.descripcion && (
-          <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, margin: 0 }}>
-            {est.descripcion}
-          </p>
-        )}
+          {est.descripcion && (
+            <p style={{ fontSize: 13, color: C.stone, lineHeight: 1.5, margin: '14px 0 0' }}>
+              {est.descripcion}
+            </p>
+          )}
+        </div>
+
+        {/* Banners de estado */}
         {cerrado && (
           <div style={{
-            marginTop: 12,
-            padding: '10px 12px',
-            borderRadius: 12,
-            background: 'rgba(239,68,68,0.12)',
-            border: '1px solid rgba(239,68,68,0.35)',
-            display: 'flex', alignItems: 'center', gap: 10,
+            marginTop: 14, padding: '12px 14px', borderRadius: 12,
+            background: C.dangerSoft, display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%', background: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: C.danger, flexShrink: 0,
+            }}>!</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#DC2626', lineHeight: 1.2 }}>
-                Restaurante cerrado
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.danger, lineHeight: 1.2 }}>
+                {est.nombre} está cerrado
               </div>
-              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.35 }}>
+              <div style={{ fontSize: 11, color: C.danger, opacity: 0.85, marginTop: 2, lineHeight: 1.4 }}>
                 {estadoAbierto.proximaApertura || 'No se pueden realizar pedidos ahora mismo'}
               </div>
             </div>
@@ -464,19 +524,15 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         )}
         {!cerrado && sinRiders && (
           <div style={{
-            marginTop: 12,
-            padding: '10px 12px',
-            borderRadius: 12,
-            background: 'rgba(251,191,36,0.12)',
-            border: '1px solid rgba(251,191,36,0.35)',
-            display: 'flex', alignItems: 'center', gap: 10,
+            marginTop: 14, padding: '12px 14px', borderRadius: 12,
+            background: C.warningSoft, display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            <span style={{ fontSize: 18 }}>🛵</span>
+            <Bike size={20} style={{ color: '#8B6126', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#D97706', lineHeight: 1.2 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#8B6126', lineHeight: 1.2 }}>
                 Sin repartidores · Solo recogida
               </div>
-              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2, lineHeight: 1.35 }}>
+              <div style={{ fontSize: 11, color: '#8B6126', opacity: 0.85, marginTop: 2, lineHeight: 1.4 }}>
                 Ahora mismo no hay repartidores disponibles. Puedes pedir para recoger tú.
               </div>
             </div>
@@ -488,7 +544,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         <div style={{
           position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 20px)', left: '50%', transform: 'translateX(-50%)',
           zIndex: 300, padding: '10px 16px', borderRadius: 10,
-          background: 'rgba(239,68,68,0.95)', color: '#1F1F1E',
+          background: 'rgba(239,68,68,0.95)', color: '#1A1815',
           fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
           boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
           animation: 'slideIn 0.25s ease',
@@ -503,7 +559,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         <div style={{
           position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 20px)', left: '50%', transform: 'translateX(-50%)',
           zIndex: 300, padding: '10px 16px', borderRadius: 10,
-          background: '#FF6B2C', color: '#fff',
+          background: '#C5562C', color: '#fff',
           fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
           boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
           animation: 'slideIn 0.25s ease',
@@ -516,8 +572,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
       {/* ── Promociones ── */}
       {!loading && promociones.length > 0 && (
-        <div style={{ padding: '16px 0 0', background: '#FAFAF7' }}>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, paddingLeft: 16, paddingRight: 16 }}>
+        <div style={{ padding: '18px 0 0', background: C.cream }}>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, paddingLeft: 18, paddingRight: 18 }}>
             {promociones.map(promo => {
               const badge = promo.tipo === 'descuento_porcentaje' ? `${promo.valor}% OFF`
                 : promo.tipo === 'descuento_fijo' ? `-${promo.valor}€`
@@ -525,22 +581,22 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               return (
                 <div key={promo.id} style={{
                   minWidth: 220, flexShrink: 0,
-                  padding: '14px 14px',
+                  padding: 14,
                   borderRadius: 14,
-                  background: 'rgba(0,0,0,0.04)',
-                  border: '1px solid rgba(0,0,0,0.06)',
+                  background: C.paper,
+                  border: `1px solid ${C.border}`,
                 }}>
                   <div style={{
                     display: 'inline-block', fontSize: 10, fontWeight: 800,
                     padding: '3px 8px', borderRadius: 6,
-                    background: 'var(--c-primary)', color: '#fff',
+                    background: C.terracotta, color: '#fff',
                     letterSpacing: '0.04em', marginBottom: 8,
                   }}>{badge}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text)', lineHeight: 1.35 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>
                     {promo.titulo}
                   </div>
                   {promo.minimo_compra > 0 && (
-                    <div style={{ fontSize: 10, color: 'var(--c-muted)', marginTop: 4 }}>Min. {promo.minimo_compra}€</div>
+                    <div style={{ fontSize: 10, color: C.stone, marginTop: 4 }}>Min. {promo.minimo_compra}€</div>
                   )}
                 </div>
               )
@@ -550,22 +606,48 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       )}
 
       {/* ── Carta ── */}
-      <div style={{ padding: '0 8px 16px', background: '#FAFAF7' }}>
+      <div style={{ background: C.cream, filter: cerrado ? 'grayscale(0.45)' : 'none' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>Cargando carta...</div>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: C.stone }}>Cargando carta...</div>
+        ) : productos.length === 0 ? (
+          /* Catálogo vacío */
+          <div style={{ padding: '40px 18px 60px' }}>
+            <div style={{
+              background: C.paper, borderRadius: 16, padding: '40px 24px',
+              border: `1px solid ${C.border}`, textAlign: 'center',
+            }}>
+              <div style={{
+                width: 80, height: 80, borderRadius: '50%', background: C.cream2,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: C.stone2, marginBottom: 16,
+              }}>
+                <UtensilsCrossed size={38} strokeWidth={1.5} />
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: C.ink, lineHeight: 1.3 }}>
+                Este restaurante todavía no tiene productos en su carta
+              </div>
+              <div style={{ fontSize: 13, color: C.stone, marginTop: 8, lineHeight: 1.5 }}>
+                Vuelve más tarde. Estamos preparando todo para que puedas pedir cuanto antes.
+              </div>
+            </div>
+          </div>
         ) : (
           <>
-            {/* Filtro categorías */}
+            {/* Filtro categorías sticky */}
             {categorias.length > 1 && (
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 8px 8px', marginBottom: 4 }}>
+              <div style={{
+                position: 'sticky', top: 0, zIndex: 5,
+                background: C.cream, borderBottom: `1px solid ${C.cream2}`,
+                padding: '12px 18px', display: 'flex', gap: 8,
+                overflowX: 'auto',
+              }}>
                 <button
                   onClick={() => setCatFiltro(null)}
                   style={{
-                    padding: '8px 18px', borderRadius: 22,
-                    border: 'none',
-                    background: !catFiltro ? 'var(--c-primary)' : 'rgba(0,0,0,0.05)',
-                    color: !catFiltro ? '#fff' : 'var(--c-text)',
-                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    padding: '8px 14px', borderRadius: 999, border: 'none',
+                    background: !catFiltro ? C.ink : 'transparent',
+                    color: !catFiltro ? C.cream : C.stone,
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                   }}
                 >
@@ -576,11 +658,10 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                     key={cat.id}
                     onClick={() => setCatFiltro(catFiltro === cat.id ? null : cat.id)}
                     style={{
-                      padding: '8px 18px', borderRadius: 22,
-                      border: 'none',
-                      background: catFiltro === cat.id ? 'var(--c-primary)' : 'rgba(0,0,0,0.05)',
-                      color: catFiltro === cat.id ? '#fff' : 'var(--c-text)',
-                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      padding: '8px 14px', borderRadius: 999, border: 'none',
+                      background: catFiltro === cat.id ? C.ink : 'transparent',
+                      color: catFiltro === cat.id ? C.cream : C.stone,
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
                     }}
                   >
@@ -590,259 +671,264 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               </div>
             )}
 
-            {/* Productos por categoría */}
-            {categorias
-              .filter(cat => !catFiltro || cat.id === catFiltro)
-              .map(cat => {
-                const prods = productos.filter(p => p.categoria_id === cat.id)
-                if (prods.length === 0) return null
-                return (
-                  <div key={cat.id} style={{ marginBottom: 24 }}>
-                    <h3 style={{
-                      fontSize: 16, fontWeight: 700, color: 'var(--c-text)',
-                      marginBottom: 12, marginTop: 8, marginLeft: 4, letterSpacing: '-0.01em',
-                    }}>
-                      {cat.nombre}
-                    </h3>
-                    {prods.map(p => (
-                      <ProductoCard
-                        key={p.id} p={p}
-                        onOpen={() => abrirProducto(p)}
-                        onAddSimple={addItemSimple}
-                        carrito={carrito}
-                        updateCantidad={updateCantidad}
-                        tamanos={prodTamanosMap[p.id] || []}
-                        tieneExtras={prodExtrasSet.has(p.id)}
-                        cerrado={cerrado}
-                        onIntentoCerrado={mostrarAvisoCerrado}
-                        getPrecio={getPrecioMostrado}
-                      />
-                    ))}
-                  </div>
-                )
-              })}
+            <div style={{ padding: '18px 18px 100px' }}>
+              {/* Productos por categoría */}
+              {categorias
+                .filter(cat => !catFiltro || cat.id === catFiltro)
+                .map(cat => {
+                  const prods = productos.filter(p => p.categoria_id === cat.id)
+                  if (prods.length === 0) return null
+                  return (
+                    <div key={cat.id} style={{ marginBottom: 22 }}>
+                      <h2 style={{
+                        fontSize: 18, fontWeight: 800, color: C.ink,
+                        margin: '0 0 12px', letterSpacing: '-0.01em',
+                      }}>
+                        {cat.nombre}
+                      </h2>
+                      {prods.map(p => (
+                        <ProductoCard
+                          key={p.id} p={p}
+                          onOpen={() => abrirProducto(p)}
+                          onAddSimple={addItemSimple}
+                          carrito={carrito}
+                          updateCantidad={updateCantidad}
+                          tamanos={prodTamanosMap[p.id] || []}
+                          tieneExtras={prodExtrasSet.has(p.id)}
+                          cerrado={cerrado}
+                          onIntentoCerrado={mostrarAvisoCerrado}
+                          getPrecio={getPrecioMostrado}
+                        />
+                      ))}
+                    </div>
+                  )
+                })}
 
-            {/* Productos sin categoría */}
-            {!catFiltro && productos
-              .filter(p => !p.categoria_id)
-              .map(p => (
-                <ProductoCard
-                  key={p.id} p={p}
-                  onOpen={() => abrirProducto(p)}
-                  onAddSimple={addItemSimple}
-                  carrito={carrito}
-                  updateCantidad={updateCantidad}
-                  tamanos={prodTamanosMap[p.id] || []}
-                  tieneExtras={prodExtrasSet.has(p.id)}
-                  getPrecio={getPrecioMostrado}
-                />
-              ))}
+              {/* Productos sin categoría */}
+              {!catFiltro && productos
+                .filter(p => !p.categoria_id)
+                .map(p => (
+                  <ProductoCard
+                    key={p.id} p={p}
+                    onOpen={() => abrirProducto(p)}
+                    onAddSimple={addItemSimple}
+                    carrito={carrito}
+                    updateCantidad={updateCantidad}
+                    tamanos={prodTamanosMap[p.id] || []}
+                    tieneExtras={prodExtrasSet.has(p.id)}
+                    cerrado={cerrado}
+                    onIntentoCerrado={mostrarAvisoCerrado}
+                    getPrecio={getPrecioMostrado}
+                  />
+                ))}
+            </div>
           </>
         )}
       </div>
 
-      {/* ── Modal producto ── */}
+      {/* ── Modal producto (bottom-sheet) ── */}
       {modal && (
         <div
           style={{
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.65)',
+            background: 'rgba(26,24,21,0.55)',
+            backdropFilter: 'blur(4px)',
             zIndex: 200, display: 'flex',
             alignItems: 'flex-end', justifyContent: 'center',
+            animation: 'fadeIn 0.2s ease',
           }}
           onClick={() => setModal(null)}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#FFFFFF',
-              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+              background: C.cream,
               borderRadius: '20px 20px 0 0',
-              padding: '20px 20px 36px',
               width: '100%', maxWidth: 420,
-              maxHeight: '88vh', overflowY: 'auto',
+              maxHeight: '90%',
+              display: 'flex', flexDirection: 'column',
               animation: 'slideUp 0.3s ease',
-              border: '1px solid rgba(0,0,0,0.08)',
-              borderBottom: 'none',
-              boxShadow: '0 12px 32px rgba(255,107,44,0.06)',
+              overflow: 'hidden',
             }}
           >
-            <div style={{
-              width: 36, height: 4, borderRadius: 2,
-              background: 'rgba(0,0,0,0.08)', margin: '0 auto 20px',
-            }} />
-
-            {modal.imagen_url && (
-              <img
-                src={modal.imagen_url}
-                alt=""
-                style={{
-                  width: '100%', height: 180,
-                  objectFit: 'cover', borderRadius: 12,
-                  marginBottom: 16,
-                }}
-              />
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.02em', flex: 1, marginRight: 12 }}>
-                {modal.nombre}
-              </h3>
+            {/* Hero del producto */}
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                height: 200, background: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden',
+              }}>
+                {modal.imagen_url
+                  ? <img src={modal.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <FoodIcon kw={modal.nombre} size={140} />
+                }
+              </div>
               <button
                 onClick={() => setModal(null)}
                 style={{
-                  background: 'rgba(0,0,0,0.06)', border: 'none',
-                  width: 30, height: 30, borderRadius: 12,
-                  cursor: 'pointer', color: 'var(--c-muted)',
-                  fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
+                  position: 'absolute', top: 12, right: 12,
+                  width: 34, height: 34, borderRadius: '50%',
+                  border: 'none', background: 'rgba(255,255,255,0.95)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: SH.sm, color: C.ink, fontSize: 18, lineHeight: 1,
                 }}
-              >
-                ×
-              </button>
+              >×</button>
             </div>
-            {modal.descripcion && (
-              <p style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 20, lineHeight: 1.5 }}>
-                {modal.descripcion}
-              </p>
-            )}
 
-            {tamanos.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text)', marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Tamaño
-                </div>
-                {tamanos.map((t, i) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTamSel(i)}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between',
-                      width: '100%', padding: '13px 16px',
-                      borderRadius: 14, marginBottom: 8,
-                      border: tamSel === i ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
-                      background: tamSel === i ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
-                      cursor: 'pointer', fontFamily: 'inherit',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--c-text)' }}>{t.nombre}</span>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--c-text)' }}>{t.precio.toFixed(2)} €</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div style={{ padding: '18px 18px 12px', flex: 1, overflowY: 'auto' }}>
+              <h3 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0, letterSpacing: '-0.01em' }}>
+                {modal.nombre}
+              </h3>
+              {modal.descripcion && (
+                <p style={{ fontSize: 13, color: C.stone, marginTop: 4, marginBottom: 0, lineHeight: 1.5 }}>
+                  {modal.descripcion}
+                </p>
+              )}
 
-            {gruposExtras.map(g => {
-              const esUnico = g.tipo === 'unico' || g.tipo === 'single'
-              const enGrupo = exSel.filter(e => e.grupo_id === g.id)
-              const max = g.max_selecciones || 99
-              const alcanzadoMax = !esUnico && enGrupo.length >= max
-              return (
-              <div key={g.id} style={{ marginBottom: 20 }}>
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    {g.nombre} {esUnico && <span style={{ color: '#FF6B2C' }}>*</span>}
+              {tamanos.length > 0 && (
+                <div style={{ marginTop: 18 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: C.stone,
+                    textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8,
+                  }}>
+                    Tamaño · Elige 1
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 2 }}>
-                    {esUnico ? 'Elige 1 (obligatorio)' : `Máx. ${max}`}
-                  </div>
-                </div>
-                {(g.extras_opciones || []).map(op => {
-                  const sel = exSel.find(e => e.grupo_id === g.id && e.id === op.id)
-                  const bloqueado = !sel && alcanzadoMax
-                  return (
-                    <button
-                      key={op.id}
-                      onClick={() => !bloqueado && toggleExtra(op, g)}
-                      disabled={bloqueado}
-                      style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        width: '100%', padding: '13px 16px',
-                        borderRadius: 14, marginBottom: 8,
-                        border: sel ? '1.5px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.06)',
-                        background: sel ? 'rgba(255,107,44,0.14)' : 'rgba(0,0,0,0.04)',
-                        cursor: bloqueado ? 'not-allowed' : 'pointer',
-                        fontFamily: 'inherit',
-                        opacity: bloqueado ? 0.45 : 1,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 20, height: 20, borderRadius: esUnico ? 10 : 6,
-                          border: sel ? 'none' : '1.5px solid rgba(0,0,0,0.08)',
-                          background: sel ? 'var(--c-primary)' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, transition: 'all 0.15s ease',
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {tamanos.map((t, i) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTamSel(i)}
+                        style={{
+                          padding: '12px 14px', borderRadius: 12,
+                          background: tamSel === i ? C.terracottaSoft : C.paper,
+                          border: tamSel === i ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                        }}
+                      >
+                        <span style={{
+                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                          border: `2px solid ${tamSel === i ? C.terracotta : '#C8C1B0'}`,
+                          background: tamSel === i ? '#fff' : 'transparent',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          {sel && (esUnico
-                            ? <span style={{ width: 8, height: 8, borderRadius: 4, background: '#fff' }} />
-                            : <span style={{ color: '#1F1F1E', fontSize: 11, fontWeight: 800 }}>✓</span>
-                          )}
-                        </div>
-                        <span style={{ fontSize: 14, color: 'var(--c-text)', fontWeight: 500 }}>{op.nombre}</span>
-                      </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text)' }}>
-                        {op.precio > 0 ? `+${op.precio.toFixed(2)} €` : 'Gratis'}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )})}
+                          {tamSel === i && <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.terracotta }} />}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 14, color: C.ink, fontWeight: 600 }}>{t.nombre}</span>
+                        <span style={{ fontSize: 14, color: tamSel === i ? C.terracotta : C.stone, fontWeight: 700 }}>
+                          {fmt(t.precio)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 24, marginBottom: 20,
-              padding: '14px 0',
-            }}>
-              <button
-                onClick={() => setCant(Math.max(1, cant - 1))}
-                style={{
-                  width: 40, height: 40, borderRadius: 12,
-                  border: '1px solid rgba(0,0,0,0.06)',
-                  background: 'rgba(0,0,0,0.04)',
-                  fontSize: 20, cursor: 'pointer', fontFamily: 'inherit',
-                  color: 'var(--c-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                −
-              </button>
-              <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--c-text)', minWidth: 32, textAlign: 'center' }}>
-                {cant}
-              </span>
-              <button
-                onClick={() => setCant(cant + 1)}
-                style={{
-                  width: 40, height: 40, borderRadius: 12,
-                  border: 'none', background: 'var(--c-primary)',
-                  color: '#fff', fontSize: 20, cursor: 'pointer',
-                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                +
-              </button>
+              {gruposExtras.map(g => {
+                const esUnico = g.tipo === 'unico' || g.tipo === 'single'
+                const enGrupo = exSel.filter(e => e.grupo_id === g.id)
+                const max = g.max_selecciones || 99
+                const alcanzadoMax = !esUnico && enGrupo.length >= max
+                return (
+                  <div key={g.id} style={{ marginTop: 18 }}>
+                    <div style={{
+                      fontSize: 11, fontWeight: 700, color: C.stone,
+                      textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8,
+                    }}>
+                      {g.nombre} · {esUnico ? 'Elige 1 (obligatorio)' : `Múltiple (máx. ${max})`}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {(g.extras_opciones || []).map(op => {
+                        const sel = !!exSel.find(e => e.grupo_id === g.id && e.id === op.id)
+                        const bloqueado = !sel && alcanzadoMax
+                        return (
+                          <button
+                            key={op.id}
+                            onClick={() => !bloqueado && toggleExtra(op, g)}
+                            disabled={bloqueado}
+                            style={{
+                              padding: '11px 14px', borderRadius: 12,
+                              background: sel ? C.terracottaSoft : C.paper,
+                              border: sel ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              cursor: bloqueado ? 'not-allowed' : 'pointer',
+                              opacity: bloqueado ? 0.45 : 1, fontFamily: 'inherit', textAlign: 'left',
+                            }}
+                          >
+                            <span style={{
+                              width: 18, height: 18, borderRadius: esUnico ? '50%' : 5, flexShrink: 0,
+                              border: `2px solid ${sel ? C.terracotta : '#C8C1B0'}`,
+                              background: sel ? (esUnico ? '#fff' : C.terracotta) : 'transparent',
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff',
+                            }}>
+                              {sel && esUnico && <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.terracotta }} />}
+                              {sel && !esUnico && <span style={{ fontSize: 11, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                            </span>
+                            <span style={{ flex: 1, fontSize: 14, color: C.ink, fontWeight: 600 }}>{op.nombre}</span>
+                            <span style={{ fontSize: 13, color: C.stone, fontWeight: 700 }}>
+                              {op.precio > 0 ? `+ ${fmt(op.precio)}` : 'Gratis'}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+
+              <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.stone }}>Cantidad</span>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 14,
+                  padding: '6px 8px', borderRadius: 999, background: C.cream2,
+                }}>
+                  <button
+                    onClick={() => setCant(Math.max(1, cant - 1))}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', border: 'none',
+                      background: '#fff', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: C.ink, boxShadow: SH.sm,
+                    }}
+                  ><Minus size={14} strokeWidth={2.4} /></button>
+                  <span style={{
+                    fontSize: 17, color: C.ink, fontWeight: 800,
+                    minWidth: 16, textAlign: 'center',
+                  }}>{cant}</span>
+                  <button
+                    onClick={() => setCant(cant + 1)}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', border: 'none',
+                      background: C.terracotta, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff',
+                    }}
+                  ><Plus size={14} strokeWidth={2.4} /></button>
+                </div>
+              </div>
             </div>
 
-            <button
-              onClick={confirmarItem}
-              disabled={!puedeConfirmar}
-              style={{
-                width: '100%', padding: '16px 0',
-                borderRadius: 12, border: 'none',
-                background: puedeConfirmar ? 'var(--c-primary)' : 'rgba(0,0,0,0.06)',
-                color: puedeConfirmar ? '#fff' : '#6B6B68',
-                fontSize: 15, fontWeight: 800,
-                cursor: puedeConfirmar ? 'pointer' : 'not-allowed',
-                fontFamily: 'inherit',
-                letterSpacing: '0.01em',
-              }}
-            >
-              {puedeConfirmar
-                ? `Añadir al carrito — ${precioTotal().toFixed(2)} €`
-                : 'Selecciona las opciones obligatorias'}
-            </button>
+            <div style={{ padding: 14, borderTop: `1px solid ${C.border}`, background: C.paper }}>
+              <button
+                onClick={confirmarItem}
+                disabled={!puedeConfirmar}
+                style={{
+                  width: '100%', padding: '14px 18px', borderRadius: 14,
+                  border: 'none', cursor: puedeConfirmar ? 'pointer' : 'not-allowed',
+                  background: puedeConfirmar
+                    ? `linear-gradient(180deg, ${C.ink2}, ${C.ink})`
+                    : C.cream2,
+                  color: puedeConfirmar ? C.cream : C.stone,
+                  fontFamily: 'inherit', fontWeight: 700, fontSize: 15,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  boxShadow: puedeConfirmar ? SH.glossy : 'none',
+                }}
+              >
+                <span>{puedeConfirmar ? 'Añadir al carrito' : 'Selecciona las opciones obligatorias'}</span>
+                {puedeConfirmar && <span>{fmt(precioTotal())}</span>}
+              </button>
+            </div>
           </div>
         </div>
       )}

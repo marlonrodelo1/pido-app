@@ -1,52 +1,80 @@
-// Design System PIDO - Light Theme (paleta Claude)
-// Paleta unica - solo estos colores en toda la app
+// Design System Pidoo — paleta cream/terracotta/sage
+// Pivote SaaS (mayo 2026) — artesanal cálida
+//
+// API: mantiene nombres de tokens existentes (colors.primary, colors.bg, etc.)
+// para no romper imports. Solo cambian los valores hex.
 
 export const colors = {
-  // Principal
-  primary: '#FF6B2C',
-  primaryLight: 'rgba(255,107,44,0.10)',
-  primarySoft: 'rgba(255,107,44,0.18)',
+  // === Bases (cream world) ===
+  cream:    '#F7F3EC',
+  cream2:   '#EFE9DD',
+  paper:    '#FBF8F2',
 
-  // Neutros (Light cálido tipo Claude)
-  bg: '#FAFAF7',
-  surface: '#FFFFFF',
-  surface2: '#F4F2EC',
-  border: '#E8E6E0',
-  text: '#1F1F1E',
-  textSecondary: '#3D3D3B',
-  muted: '#6B6B68',
+  // === Tinta ===
+  ink:      '#1A1815',
+  ink2:     '#2B2823',
+  stone:    '#6B6356',
+  stone2:   '#8A8174',
 
-  // Glass
-  glass: 'rgba(255,255,255,0.7)',
-  glassBorder: 'rgba(0,0,0,0.06)',
+  // === Acentos ===
+  terracotta:      '#C5562C',
+  terracotta2:     '#A8451F',
+  terracottaSoft:  '#F1D9CC',
 
-  // Estados
-  success: '#16A34A',
-  successLight: 'rgba(22,163,74,0.10)',
-  error: '#DC2626',
-  errorLight: 'rgba(220,38,38,0.10)',
+  sage:      '#8B9D7A',
+  sage2:     '#6F8460',
+  sageSoft:  '#DDE3D3',
+
+  // === Funcionales ===
+  warning:     '#C99551',
+  warningSoft: '#F0E1C8',
+  danger:      '#B5564A',
+  dangerSoft:  '#F1D0CB',
+  info:        '#7B8FA8',
+  infoSoft:    '#DBE0E8',
+
+  // === Compatibilidad hacia atrás ===
+  primary:      '#C5562C',
+  primaryLight: 'rgba(197,86,44,0.10)',
+  primarySoft:  'rgba(197,86,44,0.18)',
+
+  bg:            '#F7F3EC',
+  surface:       '#FBF8F2',
+  surface2:      '#EFE9DD',
+  border:        '#E8E1D3',
+  text:          '#1A1815',
+  textSecondary: '#2B2823',
+  muted:         '#6B6356',
+
+  glass:        'rgba(251,248,242,0.7)',
+  glassBorder:  'rgba(26,24,21,0.06)',
+
+  success:      '#8B9D7A',
+  successLight: '#DDE3D3',
+  error:        '#B5564A',
+  errorLight:   '#F1D0CB',
 }
 
 // Badge styles unificados
 export const badge = (type) => {
   const map = {
-    tarjeta: { bg: colors.primaryLight, color: colors.primary },
-    efectivo: { bg: colors.successLight, color: colors.success },
-    pido: { bg: colors.primaryLight, color: colors.primary },
-    activo: { bg: colors.successLight, color: colors.success },
-    inactivo: { bg: colors.errorLight, color: colors.error },
-    nuevo: { bg: colors.primaryLight, color: colors.primary },
-    aceptado: { bg: colors.primaryLight, color: colors.primary },
+    tarjeta:    { bg: colors.primaryLight, color: colors.primary },
+    efectivo:   { bg: colors.successLight, color: colors.success },
+    pido:       { bg: colors.primaryLight, color: colors.primary },
+    activo:     { bg: colors.successLight, color: colors.success },
+    inactivo:   { bg: colors.errorLight,   color: colors.error },
+    nuevo:      { bg: colors.primaryLight, color: colors.primary },
+    aceptado:   { bg: colors.primaryLight, color: colors.primary },
     preparando: { bg: colors.primaryLight, color: colors.primary },
-    listo: { bg: colors.primaryLight, color: colors.primary },
-    en_camino: { bg: colors.primaryLight, color: colors.primary },
-    entregado: { bg: colors.successLight, color: colors.success },
-    cancelado: { bg: colors.errorLight, color: colors.error },
-    fallido: { bg: colors.errorLight, color: colors.error },
-    recogida: { bg: colors.surface, color: colors.muted },
-    reparto: { bg: colors.primaryLight, color: colors.primary },
-    pendiente: { bg: colors.surface, color: colors.muted },
-    pagado: { bg: colors.successLight, color: colors.success },
+    listo:      { bg: colors.primaryLight, color: colors.primary },
+    en_camino:  { bg: colors.primaryLight, color: colors.primary },
+    entregado:  { bg: colors.successLight, color: colors.success },
+    cancelado:  { bg: colors.errorLight,   color: colors.error },
+    fallido:    { bg: colors.errorLight,   color: colors.error },
+    recogida:   { bg: colors.surface,      color: colors.muted },
+    reparto:    { bg: colors.primaryLight, color: colors.primary },
+    pendiente:  { bg: colors.surface,      color: colors.muted },
+    pagado:     { bg: colors.successLight, color: colors.success },
   }
   const style = map[type] || { bg: colors.surface, color: colors.muted }
   return {

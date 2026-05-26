@@ -93,8 +93,8 @@ export default function AuthCallback() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#FAFAF7',
-      color: '#1F1F1E',
+      background: '#F7F3EC',
+      color: '#1A1815',
       fontFamily: "'Plus Jakarta Sans','DM Sans',sans-serif",
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       padding: 32, textAlign: 'center',
@@ -103,14 +103,14 @@ export default function AuthCallback() {
         <>
           <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
           <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Inicio de sesion fallido</div>
-          <p style={{ fontSize: 13, color: '#6B6B68', maxWidth: 320, lineHeight: 1.5, marginBottom: 24 }}>
+          <p style={{ fontSize: 13, color: '#6B6356', maxWidth: 320, lineHeight: 1.5, marginBottom: 24 }}>
             {error}
           </p>
           <button
             onClick={() => navigate(next, { replace: true })}
             style={{
               padding: '14px 32px', borderRadius: 14, border: 'none',
-              background: '#FF6B2C', color: '#fff', fontSize: 15, fontWeight: 800,
+              background: '#C5562C', color: '#fff', fontSize: 15, fontWeight: 800,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -122,11 +122,11 @@ export default function AuthCallback() {
           <div style={{
             width: 36, height: 36, borderRadius: 18,
             border: '3px solid rgba(255,107,44,0.18)',
-            borderTopColor: '#FF6B2C',
+            borderTopColor: '#C5562C',
             animation: 'spin 0.8s linear infinite',
             marginBottom: 16,
           }} />
-          <div style={{ fontSize: 14, color: '#6B6B68', fontWeight: 600 }}>
+          <div style={{ fontSize: 14, color: '#6B6356', fontWeight: 600 }}>
             Iniciando sesion...
           </div>
           <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>

@@ -6,13 +6,13 @@ import { getCurrentPosition } from '../lib/geolocation'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 160px)', borderRadius: 16 }
 
-// Modo claro tipo Pidoo (#FAFAF7). Suaviza colores Google por defecto y
+// Modo claro tipo Pidoo (#F7F3EC). Suaviza colores Google por defecto y
 // quita POIs ruidosos para que el mapa pegue con el resto de la app.
 const lightMapStyles = [
   { elementType: 'geometry', stylers: [{ color: '#F5F2EC' }] },
   { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#5C5C5C' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#FAFAF7' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#F7F3EC' }] },
   { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#E8E5DF' }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#E5EBDA' }, { visibility: 'on' }] },
@@ -105,7 +105,7 @@ export default function Mapa({ onOpenRest }) {
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
       {geoError && (
-        <div style={{ marginBottom: 10, padding: '8px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 11, color: '#D97706', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ marginBottom: 10, padding: '8px 14px', borderRadius: 10, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', fontSize: 11, color: '#C99551', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
           📍 Activa tu ubicación para centrar el mapa
         </div>
       )}
@@ -138,9 +138,9 @@ export default function Mapa({ onOpenRest }) {
             center={{ lat: selectedEst.latitud, lng: selectedEst.longitud }}
             radius={selectedEst.radio_cobertura_km * 1000}
             options={{
-              fillColor: '#FF6B2C',
+              fillColor: '#C5562C',
               fillOpacity: 0.08,
-              strokeColor: '#FF6B2C',
+              strokeColor: '#C5562C',
               strokeOpacity: 0.5,
               strokeWeight: 1.5,
             }}
@@ -177,12 +177,12 @@ export default function Mapa({ onOpenRest }) {
                 onTouchEnd={(e) => { e.stopPropagation(); setSelectedEst(est) }}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
-                  border: `2.5px solid ${selectedEst?.id === est.id ? '#fff' : '#FF6B2C'}`,
+                  border: `2.5px solid ${selectedEst?.id === est.id ? '#fff' : '#C5562C'}`,
                   overflow: 'hidden', background: '#FFFFFF',
                   transform: 'translate(-50%, -50%)',
                   cursor: 'pointer',
                   boxShadow: selectedEst?.id === est.id
-                    ? '0 0 0 3px #FF6B2C, 0 4px 12px rgba(0,0,0,0.5)'
+                    ? '0 0 0 3px #C5562C, 0 4px 12px rgba(0,0,0,0.5)'
                     : '0 2px 8px rgba(0,0,0,0.45)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
@@ -216,17 +216,17 @@ export default function Mapa({ onOpenRest }) {
                 <div style={{ fontWeight: 800, fontSize: 13, color: '#1A1A1A' }}>{selectedEst.nombre}</div>
               </div>
               <div style={{ fontSize: 11, color: '#666', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                <span style={{ color: '#D97706' }}>★</span> {selectedEst.rating?.toFixed(1) || '—'}
+                <span style={{ color: '#C99551' }}>★</span> {selectedEst.rating?.toFixed(1) || '—'}
                 <span style={{ margin: '0 4px' }}>·</span>
                 <span style={{ textTransform: 'capitalize' }}>{selectedEst.tipo}</span>
               </div>
               {selectedEst.radio_cobertura_km && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#FF6B2C', fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#C5562C', fontWeight: 700, marginBottom: 4 }}>
                   <span>📍</span> Reparte hasta {selectedEst.radio_cobertura_km} km
                 </div>
               )}
               {onOpenRest && (
-                <div style={{ marginTop: 4, fontSize: 11, color: '#FF6B2C', fontWeight: 700, cursor: 'pointer', borderTop: '1px solid #f0f0f0', paddingTop: 6 }}>
+                <div style={{ marginTop: 4, fontSize: 11, color: '#C5562C', fontWeight: 700, cursor: 'pointer', borderTop: '1px solid #f0f0f0', paddingTop: 6 }}>
                   Ver carta →
                 </div>
               )}

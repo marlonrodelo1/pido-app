@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
 
 const P = {
-  orange: '#FF6B2C',
-  bg: '#FAFAF7',
-  ink: '#1F1F1E',
-  green: '#16A34A',
+  orange: '#C5562C',
+  bg: '#F7F3EC',
+  ink: '#1A1815',
+  green: '#8B9D7A',
   pillBg: '#FFFFFF',
-  pillBorder: '#E8E6E0',
-  dotPending: '#D4D2CC',
+  pillBorder: '#E8E1D3',
+  dotPending: '#D8CDB8',
 }
 
 // Hitos posicionados sobre la imagen del mapa 3D (mismas zonas que el demo de referencia)

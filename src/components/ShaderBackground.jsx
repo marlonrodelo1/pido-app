@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 /**
  * ShaderBackground — fondo WebGL animado para el hero de la landing.
  * Concepto basado en shaders de "atzedent", repaletizado a tonos cálidos
- * de la marca Pidoo (naranja #FF6B2C sobre crema #FAFAF7).
+ * de la marca Pidoo (naranja #C5562C sobre crema #F7F3EC).
  *
  * Performance: en móvil (<768px) NO se monta WebGL — se renderiza un
  * gradiente CSS estático para evitar drenar batería y bajar FPS.
@@ -86,10 +86,10 @@ export default function ShaderBackground() {
         float blob3 = S(1.4, 0.2, d3) * 0.32;
 
         // Paleta cálida Pidoo
-        vec3 cream    = vec3(0.980, 0.980, 0.965); // #FAFAF7 base
+        vec3 cream    = vec3(0.980, 0.980, 0.965); // #F7F3EC base
         vec3 peach    = vec3(1.000, 0.870, 0.760); // melocotón muy claro
-        vec3 orange   = vec3(1.000, 0.420, 0.175); // #FF6B2C
-        vec3 deep     = vec3(0.910, 0.355, 0.122); // #E85A1F
+        vec3 orange   = vec3(1.000, 0.420, 0.175); // #C5562C
+        vec3 deep     = vec3(0.910, 0.355, 0.122); // #A8451F
         vec3 amber    = vec3(1.000, 0.760, 0.420); // ámbar suave
 
         vec3 col = cream;
@@ -168,7 +168,7 @@ export default function ShaderBackground() {
     function render(now) {
       resize()
       const t = (now - start) / 1000
-      gl.clearColor(0.98, 0.98, 0.97, 1) // #FAFAF7
+      gl.clearColor(0.98, 0.98, 0.97, 1) // #F7F3EC
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.uniform2f(uRes, canvas.width, canvas.height)
       gl.uniform1f(uTime, t)
@@ -195,7 +195,7 @@ export default function ShaderBackground() {
           position: 'absolute',
           inset: 0,
           background:
-            'radial-gradient(ellipse at top, rgba(255,107,44,0.08), transparent 70%), #FAFAF7',
+            'radial-gradient(ellipse at top, rgba(255,107,44,0.08), transparent 70%), #F7F3EC',
           pointerEvents: 'none',
         }}
       />

@@ -28,7 +28,7 @@ export default function PaginaLegal({ slug, onBack }) {
       .catch(() => setLoading(false))
   }, [slug])
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><div style={{ color: '#6B6B68', fontSize: 13 }}>Cargando...</div></div>
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}><div style={{ color: '#6B6356', fontSize: 13 }}>Cargando...</div></div>
   if (!pagina) return <div style={{ textAlign: 'center', padding: '60px 20px' }}><div style={{ fontSize: 48, marginBottom: 12 }}>📄</div><div style={{ fontSize: 16, fontWeight: 700 }}>Página no encontrada</div></div>
 
   return (
@@ -47,7 +47,7 @@ export default function PaginaLegal({ slug, onBack }) {
       }}
     >
       {onBack && (
-        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#FF6B2C', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16, padding: 0 }}>
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#C5562C', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16, padding: 0 }}>
           <ArrowLeft size={16} strokeWidth={2.5} /> Volver
         </button>
       )}
@@ -56,7 +56,7 @@ export default function PaginaLegal({ slug, onBack }) {
           // Font ligeramente mayor en desktop para legibilidad
           fontSize: 'clamp(14px, 1.6vw, 16px)',
           lineHeight: 1.7,
-          color: '#1F1F1E',
+          color: '#1A1815',
           wordWrap: 'break-word',
         }}
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(pagina.contenido) }}

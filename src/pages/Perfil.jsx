@@ -227,7 +227,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: dir.principal ? 'var(--c-primary)' : '#1F1F1E' }}>{dir.etiqueta}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: dir.principal ? 'var(--c-primary)' : '#1A1815' }}>{dir.etiqueta}</span>
                       {dir.principal && (
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,107,44,0.2)', color: 'var(--c-primary)' }}>PRINCIPAL</span>
                       )}
@@ -261,7 +261,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
             {/* Formulario añadir nueva dirección */}
             {addingDir ? (
               <div style={{ ...glass, padding: 16, marginTop: 10 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#1F1F1E' }}>Nueva direccion</div>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#1A1815' }}>Nueva direccion</div>
 
                 {/* Etiqueta */}
                 <label style={labelStyle}>Etiqueta</label>
@@ -272,7 +272,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
                       cursor: 'pointer', fontFamily: 'inherit',
                       border: nuevaEtiqueta === e ? '2px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.08)',
                       background: nuevaEtiqueta === e ? 'rgba(255,107,44,0.12)' : 'rgba(0,0,0,0.04)',
-                      color: nuevaEtiqueta === e ? 'var(--c-primary)' : '#1F1F1E',
+                      color: nuevaEtiqueta === e ? 'var(--c-primary)' : '#1A1815',
                     }}>{e === 'Casa' ? '🏠 Casa' : e === 'Trabajo' ? '💼 Trabajo' : '📍 Otro'}</button>
                   ))}
                 </div>
@@ -347,7 +347,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
                 }}>
                   <span style={{ fontSize: 28 }}>{m.emoji}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: sel ? 'var(--c-primary)' : '#1F1F1E' }}>{m.label}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: sel ? 'var(--c-primary)' : '#1A1815' }}>{m.label}</div>
                     <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{m.desc}</div>
                   </div>
                   {sel && <Check size={18} color="var(--c-primary)" />}
@@ -494,12 +494,12 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
             border: '1px solid rgba(0,0,0,0.08)', borderBottom: 'none',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1F1F1E' }}>Editar perfil</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1A1815' }}>Editar perfil</h3>
               <button onClick={() => setEditando(false)} style={{
                 width: 32, height: 32, borderRadius: 12, background: 'rgba(0,0,0,0.08)',
                 border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <X size={16} strokeWidth={2} color="#1F1F1E" />
+                <X size={16} strokeWidth={2} color="#1A1815" />
               </button>
             </div>
 
@@ -532,7 +532,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
 
             <button onClick={handleGuardar} disabled={saving} style={{
               width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: saving ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)', color: saving ? '#6B6B68' : '#fff',
+              background: saving ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)', color: saving ? '#6B6356' : '#fff',
               fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
             }}>
               {saving ? 'Guardando...' : 'Guardar cambios'}
@@ -562,11 +562,11 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
               }}>
                 <AlertTriangle size={20} color="#EF4444" strokeWidth={2} />
               </div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1F1F1E' }}>Eliminar cuenta</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#1A1815' }}>Eliminar cuenta</h3>
             </div>
 
             <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginBottom: 16 }}>
-              Esta acción es <strong style={{ color: '#1F1F1E' }}>permanente</strong>. Se borrarán tu perfil, direcciones, notificaciones, métodos de pago y suscripciones push. Tu historial de pedidos se anonimiza por requisito legal/contable. No podrás recuperar la cuenta.
+              Esta acción es <strong style={{ color: '#1A1815' }}>permanente</strong>. Se borrarán tu perfil, direcciones, notificaciones, métodos de pago y suscripciones push. Tu historial de pedidos se anonimiza por requisito legal/contable. No podrás recuperar la cuenta.
             </p>
 
             <label style={{ ...labelStyle, color: 'rgba(239,68,68,0.7)' }}>Escribe ELIMINAR para confirmar</label>
@@ -593,7 +593,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
                 width: '100%', padding: '14px', borderRadius: 12, border: 'none',
                 background: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR')
                   ? 'rgba(220,38,38,0.20)'
-                  : '#DC2626',
+                  : '#B5564A',
                 color: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') ? '#9A1F1F' : '#fff', fontSize: 14, fontWeight: 700,
                 cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') ? 'default' : 'pointer',
                 fontFamily: 'inherit', marginBottom: 8,
@@ -669,12 +669,12 @@ const glass = {
 
 const inputDark = {
   width: '100%', padding: '14px 16px', borderRadius: 14,
-  border: '1px solid #E8E6E0', fontSize: 14, fontFamily: 'inherit',
-  background: '#F4F2EC', color: '#1F1F1E', outline: 'none',
+  border: '1px solid #E8E1D3', fontSize: 14, fontFamily: 'inherit',
+  background: '#EFE9DD', color: '#1A1815', outline: 'none',
   boxSizing: 'border-box',
 }
 
 const labelStyle = {
-  fontSize: 11, fontWeight: 700, color: '#6B6B68',
+  fontSize: 11, fontWeight: 700, color: '#6B6356',
   marginBottom: 6, display: 'block', letterSpacing: '0.05em', textTransform: 'uppercase',
 }
