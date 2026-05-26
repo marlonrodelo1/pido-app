@@ -1,9 +1,12 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { supabase } from '../lib/supabase'
 import TiendaBottomNav from '../components/TiendaBottomNav'
 import Login from './Login'
-import { X } from 'lucide-react'
+import { X, Bike } from 'lucide-react'
+
+const ESTADOS_PEDIDO_ACTIVO = ['nuevo', 'aceptado', 'preparando', 'listo', 'recogido', 'en_camino']
 
 const RestDetalle = lazy(() => import('./RestDetalle'))
 const Carrito = lazy(() => import('./Carrito'))
@@ -102,6 +105,49 @@ export default function TiendaPublica({ establecimiento }) {
     if (user && loginOpen) setLoginOpen(false)
   }, [user, loginOpen])
 
+  // Cargar pedido activo del usuario en este restaurante al montar / cambiar user
+  useEffect(() => {
+    if (!user?.id || !establecimiento?.id) {
+      setPedidoActivo(null)
+      return
+    }
+    let cancel = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('usuario_id', user.id)
+        .eq('establecimiento_id', establecimiento.id)
+        .in('estado', ESTADOS_PEDIDO_ACTIVO)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!cancel) setPedidoActivo(data || null)
+    })()
+    return () => { cancel = true }
+  }, [user?.id, establecimiento?.id])
+
+  // Realtime: limpiar pedidoActivo si pasa a entregado/cancelado/fallido
+  useEffect(() => {
+    if (!pedidoActivo?.id) return
+    const channel = supabase
+      .channel(`tienda-pedido-${pedidoActivo.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'pedidos',
+        filter: `id=eq.${pedidoActivo.id}`,
+      }, (payload) => {
+        const nuevo = payload.new
+        if (!ESTADOS_PEDIDO_ACTIVO.includes(nuevo.estado)) {
+          setPedidoActivo(null)
+          if (seccion === 'tracking') setSeccion('carta')
+        } else {
+          setPedidoActivo((prev) => ({ ...prev, ...nuevo }))
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [pedidoActivo?.id, seccion])
+
   function handlePedidoCreado(pedido) {
     setPedidoActivo(pedido)
     setSeccion('tracking')
@@ -112,6 +158,69 @@ export default function TiendaPublica({ establecimiento }) {
     setPedidoActivo(null)
     setSeccion('carta')
   }
+
+  // Banner "Tienes pedido en curso" — sticky arriba cuando hay pedido activo en sección carta
+  const pedidoBanner = pedidoActivo && seccion === 'carta' ? (
+    <div style={{
+      position: 'fixed',
+      top: 'calc(12px + env(safe-area-inset-top, 0px))',
+      left: 14, right: 14, zIndex: 60,
+      maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
+      pointerEvents: 'none',
+    }}>
+      <button
+        onClick={() => setSeccion('tracking')}
+        style={{
+          width: '100%',
+          padding: '12px 14px 12px 16px',
+          borderRadius: 14, border: 'none',
+          background: 'linear-gradient(180deg, #2B2823, #1A1815)',
+          color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          cursor: 'pointer', fontFamily: 'inherit',
+          boxShadow: '0 10px 26px rgba(26,24,21,0.32), inset 0 1px 0 rgba(255,255,255,0.10)',
+          animation: 'slideDown 0.35s ease',
+          pointerEvents: 'auto',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span style={{
+            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(197,86,44,0.22)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#F1D9CC',
+          }}>
+            <Bike size={16} strokeWidth={2.4} />
+          </span>
+          <span style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+            minWidth: 0, gap: 1,
+          }}>
+            <span style={{
+              fontWeight: 800, fontSize: 13, letterSpacing: '-0.01em',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              Tienes un pedido en curso
+            </span>
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.65)',
+              letterSpacing: '0.02em',
+            }}>
+              {pedidoActivo.codigo || 'En seguimiento'}
+            </span>
+          </span>
+        </span>
+        <span style={{
+          fontSize: 12, fontWeight: 700,
+          color: 'rgba(255,255,255,0.85)', flexShrink: 0,
+          background: 'rgba(255,255,255,0.10)',
+          padding: '6px 10px', borderRadius: 999,
+        }}>
+          Ver seguimiento
+        </span>
+      </button>
+    </div>
+  ) : null
 
   // ─── Render DESKTOP ≥1024px ────────────────────────────────
   // Solo cuando estamos en la sección "carta" (catálogo). En tracking,
@@ -124,6 +233,7 @@ export default function TiendaPublica({ establecimiento }) {
         background: '#F7F3EC',
       }}>
         <style>{globalCss}</style>
+        {pedidoBanner}
         <Suspense fallback={fallback}>
           <TiendaDesktop
             establecimiento={establecimiento}
@@ -180,6 +290,7 @@ export default function TiendaPublica({ establecimiento }) {
       paddingBottom: 'calc(20px + 64px + 20px + env(safe-area-inset-bottom, 0px))',
     }}>
       <style>{globalCss}</style>
+      {pedidoBanner}
 
       {/* Contenido */}
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
@@ -296,6 +407,7 @@ const globalCss = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 *{box-sizing:border-box;margin:0;padding:0}

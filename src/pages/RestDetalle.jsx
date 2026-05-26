@@ -405,80 +405,111 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       background: C.cream, minHeight: '100vh',
     }}>
 
-      {/* ── Banner (terracotta + circles fallback o banner_url) ── */}
-      <div style={{ position: 'relative' }}>
-        {est.banner_url ? (
-          <div
-            className="banner-responsive"
-            style={{
-              height: 200, borderRadius: '0 0 0 0',
-              background: `url(${est.banner_url}) center/cover`,
-            }}
-          />
-        ) : (
-          <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: `linear-gradient(135deg, ${C.terracotta} 0%, ${C.terracotta2} 100%)`,
-            }} />
+      {/* ── Hero compacto: card con banner de fondo + logo overlay + nombre dentro ── */}
+      <div style={{ padding: '14px 14px 0' }}>
+        <div style={{
+          position: 'relative', height: 200, borderRadius: 18, overflow: 'hidden',
+          background: est.banner_url
+            ? '#000'
+            : `linear-gradient(135deg, ${C.terracotta} 0%, ${C.terracotta2} 100%)`,
+          boxShadow: SH.md,
+        }}>
+          {est.banner_url ? (
+            <img
+              src={est.banner_url} alt=""
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
             <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: 0.18 }}>
               <circle cx="60" cy="40" r="80" fill="#fff" />
               <circle cx="380" cy="80" r="100" fill="#fff" opacity="0.4" />
               <circle cx="300" cy="180" r="60" fill="#fff" opacity="0.3" />
             </svg>
+          )}
+
+          {/* Overlay para legibilidad del nombre abajo */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 100%)',
+          }} />
+
+          {/* Volver (solo en modal app) — circular pequeño top-left */}
+          {!modoTienda && (
+            <button
+              onClick={onBack}
+              style={{
+                position: 'absolute', top: 12, left: 12,
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: SH.sm, color: C.ink,
+              }}
+              aria-label="Volver"
+            >
+              <ArrowLeft size={18} strokeWidth={2.5} />
+            </button>
+          )}
+
+          {/* Pill estado abierto/cerrado — top-left (o top-center si hay Volver) */}
+          <div style={{
+            position: 'absolute', top: 14,
+            left: !modoTienda ? 58 : 14,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            padding: '6px 11px', borderRadius: 999,
+            fontSize: 11.5, fontWeight: 700, color: C.ink,
+            boxShadow: SH.sm, maxWidth: 'calc(100% - 90px)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: cerrado ? C.danger : C.sage, flexShrink: 0 }} />
+            {cerrado
+              ? (estadoAbierto.proximaApertura || 'Cerrado')
+              : `Abierto ahora${estadoAbierto.turnoActual?.cierra ? ` · Cierra ${estadoAbierto.turnoActual.cierra}` : ''}`
+            }
           </div>
-        )}
-        {!modoTienda && (
-          <button
-            onClick={onBack}
-            style={{
-              position: 'absolute', top: 14, left: 14,
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.92)',
-              border: 'none',
-              backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-              color: C.ink, padding: '8px 14px',
-              borderRadius: 999, cursor: 'pointer',
-              fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
-              boxShadow: SH.sm,
-            }}
-          >
-            <ArrowLeft size={15} strokeWidth={2.5} />
-            Volver
-          </button>
-        )}
+
+          {/* Logo overlay top-right */}
+          <div style={{
+            position: 'absolute', top: 12, right: 12,
+            width: 62, height: 62, borderRadius: '50%',
+            background: '#fff',
+            border: '3px solid rgba(255,255,255,0.95)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: SH.md, overflow: 'hidden',
+          }}>
+            {est.logo_url
+              ? <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <FoodIcon kw={est.tipo || ''} size={42} />
+            }
+          </div>
+
+          {/* Nombre + tipo·dirección abajo, sobre overlay oscuro */}
+          <div style={{ position: 'absolute', bottom: 14, left: 16, right: 16 }}>
+            <h1 style={{
+              fontSize: 22, fontWeight: 800, color: '#fff',
+              letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15,
+              textShadow: '0 2px 8px rgba(0,0,0,0.45)',
+            }}>{est.nombre}</h1>
+            {(est.tipo || est.direccion) && (
+              <div style={{
+                fontSize: 11, color: 'rgba(255,255,255,0.92)', marginTop: 3,
+                fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase',
+                textShadow: '0 1px 4px rgba(0,0,0,0.4)',
+              }}>
+                {est.tipo}{est.tipo && est.direccion ? ' · ' : ''}{est.direccion?.split(',')[0]}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── Identidad: avatar + nombre + chips ── */}
-      <div style={{ padding: '0 18px', marginTop: -38 }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: '#fff', border: `4px solid ${C.cream}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: SH.md, overflow: 'hidden',
-        }}>
-          {est.logo_url
-            ? <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <FoodIcon kw={est.tipo || ''} size={56} />
-          }
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <h1 style={{
-            fontSize: 24, fontWeight: 800, color: C.ink,
-            letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15,
-          }}>{est.nombre}</h1>
-          {(est.tipo || est.direccion) && (
-            <div style={{
-              fontSize: 12, color: C.stone2, marginTop: 3,
-              fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase',
-            }}>
-              {est.tipo}{est.tipo && est.direccion ? ' · ' : ''}{est.direccion?.split(',')[0]}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-            <Chip tone={cerrado ? 'danger' : 'sage'} dot>
-              {cerrado ? (estadoAbierto.proximaApertura || 'Cerrado') : 'Abierto'}
-            </Chip>
+      {/* ── Chips (rating · delivery · recogida) + descripción ── */}
+      <div style={{ padding: '14px 18px 0' }}>
+        <div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {est.rating > 0 && (
               <Chip tone="paper">
                 <Star size={11} fill={C.warning} color={C.warning} style={{ marginRight: 2 }} />
