@@ -296,11 +296,26 @@ export default function TiendaPublica({ establecimiento }) {
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
         <Suspense fallback={fallback}>
           {seccion === 'tracking' && pedidoActivo ? (
-            <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
+            <div style={{
+              padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 8px',
+              maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
+            }}>
+              <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
+            </div>
           ) : seccion === 'pedidos' ? (
-            <MisPedidos onTrack={(p) => { setPedidoActivo(p); setSeccion('tracking') }} />
+            <div style={{
+              padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 8px',
+              maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
+            }}>
+              <MisPedidos onTrack={(p) => { setPedidoActivo(p); setSeccion('tracking') }} />
+            </div>
           ) : seccion === 'perfil' ? (
-            <Perfil />
+            <div style={{
+              padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 8px',
+              maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
+            }}>
+              <Perfil />
+            </div>
           ) : (
             <RestDetalle establecimiento={establecimiento} modoTienda={true} onRequireLogin={() => setLoginOpen(true)} />
           )}
