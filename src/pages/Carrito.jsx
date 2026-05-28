@@ -42,6 +42,12 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     transition: 'all 0.15s ease',
   }),
+  input: {
+    width: '100%', padding: '11px 14px', borderRadius: 10,
+    border: `1px solid ${C.border}`, background: '#fff',
+    fontSize: 14, color: C.ink, fontFamily: 'inherit', outline: 'none',
+    boxSizing: 'border-box',
+  },
 }
 
 /* ─── FormularioPago ─────────────────────────────────────── */
@@ -335,14 +341,17 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     return () => { cancel = true }
   }, [open, carrito[0]?.establecimiento_id])
 
-  // Métodos disponibles según config del restaurante
+  // Métodos disponibles según config del restaurante.
+  // Para clientes invitados (sin login) se oculta la tarjeta online porque
+  // el flujo Stripe requiere cuenta para reembolsos y SCA 3DS. El guest solo
+  // puede pagar con efectivo o datáfono (al entregar).
   const metodosDisponibles = useMemo(() => {
     const list = []
-    if (restConfig.acepta_tarjeta_online) list.push({ id: 'tarjeta',  label: 'Tarjeta',  icon: 'card' })
-    if (restConfig.acepta_efectivo)       list.push({ id: 'efectivo', label: 'Efectivo', icon: null })
-    if (restConfig.acepta_datafono)       list.push({ id: 'datafono', label: 'Datáfono', icon: 'card' })
+    if (restConfig.acepta_tarjeta_online && user) list.push({ id: 'tarjeta',  label: 'Tarjeta',  icon: 'card' })
+    if (restConfig.acepta_efectivo)               list.push({ id: 'efectivo', label: 'Efectivo', icon: null })
+    if (restConfig.acepta_datafono)               list.push({ id: 'datafono', label: 'Datáfono', icon: 'card' })
     return list
-  }, [restConfig])
+  }, [restConfig, user])
 
   // Si el método actual ya no está activo, cambiar al primero disponible
   useEffect(() => {
@@ -350,6 +359,49 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     const stillValid = metodosDisponibles.some(m => m.id === metodoPago)
     if (!stillValid) setMetodoPago(metodosDisponibles[0].id)
   }, [metodosDisponibles, metodoPago, setMetodoPago])
+
+  // Guest checkout: form para cliente sin cuenta cuando el restaurante lo permite.
+  const guestPermitido = !user && !restConfig.exige_registro_cliente
+  const [guestNombre, setGuestNombre] = useState('')
+  const [guestTelefono, setGuestTelefono] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestDireccion, setGuestDireccion] = useState('')
+  const [guestLat, setGuestLat] = useState(null)
+  const [guestLng, setGuestLng] = useState(null)
+  // Persist guest data en localStorage para no perderla entre recargas
+  useEffect(() => {
+    if (!guestPermitido) return
+    try {
+      const raw = localStorage.getItem('pidoo_guest_data')
+      if (raw) {
+        const d = JSON.parse(raw)
+        if (d.nombre && !guestNombre) setGuestNombre(d.nombre)
+        if (d.telefono && !guestTelefono) setGuestTelefono(d.telefono)
+        if (d.email && !guestEmail) setGuestEmail(d.email)
+        if (d.direccion && !guestDireccion) setGuestDireccion(d.direccion)
+        if (d.lat && !guestLat) setGuestLat(d.lat)
+        if (d.lng && !guestLng) setGuestLng(d.lng)
+      }
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestPermitido])
+  useEffect(() => {
+    if (!guestPermitido) return
+    try {
+      localStorage.setItem('pidoo_guest_data', JSON.stringify({
+        nombre: guestNombre, telefono: guestTelefono, email: guestEmail,
+        direccion: guestDireccion, lat: guestLat, lng: guestLng,
+      }))
+    } catch (_) {}
+  }, [guestPermitido, guestNombre, guestTelefono, guestEmail, guestDireccion, guestLat, guestLng])
+
+  function guestValido() {
+    if (!guestPermitido) return true
+    if (!guestNombre.trim() || guestNombre.trim().length < 2) return false
+    if (!guestTelefono.trim() || guestTelefono.trim().length < 6) return false
+    if (modoEntrega === 'delivery' && (!guestDireccion.trim() || guestLat == null || guestLng == null)) return false
+    return true
+  }
 
   if (totalItems === 0) return null
 
@@ -361,41 +413,60 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   async function insertarPedidoEnBD(estado) {
     if (carrito.length === 0) { setErrorMsg('El carrito está vacío'); return null }
-    if (modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
-      setSinDireccion(true); setMostrarAddDir(true)
+    // Validación dirección: usuario logueado o guest
+    const tieneDireccionLogueado = !!(perfil?.latitud && perfil?.longitud && perfil?.direccion)
+    const tieneDireccionGuest = !!(guestDireccion && guestLat != null && guestLng != null)
+    if (modoEntrega === 'delivery' && !tieneDireccionLogueado && !tieneDireccionGuest) {
+      if (user) {
+        setSinDireccion(true); setMostrarAddDir(true)
+      }
       setErrorMsg('Añade una direccion de entrega antes de confirmar el pedido')
       return null
     }
     const codigo = codigoPedido || await generarCodigo()
     setCodigoPedido(codigo)
     const totalFinal = Math.max(0, total - descuento)
+
+    // Resolver datos de entrega y cliente (logueado o guest)
     let dirEntrega = null
+    let latEntrega = null
+    let lngEntrega = null
     if (modoEntrega === 'delivery') {
-      dirEntrega = perfil?.direccion || ''
-      if (!dirEntrega && perfil?.latitud && perfil?.longitud) {
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${perfil.latitud}&lon=${perfil.longitud}&format=json&addressdetails=1`)
-          const geo = await res.json()
-          dirEntrega = geo.display_name || ''
-        } catch (e) { console.error('[Carrito] reverse geocoding', e) }
+      if (user && tieneDireccionLogueado) {
+        dirEntrega = perfil.direccion
+        latEntrega = perfil.latitud
+        lngEntrega = perfil.longitud
+      } else if (guestPermitido && tieneDireccionGuest) {
+        dirEntrega = guestDireccion
+        latEntrega = guestLat
+        lngEntrega = guestLng
       }
     }
+
     let socioIdTracking = null
     try {
       const raw = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
       if (raw) socioIdTracking = raw
     } catch (_) {}
-    const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert({
+
+    const insertPayload = {
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
       canal, socio_id: socioIdTracking, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
       descuento: descuento > 0 ? descuento : null,
       promo_titulo: descuento > 0 && promoActiva ? promoActiva.titulo : null, notas,
-      lat_entrega: modoEntrega === 'delivery' ? (perfil?.latitud || null) : null,
-      lng_entrega: modoEntrega === 'delivery' ? (perfil?.longitud || null) : null,
+      lat_entrega: latEntrega,
+      lng_entrega: lngEntrega,
       direccion_entrega: dirEntrega,
       origen_pedido: origenPedido || 'pido',
-    }).select().single()
+    }
+    // Datos del guest cuando no hay sesión
+    if (!user && guestPermitido) {
+      insertPayload.guest_nombre = guestNombre.trim()
+      insertPayload.guest_telefono = guestTelefono.trim()
+      insertPayload.guest_email = guestEmail.trim() || null
+    }
+    const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert(insertPayload).select().single()
     if (pedidoError) throw pedidoError
     const items = carrito.map(item => {
       let extrasFlat = null
@@ -447,8 +518,19 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   async function iniciarPago() {
     if (isPaying.current) return
-    if (!user) { onRequireLogin?.(); return }
-    if (modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
+    // Guest checkout vs login obligatorio según config del restaurante
+    if (!user) {
+      if (restConfig.exige_registro_cliente) {
+        onRequireLogin?.()
+        return
+      }
+      // Guest: validar campos del form
+      if (!guestValido()) {
+        setErrorMsg('Por favor completa tu nombre, teléfono' + (modoEntrega === 'delivery' ? ' y dirección' : '') + ' antes de continuar.')
+        return
+      }
+    }
+    if (user && modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
       setSinDireccion(true); setMostrarAddDir(true); return
     }
     // Revalidar rider del socio antes de iniciar el pago
@@ -740,6 +822,97 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     })}
                   </div>
                 </div>
+
+                {/* Datos del invitado (guest checkout) */}
+                {guestPermitido && (
+                  <div style={{
+                    marginBottom: 14, padding: 14, borderRadius: 14,
+                    background: C.paper, border: `1px solid ${C.border}`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: C.ink }}>Tus datos</div>
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>
+                          Pide sin crear cuenta. Te enviaremos el seguimiento del pedido.
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => onRequireLogin?.()}
+                        style={{
+                          background: 'transparent', border: 'none', padding: 0,
+                          color: C.terracotta, fontSize: 11, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Iniciar sesión →
+                      </button>
+                    </div>
+
+                    <input
+                      value={guestNombre}
+                      onChange={(e) => setGuestNombre(e.target.value)}
+                      placeholder="Nombre y apellido *"
+                      style={S.input}
+                    />
+                    <input
+                      value={guestTelefono}
+                      onChange={(e) => setGuestTelefono(e.target.value)}
+                      placeholder="Teléfono *"
+                      type="tel"
+                      style={{ ...S.input, marginTop: 8 }}
+                    />
+                    <input
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      placeholder="Email (opcional, para recibir tracking)"
+                      type="email"
+                      style={{ ...S.input, marginTop: 8 }}
+                    />
+                    {modoEntrega === 'delivery' && (
+                      <div style={{ marginTop: 8 }}>
+                        <AddressInput
+                          value={guestDireccion}
+                          onChange={(v) => { setGuestDireccion(v); if (!v) { setGuestLat(null); setGuestLng(null) } }}
+                          onSelect={(addr) => {
+                            setGuestDireccion(addr.direccion || addr.formatted || '')
+                            setGuestLat(addr.latitud ?? addr.lat ?? null)
+                            setGuestLng(addr.longitud ?? addr.lng ?? null)
+                          }}
+                          placeholder="Dirección de entrega *"
+                          style={S.input}
+                        />
+                        {guestDireccion && guestLat == null && (
+                          <div style={{ fontSize: 10, color: C.warning, marginTop: 4 }}>
+                            Selecciona la dirección de las sugerencias para fijar la ubicación.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Bloque login si el restaurante exige cuenta y no hay user */}
+                {!user && !guestPermitido && (
+                  <div style={{
+                    marginBottom: 14, padding: 14, borderRadius: 14,
+                    background: C.terracottaSoft, border: `1px solid ${C.terracotta}`,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
+                      Este restaurante exige cuenta para pedir
+                    </div>
+                    <button
+                      onClick={() => onRequireLogin?.()}
+                      style={{
+                        padding: '10px 22px', borderRadius: 999, border: 'none',
+                        background: C.terracotta, color: '#fff',
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      Iniciar sesión o registrarme
+                    </button>
+                  </div>
+                )}
 
                 {/* Método pago — dinámico según restaurante */}
                 <div style={{ marginBottom: 14 }}>
