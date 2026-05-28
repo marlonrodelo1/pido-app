@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -304,6 +304,52 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       }).catch(() => setLoadingCards(false))
     }
   }, [open, metodoPago])
+
+  // Cargar configuración del restaurante: métodos de pago aceptados + flag de registro.
+  // Por defecto los 3 activos hasta que llegue la respuesta.
+  const [restConfig, setRestConfig] = useState({
+    acepta_efectivo: true,
+    acepta_tarjeta_online: true,
+    acepta_datafono: false, // método nuevo: default false hasta confirmar BD
+    exige_registro_cliente: false,
+  })
+  useEffect(() => {
+    if (!open || carrito.length === 0) return
+    const estId = carrito[0].establecimiento_id
+    if (!estId) return
+    let cancel = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('establecimientos')
+        .select('acepta_efectivo, acepta_tarjeta_online, acepta_datafono, exige_registro_cliente')
+        .eq('id', estId)
+        .maybeSingle()
+      if (cancel || !data) return
+      setRestConfig({
+        acepta_efectivo: data.acepta_efectivo ?? true,
+        acepta_tarjeta_online: data.acepta_tarjeta_online ?? true,
+        acepta_datafono: data.acepta_datafono ?? false,
+        exige_registro_cliente: data.exige_registro_cliente ?? false,
+      })
+    })()
+    return () => { cancel = true }
+  }, [open, carrito[0]?.establecimiento_id])
+
+  // Métodos disponibles según config del restaurante
+  const metodosDisponibles = useMemo(() => {
+    const list = []
+    if (restConfig.acepta_tarjeta_online) list.push({ id: 'tarjeta',  label: 'Tarjeta',  icon: 'card' })
+    if (restConfig.acepta_efectivo)       list.push({ id: 'efectivo', label: 'Efectivo', icon: null })
+    if (restConfig.acepta_datafono)       list.push({ id: 'datafono', label: 'Datáfono', icon: 'card' })
+    return list
+  }, [restConfig])
+
+  // Si el método actual ya no está activo, cambiar al primero disponible
+  useEffect(() => {
+    if (metodosDisponibles.length === 0) return
+    const stillValid = metodosDisponibles.some(m => m.id === metodoPago)
+    if (!stillValid) setMetodoPago(metodosDisponibles[0].id)
+  }, [metodosDisponibles, metodoPago, setMetodoPago])
 
   if (totalItems === 0) return null
 
@@ -695,19 +741,30 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 </div>
 
-                {/* Método pago */}
+                {/* Método pago — dinámico según restaurante */}
                 <div style={{ marginBottom: 14 }}>
                   <div style={S.label}>Método de pago</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {[
-                      { id: 'tarjeta',  l: <span style={{display:'inline-flex',gap:6,alignItems:'center'}}><CreditCard size={14}/> Tarjeta</span> },
-                      { id: 'efectivo', l: 'Efectivo' },
-                    ].map(m => (
-                      <button key={m.id} onClick={() => setMetodoPago(m.id)} style={S.selBtn(metodoPago === m.id)}>
-                        {m.l}
-                      </button>
-                    ))}
-                  </div>
+                  {metodosDisponibles.length === 0 ? (
+                    <div style={{
+                      padding: '10px 12px', borderRadius: 10,
+                      background: 'rgba(239,68,68,0.10)', color: '#B5564A',
+                      fontSize: 12, fontWeight: 600,
+                    }}>
+                      Este restaurante no tiene métodos de pago activos. No puedes pedir.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {metodosDisponibles.map(m => (
+                        <button key={m.id} onClick={() => setMetodoPago(m.id)} style={S.selBtn(metodoPago === m.id)}>
+                          {m.icon === 'card' ? (
+                            <span style={{display:'inline-flex',gap:6,alignItems:'center'}}>
+                              <CreditCard size={14}/> {m.label}
+                            </span>
+                          ) : m.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Tarjetas guardadas */}
                   {metodoPago === 'tarjeta' && tarjetasGuardadas.length > 0 && (
