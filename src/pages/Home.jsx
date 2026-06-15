@@ -207,6 +207,16 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
     if (perfil?.favoritos) setFavoritos(perfil.favoritos)
   }, [perfil?.favoritos])
 
+  // Respaldo de ubicación: si no hay GPS en vivo (permiso denegado o web) pero
+  // el perfil tiene una dirección guardada, usarla para que el filtro por radio
+  // funcione igual. Sin esto, no se filtraría y aparecerían restaurantes de
+  // otras zonas o islas (p. ej. Fuerteventura estando en Tenerife).
+  useEffect(() => {
+    if (!userLocation && perfil?.latitud && perfil?.longitud) {
+      setUserLocation({ lat: perfil.latitud, lng: perfil.longitud })
+    }
+  }, [perfil?.latitud, perfil?.longitud, userLocation])
+
   useEffect(() => {
     // Pedir geolocalización y guardar dirección principal si no tiene ninguna
     getCurrentPosition()
