@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import AppShell from '../AppShell'
 import { useAuth } from '../context/AuthContext'
+import { getCurrentPosition } from '../lib/geolocation'
 
 const SUPABASE_URL = 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
 
@@ -121,6 +122,7 @@ export default function TiendaSocio() {
   const [estado, setEstado] = useState('loading') // loading | ok | notfound | paused | rider_offline | desactivado
   const [socio, setSocio] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
+  const [liveCoords, setLiveCoords] = useState(null)
   const pollRef = useRef(null)
 
   // Fetch socio + restaurantes. Pasamos lat/lng del cliente si los tenemos
@@ -131,9 +133,14 @@ export default function TiendaSocio() {
 
     const fetchData = (isRefetch = false) => {
       const params = new URLSearchParams({ slug, live: '1' })
-      if (perfil?.latitud != null && perfil?.longitud != null) {
-        params.set('lat', String(perfil.latitud))
-        params.set('lng', String(perfil.longitud))
+      // Geolocalizar: usa la dirección del perfil; si no hay, el GPS en vivo.
+      // Así el marketplace filtra por radio aunque el cliente no tenga dirección
+      // guardada (igual que la app principal).
+      const lat = perfil?.latitud ?? liveCoords?.lat
+      const lng = perfil?.longitud ?? liveCoords?.lng
+      if (lat != null && lng != null) {
+        params.set('lat', String(lat))
+        params.set('lng', String(lng))
       }
       const url = `${SUPABASE_URL}/functions/v1/get-socio-marketplace?${params.toString()}`
       fetch(url)
@@ -179,7 +186,18 @@ export default function TiendaSocio() {
       cancelled = true
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [slug, perfil?.latitud, perfil?.longitud])
+  }, [slug, perfil?.latitud, perfil?.longitud, liveCoords])
+
+  // Si el perfil no tiene ubicación guardada, pedir GPS en vivo para poder
+  // filtrar el marketplace por radio (mismo respaldo que la app principal).
+  useEffect(() => {
+    if (perfil?.latitud != null && perfil?.longitud != null) return
+    let cancel = false
+    getCurrentPosition()
+      .then(p => { if (!cancel && p) setLiveCoords({ lat: p.lat, lng: p.lng }) })
+      .catch(() => {})
+    return () => { cancel = true }
+  }, [perfil?.latitud, perfil?.longitud])
 
   // Meta tags
   useEffect(() => {
