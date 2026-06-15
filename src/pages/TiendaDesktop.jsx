@@ -832,7 +832,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
             boxShadow: SH.md, overflow: 'hidden', flexShrink: 0,
           }}>
             {est.logo_url
-              ? <img src={est.logo_url} alt={est.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+              ? <img src={est.logo_url} alt={est.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }}/>
               : <div style={{ transform: 'scale(0.9)' }}><FoodIcon kw={est.tipo || ''} size={70}/></div>
             }
           </div>
