@@ -174,7 +174,7 @@ export default function TiendaPublica({ establecimiento }) {
           width: '100%',
           padding: '12px 14px 12px 16px',
           borderRadius: 14, border: 'none',
-          background: 'linear-gradient(180deg, #2B2823, #1A1815)',
+          background: 'linear-gradient(180deg, #C5562C, #A8451F)',
           color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
           cursor: 'pointer', fontFamily: 'inherit',
@@ -186,9 +186,9 @@ export default function TiendaPublica({ establecimiento }) {
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <span style={{
             width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(197,86,44,0.22)',
+            background: 'rgba(255,255,255,0.20)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#F1D9CC',
+            color: '#fff',
           }}>
             <Bike size={16} strokeWidth={2.4} />
           </span>
@@ -258,7 +258,7 @@ export default function TiendaPublica({ establecimiento }) {
         {loginOpen && (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 300,
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+            background: 'rgba(247,243,236,0.96)', backdropFilter: 'blur(6px)',
             overflowY: 'auto', animation: 'fadeIn 0.25s ease',
           }}>
             <button
@@ -375,7 +375,7 @@ export default function TiendaPublica({ establecimiento }) {
       {loginOpen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 300,
-          background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(6px)',
+          background: 'rgba(247,243,236,0.97)', backdropFilter: 'blur(6px)',
           overflowY: 'auto', animation: 'fadeIn 0.25s ease',
         }}>
           <button
@@ -384,8 +384,8 @@ export default function TiendaPublica({ establecimiento }) {
             style={{
               position: 'fixed', top: 'calc(12px + env(safe-area-inset-top, 0px))', right: 14, zIndex: 310,
               width: 36, height: 36, borderRadius: 999,
-              background: 'rgba(0,0,0,0.08)',
-              border: '1px solid rgba(0,0,0,0.10)',
+              background: 'rgba(255,255,255,0.95)',
+              border: '1px solid #E8E1D3',
               color: '#1A1815', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backdropFilter: 'blur(10px)',

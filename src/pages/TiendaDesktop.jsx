@@ -570,7 +570,7 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
                 onClick={onCheckout}
                 style={{
                   width: '100%', marginTop: 14, padding: '14px 0', borderRadius: 12,
-                  border: 'none', background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                  border: 'none', background: C.terracotta,
                   color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
                   cursor: 'pointer', boxShadow: SH.glossy,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,

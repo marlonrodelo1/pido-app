@@ -146,8 +146,8 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
               aria-label="Añadir"
               disabled={cerrado}
               style={{
-                width: 38, height: 38, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.4)',
-                background: cerrado ? C.cream2 : `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                width: 38, height: 38, borderRadius: '50%', border: 'none',
+                background: cerrado ? C.cream2 : C.terracotta,
                 color: cerrado ? C.stone2 : '#fff', cursor: cerrado ? 'not-allowed' : 'pointer',
                 boxShadow: cerrado ? 'none' : SH.glossy, flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

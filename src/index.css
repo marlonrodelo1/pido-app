@@ -11,8 +11,8 @@
   --c-primary-glow:   rgba(197, 86, 44, 0.15);
   --c-primary-shadow: rgba(197, 86, 44, 0.06);
 
-  /* Gradient botón principal (ink glossy) */
-  --c-btn-gradient:   linear-gradient(180deg, #2B2823 0%, #1A1815 100%);
+  /* Gradient botón principal (terracota — modelo SaaS, nada de negro) */
+  --c-btn-gradient:   linear-gradient(180deg, #C5562C 0%, #A8451F 100%);
 
   /* Superficies (cream world) */
   --c-bg:             #F7F3EC;

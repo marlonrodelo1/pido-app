@@ -243,8 +243,8 @@ export default function Login({ nextPath = null }) {
         {/* CTA */}
         <button onClick={handleSubmit} disabled={loading || !!(blockedUntil && Date.now() < blockedUntil)} style={{
           width: '100%', padding: '16px 0', borderRadius: 12, border: 'none',
-          background: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)',
-          color: '#1A1815', fontSize: 15, fontWeight: 700,
+          background: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'rgba(197,86,44,0.45)' : 'var(--c-btn-gradient)',
+          color: '#fff', fontSize: 15, fontWeight: 700,
           cursor: (loading || (blockedUntil && Date.now() < blockedUntil)) ? 'default' : 'pointer',
           fontFamily: 'inherit', marginTop: 4, letterSpacing: '0.01em',
         }}>
