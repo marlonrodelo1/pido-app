@@ -89,7 +89,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
         flexShrink: 0, overflow: 'hidden',
       }}>
         {p.imagen_url
-          ? <img src={p.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <img src={p.imagen_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <FoodIcon kw={p.nombre} size={70} />
         }
       </div>

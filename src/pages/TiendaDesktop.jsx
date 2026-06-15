@@ -322,7 +322,7 @@ function ProductCardDesktop({ p, est, onAddSimple, onOpenModal, carrito, updateC
         overflow: 'hidden',
       }}>
         {p.imagen_url
-          ? <img src={p.imagen_url} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          ? <img src={p.imagen_url} alt={p.nombre} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
           : <div style={{ transform: 'scale(1.2)' }}><FoodIcon kw={p.nombre} size={86}/></div>
         }
       </div>

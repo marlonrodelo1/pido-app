@@ -1173,8 +1173,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {/* CTA */}
                 <button onClick={iniciarPago} disabled={isDisabled} style={{
                   width: '100%', marginTop: 14, padding: '16px 0', borderRadius: 14, border: 'none',
-                  background: isDisabled ? C.cream2 : `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
-                  color: isDisabled ? C.stone : C.cream, fontSize: 15, fontWeight: 700,
+                  background: isDisabled ? C.cream2 : C.terracotta,
+                  color: isDisabled ? C.stone : '#fff', fontSize: 15, fontWeight: 700,
                   cursor: isDisabled ? 'default' : 'pointer',
                   fontFamily: 'inherit', letterSpacing: '0.01em',
                   boxShadow: isDisabled ? 'none' : SH.glossy,
