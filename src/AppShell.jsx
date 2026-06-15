@@ -94,16 +94,23 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
         position: 'sticky', top: 0, zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {!socioData && (
-            <button onClick={() => setOnboarded(false)} style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-              borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
-            }}>
-              {catEmoji} {catLabel}
-              <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
-            </button>
+          {socioData && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              {socioData.logo_url && (
+                <img src={socioData.logo_url} alt={socioData.nombre_comercial || ''}
+                  style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--c-border)', flexShrink: 0 }} />
+              )}
+              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--c-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>By Pidoo</span>
+            </div>
           )}
+          <button onClick={() => setOnboarded(false)} style={{
+            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+            borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
+            fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
+          }}>
+            {catEmoji} {catLabel}
+            <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
+          </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {pedidoActivo && !['cancelado', 'fallido', 'entregado'].includes(pedidoActivo.estado) && (

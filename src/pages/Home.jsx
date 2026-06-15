@@ -449,7 +449,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         .home-fade { animation: homeFadeIn 0.4s ease-out both; }
         .skeleton { background: rgba(0,0,0,0.06); border-radius: 12px; animation: skeletonPulse 1.2s ease-in-out infinite; }
       `}</style>
-      {socioData && <SocioHeader socio={socioData} />}
+      {/* Cabecera del socio (banner + foto + título) retirada: la identidad
+          (logo + "By Pidoo") va en el topbar de AppShell. Misma estructura que la app. */}
       {/* ── Dirección ── */}
       <div
         className="home-fade"
