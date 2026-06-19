@@ -661,12 +661,8 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
   const estadoAbierto = estaAbierto(est)
   const cerrado = !estadoAbierto.abierto
 
-  // Precio tienda pública si plan_pro
-  const usarPrecioTiendaPublica = !!est.plan_pro
-  const getPrecioMostrado = (p) => {
-    if (usarPrecioTiendaPublica && p.precio_tienda_publica != null) return Number(p.precio_tienda_publica)
-    return p.precio
-  }
+  // Precio único (el trigger trg_sync_precio_tienda mantiene precio_tienda_publica := precio)
+  const getPrecioMostrado = (p) => Number(p.precio)
 
   // Realtime tiene_delivery
   useEffect(() => {

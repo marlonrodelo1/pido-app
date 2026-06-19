@@ -184,12 +184,8 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const estadoAbierto = estaAbierto(est)
   const cerrado = !estadoAbierto.abierto
 
-  // En modoTienda + plan_pro activo: usar precio_tienda_publica si está definido
-  const usarPrecioTiendaPublica = modoTienda && !!est.plan_pro
-  const getPrecioMostrado = (p) => {
-    if (usarPrecioTiendaPublica && p.precio_tienda_publica != null) return Number(p.precio_tienda_publica)
-    return p.precio
-  }
+  // Precio único (el trigger trg_sync_precio_tienda mantiene precio_tienda_publica := precio)
+  const getPrecioMostrado = (p) => Number(p.precio)
 
   function mostrarAvisoCerrado() {
     setAvisoCerrado(true)

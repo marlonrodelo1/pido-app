@@ -33,7 +33,6 @@ export default function TiendaPublicaRoute() {
       .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre')
       .eq('slug', slug)
       .eq('activo', true)
-      .eq('plan_pro', true)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
