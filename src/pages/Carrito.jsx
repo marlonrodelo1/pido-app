@@ -181,8 +181,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [dirMsg, setDirMsg] = useState(null)
   const [tieneDelivery, setTieneDelivery] = useState(true)
   const establecimientoCarritoId = carrito.length > 0 ? carrito[0].establecimiento_id : null
-  // Modelo Shipday: deliveryDisponible deriva 100% de tiene_delivery del
-  // establecimiento (sincronizado con socios.marketplace_activo via cron+triggers).
+  // deliveryDisponible deriva 100% de tiene_delivery del establecimiento
+  // (sincronizado con el estado propio del socio: marketplace_activo / en_servicio
+  // via cron+triggers).
   const deliveryDisponible = tieneDelivery
 
   // Comprobar tiene_delivery + tarifa fija. Reactiva cuando el cron actualiza
@@ -552,8 +553,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       console.warn('[Carrito] revalidación rider socio falló', e)
     }
 
-    // Verificacion en tiempo real con Shipday: el socio del establecimiento
-    // tiene riders online ahora mismo. Bloquea el pago si no.
+    // Verificacion en tiempo real del estado propio del socio: el socio del
+    // establecimiento tiene riders online ahora mismo. Bloquea el pago si no.
     if (modoEntrega === 'delivery' && carrito[0]?.establecimiento_id) {
       try {
         const { data: avail, error: availErr } = await supabase.functions.invoke(
@@ -567,7 +568,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       } catch (e) {
         console.warn('[Carrito] check-socio-availability-now falló', e)
         // Si la edge falla, dejamos que siga (no queremos bloquear pagos por
-        // un fallo transitorio de Shipday — el create-shipday-order ya
+        // un fallo transitorio — el dispatcher (create-shipday-order) ya
         // manejará el caso 'no rider' al aceptar el restaurante).
       }
     }

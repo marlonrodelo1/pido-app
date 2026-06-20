@@ -1098,7 +1098,7 @@ const Precio = ({ onCta }) => (
           {[
             'Pedidos ilimitados',
             '0% comisión, siempre',
-            'Reparto Shipday incluido',
+            'Red de reparto incluida',
             'Tu propia URL en pidoo.es',
             'Stripe Connect Express',
             'Impresora térmica integrada',
@@ -1243,7 +1243,7 @@ const FAQ = () => {
   const qs = [
     {
       q: '¿Quién paga a los repartidores?',
-      a: 'Tú, el restaurante, vía Shipday. Pactas la tarifa con el socio repartidor y le pagas directamente como prefieras (Bizum, transferencia, efectivo). Pidoo no toca ese dinero ni cobra comisión por ello.',
+      a: 'Tú, el restaurante. Pactas la tarifa con el socio repartidor y le pagas directamente como prefieras (Bizum, transferencia, efectivo). Pidoo no toca ese dinero ni cobra comisión por ello.',
     },
     {
       q: '¿Necesito mi propia cuenta Stripe?',
@@ -1255,7 +1255,7 @@ const FAQ = () => {
     },
     {
       q: '¿Funciona en toda España?',
-      a: 'Sí, en toda la península, Baleares, Canarias, Ceuta y Melilla. La integración Shipday cubre todo el territorio.',
+      a: 'Sí, en toda la península, Baleares, Canarias, Ceuta y Melilla. Nuestra red de socios repartidores cubre todo el territorio.',
     },
     {
       q: '¿Qué pasa con el IVA?',
