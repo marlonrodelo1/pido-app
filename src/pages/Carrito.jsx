@@ -5,7 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
-import { crearPagoStripe, listarTarjetas, pagarConTarjetaGuardada } from '../lib/stripe'
+import { crearPagoStripe, listarTarjetas, pagarConTarjetaGuardada, TARJETAS_GUARDADAS_HABILITADO } from '../lib/stripe'
 import { sendPush } from '../lib/webPush'
 import { estaAbierto } from '../lib/horario'
 import { getCurrentPosition } from '../lib/geolocation'
@@ -302,6 +302,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   }, [open, modoEntrega, carrito.length, perfil?.latitud, perfil?.longitud, perfil?.direccion, tarifaEnvioFija])
 
   useEffect(() => {
+    // Tarjetas guardadas deshabilitadas (backend no implementado). No llamar
+    // a listarTarjetas para no mostrar un flujo que siempre devuelve [].
+    if (!TARJETAS_GUARDADAS_HABILITADO) return
     if (open && user?.id && metodoPago === 'tarjeta') {
       setLoadingCards(true)
       listarTarjetas(user.id).then(cards => {
@@ -941,7 +944,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   )}
 
                   {/* Tarjetas guardadas */}
-                  {metodoPago === 'tarjeta' && tarjetasGuardadas.length > 0 && (
+                  {TARJETAS_GUARDADAS_HABILITADO && metodoPago === 'tarjeta' && tarjetasGuardadas.length > 0 && (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 11, color: 'var(--c-muted)', marginBottom: 6 }}>Tarjetas guardadas</div>
                       {tarjetasGuardadas.map(c => (

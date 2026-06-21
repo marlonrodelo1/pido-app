@@ -3,6 +3,12 @@ import { supabase } from './supabase'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// Feature flag: las tarjetas guardadas NO están implementadas en el backend
+// (crear_pago_stripe devuelve cards:[] en list_cards y 400 en pay_saved).
+// Mientras no se implemente, mantener en false para no mostrar ese flujo.
+// listarTarjetas / pagarConTarjetaGuardada se conservan abajo para cuando se active.
+export const TARJETAS_GUARDADAS_HABILITADO = false
+
 async function callStripe(body) {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token || SUPABASE_ANON_KEY
