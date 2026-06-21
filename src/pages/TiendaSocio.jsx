@@ -160,9 +160,10 @@ export default function TiendaSocio() {
             setEstado('desactivado')
           } else if (s.marketplace_activo === false) {
             setEstado('paused')
-          } else if (s.rider_online === false) {
-            setEstado('desactivado')
           } else {
+            // Socio offline (rider_online=false) NO cierra la tienda: queda abierta
+            // en modo SOLO RECOGIDA (cada restaurante muestra recogida porque su
+            // tiene_delivery pasa a false). Solo cierra si está desactivado o pausado.
             setEstado('ok')
             try {
               sessionStorage.setItem('pidoo_socio_id', s.id)
