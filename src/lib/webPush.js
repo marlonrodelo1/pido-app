@@ -76,13 +76,13 @@ export async function registerWebPush(userType, ids = {}) {
           .eq(idField, idValue)
           .eq('user_type', userType)
           .neq('fcm_token', 'DEBUG')
-          .neq('endpoint', fcmToken)
+          .neq('endpoint', `fcm:${fcmToken}`)
         log('6b-cleaned-old-tokens')
       }
 
       const { error } = await supabase.from('push_subscriptions').upsert({
         fcm_token: fcmToken,
-        endpoint: fcmToken,
+        endpoint: `fcm:${fcmToken}`,
         p256dh: '',
         auth: '',
         user_type: userType,
