@@ -258,9 +258,6 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     }
   }, [est.id, est.tiene_delivery])
 
-  // sinRiders ahora es: el restaurante declara delivery pero el socio esta
-  // offline en Shipday (tiene_delivery=false en BD).
-  const sinRiders = est.tiene_delivery && !tieneDeliveryLive
 
   async function fetchCarta() {
     setLoading(true)
@@ -512,13 +509,13 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                 {est.rating.toFixed(1)}
               </Chip>
             )}
-            {est.tiene_delivery && (
+            {tieneDeliveryLive && (
               <Chip tone="paper">
                 <Bike size={11} style={{ marginRight: 4 }} /> Delivery
               </Chip>
             )}
             <Chip tone="paper">
-              <ShoppingBag size={11} style={{ marginRight: 4 }} /> Recogida
+              <ShoppingBag size={11} style={{ marginRight: 4 }} /> {tieneDeliveryLive ? 'Recogida' : 'Solo recogida'}
             </Chip>
           </div>
           {est.descripcion && (
@@ -549,18 +546,29 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
             </div>
           </div>
         )}
-        {!cerrado && sinRiders && (
+        {!cerrado && !tieneDeliveryLive && (
           <div style={{
-            marginTop: 14, padding: '12px 14px', borderRadius: 12,
-            background: C.warningSoft, display: 'flex', alignItems: 'center', gap: 10,
+            marginTop: 14, padding: '13px 15px', borderRadius: 14,
+            background: 'linear-gradient(135deg, rgba(201,149,81,0.20) 0%, rgba(201,149,81,0.07) 55%, rgba(255,255,255,0.30) 100%)',
+            border: '1px solid rgba(201,149,81,0.38)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 6px 20px rgba(201,149,81,0.14)',
+            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', gap: 12,
           }}>
-            <Bike size={20} style={{ color: '#8B6126', flexShrink: 0 }} />
+            <div style={{
+              width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+              background: 'linear-gradient(160deg, #D6A864 0%, #B9863F 100%)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45), 0 4px 10px rgba(168,69,31,0.20)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+            }}>
+              <ShoppingBag size={18} strokeWidth={2.2} />
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#8B6126', lineHeight: 1.2 }}>
-                Sin repartidores · Solo recogida
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#7A5A1E', lineHeight: 1.2 }}>
+                Solo recogida
               </div>
-              <div style={{ fontSize: 11, color: '#8B6126', opacity: 0.85, marginTop: 2, lineHeight: 1.4 }}>
-                Ahora mismo no hay repartidores disponibles. Puedes pedir para recoger tú.
+              <div style={{ fontSize: 11.5, color: '#8B6B30', opacity: 0.92, marginTop: 2, lineHeight: 1.4 }}>
+                Este restaurante no tiene reparto ahora mismo. Haz tu pedido y pásate a recogerlo.
               </div>
             </div>
           </div>

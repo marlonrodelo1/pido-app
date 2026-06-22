@@ -373,7 +373,7 @@ function ProductCardDesktop({ p, est, onAddSimple, onOpenModal, carrito, updateC
 /* ─── CategoriaSidebar ────────────────────────────────────── */
 function CategoriaSidebar({ categorias, productos, activeId, onChange }) {
   return (
-    <aside style={{ position: 'sticky', top: 24, width: 240, flexShrink: 0, alignSelf: 'flex-start' }}>
+    <aside style={{ position: 'sticky', top: 20, width: 196, flexShrink: 0, alignSelf: 'flex-start' }}>
       <div style={{
         fontSize: 11, fontWeight: 700, color: C.stone, textTransform: 'uppercase',
         letterSpacing: '0.06em', marginBottom: 10, padding: '0 12px',
@@ -434,8 +434,14 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
   const subtotalEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.precio_unitario * i.cantidad, 0)
   const vacio = cantDeEsteResto === 0
 
+  // Si no hay reparto disponible, forzar recogida (evita un carrito en modo
+  // delivery cuando solo se puede recoger).
+  useEffect(() => {
+    if (!deliveryDisponible && modoEntrega === 'delivery') elegirEntrega('recogida')
+  }, [deliveryDisponible, modoEntrega])
+
   return (
-    <aside style={{ position: 'sticky', top: 24, width: 380, flexShrink: 0, alignSelf: 'flex-start' }}>
+    <aside style={{ position: 'sticky', top: 20, width: 336, flexShrink: 0, alignSelf: 'flex-start' }}>
       <div style={{
         background: C.paper, borderRadius: 16, overflow: 'hidden',
         boxShadow: SH.md, border: `1px solid ${C.border}`,
@@ -465,31 +471,39 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
           <>
             {/* Selector entrega */}
             <div style={{ padding: 12, display: 'flex', gap: 6, background: C.cream }}>
-              <button
-                onClick={() => deliveryDisponible && elegirEntrega('delivery')}
-                disabled={!deliveryDisponible}
-                style={{
+              {deliveryDisponible ? (
+                <>
+                  <button
+                    onClick={() => elegirEntrega('delivery')}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 10,
+                      border: modoEntrega === 'delivery' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
+                      background: modoEntrega === 'delivery' ? C.terracottaSoft : C.paper,
+                      color: modoEntrega === 'delivery' ? C.terracotta2 : C.ink,
+                      fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  ><Bike size={13}/> Delivery</button>
+                  <button
+                    onClick={() => elegirEntrega('recogida')}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 10,
+                      border: modoEntrega === 'recogida' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
+                      background: modoEntrega === 'recogida' ? C.terracottaSoft : C.paper,
+                      color: modoEntrega === 'recogida' ? C.terracotta2 : C.ink,
+                      fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  ><ShoppingBag size={13}/> Recogida</button>
+                </>
+              ) : (
+                <div style={{
                   flex: 1, padding: '10px 0', borderRadius: 10,
-                  border: modoEntrega === 'delivery' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
-                  background: modoEntrega === 'delivery' ? C.terracottaSoft : C.paper,
-                  color: !deliveryDisponible ? C.stone2 : (modoEntrega === 'delivery' ? C.terracotta2 : C.ink),
-                  fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-                  cursor: deliveryDisponible ? 'pointer' : 'not-allowed',
+                  border: `1.5px solid ${C.terracotta}`, background: C.terracottaSoft,
+                  color: C.terracotta2, fontSize: 12, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  opacity: deliveryDisponible ? 1 : 0.55,
-                }}
-              ><Bike size={13}/> Delivery</button>
-              <button
-                onClick={() => elegirEntrega('recogida')}
-                style={{
-                  flex: 1, padding: '10px 0', borderRadius: 10,
-                  border: modoEntrega === 'recogida' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
-                  background: modoEntrega === 'recogida' ? C.terracottaSoft : C.paper,
-                  color: modoEntrega === 'recogida' ? C.terracotta2 : C.ink,
-                  fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}
-              ><ShoppingBag size={13}/> Recogida</button>
+                }}><ShoppingBag size={13}/> Solo recogida</div>
+              )}
             </div>
 
             {/* Items */}
@@ -600,7 +614,7 @@ function ResLine({ label, value, tone }) {
 function HeroBannerWide({ est }) {
   const tagline = [est.tipo, est.direccion?.split(',').slice(-2, -1)?.[0]?.trim()].filter(Boolean).join(' · ')
   return (
-    <div style={{ position: 'relative', height: 260, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: 228, overflow: 'hidden' }}>
       {est.banner_url ? (
         <>
           <div style={{
@@ -794,7 +808,6 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
     return map
   }, [productosVisibles, categorias])
 
-  const sinRiders = est.tiene_delivery && !tieneDeliveryLive
   const deliveryDisponible = tieneDeliveryLive
 
   return (
@@ -808,9 +821,12 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         @keyframes fadeInUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        .desktop-product-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-        @media (min-width: 1400px) {
+        .desktop-product-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
+        @media (min-width: 1300px) {
           .desktop-product-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (min-width: 1600px) {
+          .desktop-product-grid { grid-template-columns: repeat(4, 1fr); }
         }
       `}</style>
 
@@ -818,7 +834,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
       <HeroBannerWide est={est}/>
 
       {/* Contenido */}
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 32px', marginTop: -60 }}>
+      <div style={{ maxWidth: 1380, margin: '0 auto', padding: '0 clamp(20px, 3vw, 32px)', marginTop: -54 }}>
         {/* Identidad restaurante */}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 22 }}>
           <div style={{
@@ -855,8 +871,8 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
                   {est.rating.toFixed(1)}
                 </Chip>
               )}
-              {est.tiene_delivery && <Chip tone="paper"><Bike size={11} style={{ marginRight: 4 }}/> Delivery</Chip>}
-              <Chip tone="paper"><ShoppingBag size={11} style={{ marginRight: 4 }}/> Recogida</Chip>
+              {deliveryDisponible && <Chip tone="paper"><Bike size={11} style={{ marginRight: 4 }}/> Delivery</Chip>}
+              <Chip tone={deliveryDisponible ? 'paper' : 'warning'}><ShoppingBag size={11} style={{ marginRight: 4 }}/> {deliveryDisponible ? 'Recogida' : 'Solo recogida'}</Chip>
             </div>
           </div>
         </div>
@@ -870,13 +886,8 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
             </div>
           </BannerEstado>
         )}
-        {!cerrado && sinRiders && (
-          <BannerEstado tono="warning" icon={<Bike size={22}/>}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#8B6126' }}>Sin repartidores · Solo recogida</div>
-            <div style={{ fontSize: 13, color: '#8B6126', opacity: 0.85 }}>
-              Ahora mismo no hay repartidores disponibles. Puedes pedir para recoger tú.
-            </div>
-          </BannerEstado>
+        {!cerrado && !deliveryDisponible && (
+          <BannerSoloRecogida />
         )}
 
         {/* Promociones */}
@@ -909,7 +920,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
 
         {/* Layout 3 columnas */}
         <div style={{
-          display: 'flex', gap: 32, marginTop: 32, alignItems: 'flex-start',
+          display: 'flex', gap: 'clamp(18px, 1.8vw, 28px)', marginTop: 28, alignItems: 'flex-start',
           filter: cerrado ? 'grayscale(0.45)' : 'none',
           paddingBottom: 48,
         }}>
@@ -1082,6 +1093,37 @@ function SectionLabel({ children }) {
       textTransform: 'uppercase', letterSpacing: '0.08em',
       display: 'flex', alignItems: 'center', gap: 6,
     }}>{children}</div>
+  )
+}
+
+// Banner glossy "Solo recogida" — cuando el restaurante no tiene reparto disponible.
+function BannerSoloRecogida() {
+  return (
+    <div style={{
+      marginTop: 22,
+      padding: '15px 18px',
+      borderRadius: 16,
+      background: 'linear-gradient(135deg, rgba(201,149,81,0.20) 0%, rgba(201,149,81,0.07) 55%, rgba(255,255,255,0.35) 100%)',
+      border: '1px solid rgba(201,149,81,0.38)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 26px rgba(201,149,81,0.16)',
+      backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+      display: 'flex', alignItems: 'center', gap: 14,
+    }}>
+      <div style={{
+        width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+        background: 'linear-gradient(160deg, #D6A864 0%, #B9863F 100%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45), 0 4px 10px rgba(168,69,31,0.22)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+      }}>
+        <ShoppingBag size={21} strokeWidth={2.2}/>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 800, color: '#7A5A1E', letterSpacing: '-0.01em' }}>Solo recogida</div>
+        <div style={{ fontSize: 12.5, color: '#8B6B30', opacity: 0.92, marginTop: 2, lineHeight: 1.4 }}>
+          Este restaurante no tiene reparto a domicilio ahora mismo. Haz tu pedido y pásate a recogerlo cuando esté listo.
+        </div>
+      </div>
+    </div>
   )
 }
 
