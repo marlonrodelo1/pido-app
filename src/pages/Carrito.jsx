@@ -330,7 +330,6 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [restConfig, setRestConfig] = useState({
     acepta_efectivo: true,
     acepta_tarjeta_online: true,
-    acepta_datafono: false, // método nuevo: default false hasta confirmar BD
     exige_registro_cliente: false,
   })
   useEffect(() => {
@@ -341,29 +340,27 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     ;(async () => {
       const { data } = await supabase
         .from('establecimientos')
-        .select('acepta_efectivo, acepta_tarjeta_online, acepta_datafono, exige_registro_cliente')
+        .select('acepta_efectivo, acepta_tarjeta_online, exige_registro_cliente')
         .eq('id', estId)
         .maybeSingle()
       if (cancel || !data) return
       setRestConfig({
         acepta_efectivo: data.acepta_efectivo ?? true,
         acepta_tarjeta_online: data.acepta_tarjeta_online ?? true,
-        acepta_datafono: data.acepta_datafono ?? false,
         exige_registro_cliente: data.exige_registro_cliente ?? false,
       })
     })()
     return () => { cancel = true }
   }, [open, carrito[0]?.establecimiento_id])
 
-  // Métodos disponibles según config del restaurante.
-  // Para clientes invitados (sin login) se oculta la tarjeta online porque
-  // el flujo Stripe requiere cuenta para reembolsos y SCA 3DS. El guest solo
-  // puede pagar con efectivo o datáfono (al entregar).
+  // Métodos disponibles según config del restaurante. Solo dos:
+  // tarjeta online (Stripe) y efectivo al entregar. Para clientes invitados
+  // (sin login) se oculta la tarjeta online porque el flujo Stripe requiere
+  // cuenta para reembolsos y SCA 3DS.
   const metodosDisponibles = useMemo(() => {
     const list = []
     if (restConfig.acepta_tarjeta_online && user) list.push({ id: 'tarjeta',  label: 'Tarjeta',  icon: 'card' })
     if (restConfig.acepta_efectivo)               list.push({ id: 'efectivo', label: 'Efectivo', icon: null })
-    if (restConfig.acepta_datafono)               list.push({ id: 'datafono', label: 'Datáfono', icon: 'card' })
     return list
   }, [restConfig, user])
 
