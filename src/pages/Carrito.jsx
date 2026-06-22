@@ -146,7 +146,7 @@ function ResLine({ label, value, tone }) {
 
 export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin }) {
   const { user, perfil, updatePerfil } = useAuth()
-  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
+  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
   const [tarifaEnvioFija, setTarifaEnvioFija] = useState(null)
   const [openInternal, setOpenInternal] = useState(false)
   const open = openProp !== undefined ? openProp : openInternal
@@ -224,6 +224,16 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       setModoEntrega('recogida')
     }
   }, [tieneDelivery, modoEntrega])
+
+  // Revertir a delivery si el reparto vuelve a estar disponible y el usuario NO
+  // eligio recogida manualmente. Sin esto, el carrito quedaba ATRAPADO en recogida
+  // tras un rato con el socio offline (recogida era un latch de una sola via),
+  // aunque el socio se reconectara — provocando pedidos en recogida no deseados.
+  useEffect(() => {
+    if (tieneDelivery && modoEntrega === 'recogida' && !entregaManual) {
+      setModoEntrega('delivery')
+    }
+  }, [tieneDelivery, modoEntrega, entregaManual])
 
   // Sincronizar sinDireccion con el perfil real cada vez que cambian sus campos
   // de direccion. Independiente de si el modal esta abierto, asi cuando el

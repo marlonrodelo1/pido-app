@@ -427,7 +427,7 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
   const {
     carrito, removeItem, updateCantidad, totalItems,
     subtotal, envio, total, propina,
-    modoEntrega, setModoEntrega,
+    modoEntrega, setModoEntrega, elegirEntrega,
   } = useCart()
   const itemsDeEsteResto = carrito.filter(i => i.establecimiento_id === est.id)
   const cantDeEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.cantidad, 0)
@@ -466,7 +466,7 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
             {/* Selector entrega */}
             <div style={{ padding: 12, display: 'flex', gap: 6, background: C.cream }}>
               <button
-                onClick={() => deliveryDisponible && setModoEntrega('delivery')}
+                onClick={() => deliveryDisponible && elegirEntrega('delivery')}
                 disabled={!deliveryDisponible}
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 10,
@@ -480,7 +480,7 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
                 }}
               ><Bike size={13}/> Delivery</button>
               <button
-                onClick={() => setModoEntrega('recogida')}
+                onClick={() => elegirEntrega('recogida')}
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 10,
                   border: modoEntrega === 'recogida' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,

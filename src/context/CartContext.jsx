@@ -10,6 +10,11 @@ export function CartProvider({ children }) {
   const [propina, setPropina] = useState(0)
   const [metodoPago, setMetodoPago] = useState('tarjeta')
   const [modoEntrega, setModoEntrega] = useState('delivery') // 'delivery' o 'recogida'
+  // entregaManual = el usuario eligió el modo explícitamente. Si es false, el modo
+  // lo gestiona el sistema (p. ej. forzar recogida cuando el socio está offline) y
+  // se puede revertir a delivery automáticamente cuando el reparto vuelve a estar
+  // disponible. Evita que el carrito quede "atrapado" en recogida.
+  const [entregaManual, setEntregaManual] = useState(false)
   const [envio, setEnvio] = useState(0)
   const [distanciaKm, setDistanciaKm] = useState(null)
   const [envioLoading, setEnvioLoading] = useState(false)
@@ -82,9 +87,17 @@ export function CartProvider({ children }) {
     setCarrito([])
     setPropina(0)
     setModoEntrega('delivery')
+    setEntregaManual(false)
     setEnvio(0)
     setDistanciaKm(null)
   }
+
+  // Setter para cuando el USUARIO elige el modo de entrega (marca elección manual,
+  // así el sistema no la sobrescribe revirtiendo a delivery).
+  const elegirEntrega = useCallback((modo) => {
+    setEntregaManual(true)
+    setModoEntrega(modo)
+  }, [])
 
   const calcularEnvio = useCallback(async (latCliente, lngCliente, socioId = null) => {
     const cart = carritoRef.current
@@ -145,11 +158,11 @@ export function CartProvider({ children }) {
   const contextValue = useMemo(() => ({
     carrito, addItem, removeItem, updateCantidad, clearCart,
     propina, setPropina, metodoPago, setMetodoPago,
-    modoEntrega, setModoEntrega,
+    modoEntrega, setModoEntrega, entregaManual, elegirEntrega,
     totalItems, subtotal, envio: envioFinal, total,
     calcularEnvio, envioLoading, envioError, distanciaKm,
     origenPedido, setOrigenPedido, setEnvio,
-  }), [carrito, propina, metodoPago, modoEntrega, totalItems, subtotal, envioFinal, total, envioLoading, envioError, distanciaKm, calcularEnvio, origenPedido])
+  }), [carrito, propina, metodoPago, modoEntrega, entregaManual, elegirEntrega, totalItems, subtotal, envioFinal, total, envioLoading, envioError, distanciaKm, calcularEnvio, origenPedido])
 
   return (
     <CartContext.Provider value={contextValue}>
