@@ -40,6 +40,15 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
   const [perfilSubInicial, setPerfilSubInicial] = useState(null)
   const { totalItems } = useCart()
 
+  // Si NO estamos en el marketplace de un socio (socioData null = /app general),
+  // limpiar el contexto socio para que los pedidos NO se etiqueten como del
+  // marketplace de un socio (evita el "leak" de pidoo_socio_id de una visita previa).
+  useEffect(() => {
+    if (!socioData) {
+      try { sessionStorage.removeItem('pidoo_socio_id'); sessionStorage.removeItem('pidoo_socio_slug') } catch (_) {}
+    }
+  }, [socioData])
+
   const SECCIONES_PROTEGIDAS = ['favoritos', 'pedidos', 'notificaciones', 'perfil']
 
   useEffect(() => {

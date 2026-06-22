@@ -462,17 +462,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       const raw = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
       if (raw) socioIdTracking = raw
     } catch (_) {}
+    // Marketplace del socio: solo si hay pidoo_socio_id (lo setea TiendaSocio en
+    // /s/:slug; /app y /:slug lo limpian). En ese caso el pedido va atado a ESE
+    // socio: origen_pedido='marketplace_socio' → el dispatcher lo asigna solo a ese
+    // socio y la factura le acredita la comision (incluso en recogida). Si no es
+    // marketplace, socio_id=null y el dispatcher elige al socio mas cercano.
+    const esMarketplaceSocio = !!socioIdTracking
 
     const insertPayload = {
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
-      canal, socio_id: socioIdTracking, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
+      canal, socio_id: esMarketplaceSocio ? socioIdTracking : null, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
       descuento: descuento > 0 ? descuento : null,
       promo_titulo: descuento > 0 && promoActiva ? promoActiva.titulo : null, notas,
       lat_entrega: latEntrega,
       lng_entrega: lngEntrega,
       direccion_entrega: dirEntrega,
-      origen_pedido: origenPedido || 'pido',
+      origen_pedido: esMarketplaceSocio ? 'marketplace_socio' : (origenPedido || 'pido'),
     }
     // Datos del guest cuando no hay sesión
     if (!user && guestPermitido) {

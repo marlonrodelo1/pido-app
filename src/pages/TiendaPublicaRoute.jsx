@@ -25,6 +25,12 @@ export default function TiendaPublicaRoute() {
   const [estado, setEstado] = useState(slugValido ? 'loading' : 'notfound')
   const [tienda, setTienda] = useState(null)
 
+  // Pedido por la tienda directa del restaurante (no marketplace del socio):
+  // limpiar el contexto socio para no etiquetar el pedido como marketplace.
+  useEffect(() => {
+    try { sessionStorage.removeItem('pidoo_socio_id'); sessionStorage.removeItem('pidoo_socio_slug') } catch (_) {}
+  }, [])
+
   useEffect(() => {
     if (!slugValido) return
     let cancelled = false
