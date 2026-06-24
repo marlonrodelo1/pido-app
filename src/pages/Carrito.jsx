@@ -144,7 +144,7 @@ function ResLine({ label, value, tone }) {
   )
 }
 
-export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin }) {
+export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin, socioData = null }) {
   const { user, perfil, updatePerfil } = useAuth()
   const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
   const [tarifaEnvioFija, setTarifaEnvioFija] = useState(null)
@@ -181,10 +181,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [dirMsg, setDirMsg] = useState(null)
   const [tieneDelivery, setTieneDelivery] = useState(true)
   const establecimientoCarritoId = carrito.length > 0 ? carrito[0].establecimiento_id : null
-  // deliveryDisponible deriva 100% de tiene_delivery del establecimiento
-  // (sincronizado con el estado propio del socio: marketplace_activo / en_servicio
-  // via cron+triggers).
-  const deliveryDisponible = tieneDelivery
+  // deliveryDisponible = tiene_delivery del establecimiento Y, si venimos del
+  // marketplace de un socio, que ESE socio (= rider) esté online. El flag global
+  // del establecimiento es compartido entre socios y no decide por-socio.
+  const socioOnline = socioData ? !!socioData.rider_online : true
+  const deliveryDisponible = tieneDelivery && socioOnline
 
   // Comprobar tiene_delivery + tarifa fija. Reactiva cuando el cron actualiza
   // tiene_delivery (Realtime sobre la fila concreta del establecimiento).
@@ -217,23 +218,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     return () => { cancel = true; try { supabase.removeChannel(ch) } catch (_) {} }
   }, [open, carrito.length > 0 ? carrito[0]?.establecimiento_id : null, origenPedido])
 
-  // Forzar recogida si el establecimiento pierde reparto mientras el carrito
-  // esta abierto (socio se desconecto o restaurante quito delivery).
+  // Forzar recogida si se pierde el reparto mientras el carrito esta abierto
+  // (socio se desconecto, restaurante quito delivery, o socio del marketplace offline).
   useEffect(() => {
-    if (!tieneDelivery && modoEntrega === 'delivery') {
+    if (!deliveryDisponible && modoEntrega === 'delivery') {
       setModoEntrega('recogida')
     }
-  }, [tieneDelivery, modoEntrega])
+  }, [deliveryDisponible, modoEntrega])
 
   // Revertir a delivery si el reparto vuelve a estar disponible y el usuario NO
   // eligio recogida manualmente. Sin esto, el carrito quedaba ATRAPADO en recogida
   // tras un rato con el socio offline (recogida era un latch de una sola via),
   // aunque el socio se reconectara — provocando pedidos en recogida no deseados.
   useEffect(() => {
-    if (tieneDelivery && modoEntrega === 'recogida' && !entregaManual) {
+    if (deliveryDisponible && modoEntrega === 'recogida' && !entregaManual) {
       setModoEntrega('delivery')
     }
-  }, [tieneDelivery, modoEntrega, entregaManual])
+  }, [deliveryDisponible, modoEntrega, entregaManual])
 
   // Sincronizar sinDireccion con el perfil real cada vez que cambian sus campos
   // de direccion. Independiente de si el modal esta abierto, asi cuando el
@@ -577,7 +578,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           'check-socio-availability-now',
           { body: { establecimiento_id: carrito[0].establecimiento_id } },
         )
-        if (!availErr && avail && avail.available === false) {
+        if (!availErr && avail && avail.disponible === false) {
           setErrorMsg('No hay repartidores disponibles en este momento. Vuelve a intentarlo en unos minutos o elige Recogida.')
           return
         }

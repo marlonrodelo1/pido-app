@@ -562,9 +562,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {
               const estDest = estaAbierto(r)
-              // 'Solo recogida' = restaurante abierto pero sin reparto activo
-              // (tiene_delivery=false → socio offline en Shipday o no configurado).
-              const sinRidersDest = estDest.abierto && !r.tiene_delivery
+              // 'Solo recogida' = restaurante abierto pero sin reparto activo.
+              // En el marketplace de un socio, además, si ESE socio (= rider) está
+              // offline no hay domicilio aunque el flag global del restaurante diga lo contrario.
+              const sinRidersDest = estDest.abierto && (!r.tiene_delivery || (socioData && !socioData.rider_online))
               return (
                 <div key={r.id} onClick={() => onOpenRest(r)} style={{ minWidth: 280, cursor: 'pointer', flexShrink: 0 }}>
                   {/* Image container — glass card (con borde naranja en modo socio destacado) */}
@@ -757,7 +758,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
               </div>
             )
           }
-          const sinRiders = estado.abierto && !r.tiene_delivery
+          const sinRiders = estado.abierto && (!r.tiene_delivery || (socioData && !socioData.rider_online))
           items.push(
             <div
               key={r.id}

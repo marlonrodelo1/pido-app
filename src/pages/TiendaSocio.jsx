@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import AppShell from '../AppShell'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentPosition } from '../lib/geolocation'
+import { supabase } from '../lib/supabase'
 
 const SUPABASE_URL = 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
 
@@ -188,6 +189,28 @@ export default function TiendaSocio() {
       if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [slug, perfil?.latitud, perfil?.longitud, liveCoords])
+
+  // Realtime: reflejar al instante online/offline (en_servicio) y pausa/baja del
+  // socio. El polling de 20s es el respaldo; esto hace que el cambio se vea ya.
+  // `rider_online` gobierna el delivery del marketplace (socio = rider), y se
+  // propaga vía socioData a Home/RestDetalle/Carrito.
+  useEffect(() => {
+    if (!socio?.id) return
+    const ch = supabase
+      .channel(`socio-tienda-${socio.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'socios', filter: `id=eq.${socio.id}`,
+      }, (payload) => {
+        const n = payload.new
+        if (!n) return
+        setSocio((prev) => (prev ? { ...prev, ...n, rider_online: !!n.en_servicio } : prev))
+        if (n.activo === false) setEstado('desactivado')
+        else if (n.marketplace_activo === false) setEstado('paused')
+        else setEstado('ok')
+      })
+      .subscribe()
+    return () => { try { supabase.removeChannel(ch) } catch (_) {} }
+  }, [socio?.id])
 
   // Si el perfil no tiene ubicación guardada, pedir GPS en vivo para poder
   // filtrar el marketplace por radio (mismo respaldo que la app principal).

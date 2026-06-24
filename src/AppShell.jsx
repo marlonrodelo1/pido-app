@@ -186,7 +186,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           {seccion === 'tracking' && pedidoActivo
             ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
             : restOpen && seccion === 'home'
-            ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} onRequireLogin={() => setLoginOpen(true)} />
+            ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} onRequireLogin={() => setLoginOpen(true)} socioData={socioData} />
             : seccion === 'repartidores'
             ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'
@@ -210,7 +210,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
       </div>
 
       <Suspense fallback={null}>
-        <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} onRequireLogin={() => setLoginOpen(true)} />
+        <Carrito onPedidoCreado={handlePedidoCreado} open={carritoOpen} setOpen={setCarritoOpen} onRequireLogin={() => setLoginOpen(true)} socioData={socioData} />
       </Suspense>
       <BottomNav active={seccion} totalItems={totalItems} onChange={s => {
         if (s === 'carrito') {

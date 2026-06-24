@@ -161,7 +161,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
 }
 
 /* ─── RestDetalle ─────────────────────────────────────────── */
-export default function RestDetalle({ establecimiento, onBack, modoTienda = false, onRequireLogin }) {
+export default function RestDetalle({ establecimiento, onBack, modoTienda = false, onRequireLogin, socioData = null }) {
   const { addItem, carrito, updateCantidad, totalItems, subtotal } = useCart()
   const { user } = useAuth()
   const [categorias, setCategorias] = useState([])
@@ -228,6 +228,11 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   // tiene_delivery refrescado en vivo: si el socio del establecimiento se
   // desconecta de Shipday, este valor cambia y la UI reacciona al instante.
   const [tieneDeliveryLive, setTieneDeliveryLive] = useState(est.tiene_delivery)
+  // En el marketplace de un socio el reparto lo hace ESE socio (= rider): si está
+  // offline, no hay domicilio aunque el flag global del establecimiento diga lo
+  // contrario (es compartido con otros socios). Sin socioData (app general) no aplica.
+  const socioOnline = socioData ? !!socioData.rider_online : true
+  const deliveryDisponible = tieneDeliveryLive && socioOnline
 
   useEffect(() => {
     setTieneDeliveryLive(est.tiene_delivery)
@@ -509,13 +514,13 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                 {est.rating.toFixed(1)}
               </Chip>
             )}
-            {tieneDeliveryLive && (
+            {deliveryDisponible && (
               <Chip tone="paper">
                 <Bike size={11} style={{ marginRight: 4 }} /> Delivery
               </Chip>
             )}
             <Chip tone="paper">
-              <ShoppingBag size={11} style={{ marginRight: 4 }} /> {tieneDeliveryLive ? 'Recogida' : 'Solo recogida'}
+              <ShoppingBag size={11} style={{ marginRight: 4 }} /> {deliveryDisponible ? 'Recogida' : 'Solo recogida'}
             </Chip>
           </div>
           {est.descripcion && (
@@ -546,7 +551,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
             </div>
           </div>
         )}
-        {!cerrado && !tieneDeliveryLive && (
+        {!cerrado && !deliveryDisponible && (
           <div style={{
             marginTop: 14, padding: '13px 15px', borderRadius: 14,
             background: 'linear-gradient(135deg, rgba(201,149,81,0.20) 0%, rgba(201,149,81,0.07) 55%, rgba(255,255,255,0.30) 100%)',
