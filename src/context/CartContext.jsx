@@ -122,9 +122,13 @@ export function CartProvider({ children }) {
       })
       if (error) {
         const msg = error?.context ? await error.context.json().catch(() => null) : null
+        // delivery deshabilitado (restaurante sin reparto / socio offline) → tratar como recogida,
+        // NO mostrar un envío estimado inventado de 2,50€.
+        if (msg?.delivery_disabled) { setEnvio(0); setEnvioError(false); return }
         const fuera = msg?.fuera_de_radio
         throw { message: msg?.error || error.message, fuera_de_radio: fuera }
       }
+      if (data?.delivery_disabled) { setEnvio(0); setEnvioError(false); return }
       if (data?.fuera_de_radio) {
         throw { message: data.error, fuera_de_radio: true }
       }

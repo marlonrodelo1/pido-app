@@ -146,7 +146,7 @@ function ResLine({ label, value, tone }) {
 
 export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin, socioData = null }) {
   const { user, perfil, updatePerfil } = useAuth()
-  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
+  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, elegirEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
   const [tarifaEnvioFija, setTarifaEnvioFija] = useState(null)
   const [openInternal, setOpenInternal] = useState(false)
   const open = openProp !== undefined ? openProp : openInternal
@@ -166,6 +166,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [promoActiva, setPromoActiva] = useState(null)
   const [descuento, setDescuento] = useState(0)
   const [notas, setNotas] = useState('')
+  // Teléfono de contacto del cliente. Si el perfil ya tiene teléfono se usa ese; si no,
+  // se pide aquí (obligatorio) y se guarda en el perfil + en el pedido para que el
+  // socio/rider pueda llamar al cliente. Resuelve el bug "no aparece el teléfono".
+  const [telefonoInput, setTelefonoInput] = useState('')
   const tieneDireccion = () => !!(perfil?.latitud && perfil?.longitud && perfil?.direccion)
   // Optimista: arranca en false (no mostrar aviso) hasta que perfil cargue
   // y confirme. Si arrancase en true cuando perfil aun es null, mostraria
@@ -372,8 +376,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     if (!stillValid) setMetodoPago(metodosDisponibles[0].id)
   }, [metodosDisponibles, metodoPago, setMetodoPago])
 
-  // Guest checkout: form para cliente sin cuenta cuando el restaurante lo permite.
-  const guestPermitido = !user && !restConfig.exige_registro_cliente
+  // Guest checkout DESACTIVADO para el lanzamiento: el flujo Stripe y las policies RLS
+  // de `pedidos` requieren cuenta (usuario_id = auth.uid()). Exigir cuenta además
+  // garantiza un teléfono de contacto para que el socio pueda llamar al cliente.
+  const guestPermitido = false
   const [guestNombre, setGuestNombre] = useState('')
   const [guestTelefono, setGuestTelefono] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -477,6 +483,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       lng_entrega: lngEntrega,
       direccion_entrega: dirEntrega,
       origen_pedido: esMarketplaceSocio ? 'marketplace_socio' : (origenPedido || 'pido'),
+      // Snapshot del teléfono de contacto EN el pedido → el socio lo lee sin tocar la RLS de usuarios.
+      cliente_telefono: (perfil?.telefono || telefonoInput || '').trim() || null,
     }
     // Datos del guest cuando no hay sesión
     if (!user && guestPermitido) {
@@ -536,17 +544,19 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   async function iniciarPago() {
     if (isPaying.current) return
-    // Guest checkout vs login obligatorio según config del restaurante
+    // Login obligatorio para todos (guest checkout desactivado: lo requieren Stripe + RLS).
     if (!user) {
-      if (restConfig.exige_registro_cliente) {
-        onRequireLogin?.()
-        return
-      }
-      // Guest: validar campos del form
-      if (!guestValido()) {
-        setErrorMsg('Por favor completa tu nombre, teléfono' + (modoEntrega === 'delivery' ? ' y dirección' : '') + ' antes de continuar.')
-        return
-      }
+      onRequireLogin?.()
+      return
+    }
+    // Teléfono de contacto obligatorio: el socio/rider debe poder llamar al cliente.
+    const telContacto = (perfil?.telefono || telefonoInput || '').trim()
+    if (telContacto.replace(/\D/g, '').length < 6) {
+      setErrorMsg('Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
+      return
+    }
+    if (!perfil?.telefono) {
+      try { await updatePerfil({ telefono: telContacto }) } catch (_) {}
     }
     if (user && modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
       setSinDireccion(true); setMostrarAddDir(true); return
@@ -808,7 +818,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   )}
                   <div style={{ display: 'flex', gap: 6 }}>
                     {(deliveryDisponible ? ['delivery', 'recogida'] : ['recogida']).map(m => (
-                      <button key={m} onClick={() => setModoEntrega(m)} style={S.selBtn(modoEntrega === m)}>
+                      <button key={m} onClick={() => elegirEntrega(m)} style={S.selBtn(modoEntrega === m)}>
                         {m === 'delivery' ? '🛵 Delivery' : '🛍 Recogida'}
                       </button>
                     ))}
@@ -917,7 +927,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     textAlign: 'center',
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
-                      Este restaurante exige cuenta para pedir
+                      Inicia sesión para hacer tu pedido
                     </div>
                     <button
                       onClick={() => onRequireLogin?.()}
@@ -929,6 +939,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     >
                       Iniciar sesión o registrarme
                     </button>
+                  </div>
+                )}
+
+                {/* Teléfono de contacto — obligatorio si el perfil no lo tiene (para que el socio pueda llamar) */}
+                {user && !perfil?.telefono && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={S.label}>Teléfono de contacto</div>
+                    <input
+                      value={telefonoInput}
+                      onChange={(e) => setTelefonoInput(e.target.value)}
+                      placeholder="Tu teléfono *"
+                      type="tel"
+                      style={S.input}
+                    />
+                    <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>
+                      El repartidor lo usará para llamarte si hay algún problema con la entrega.
+                    </div>
                   </div>
                 )}
 
@@ -1120,7 +1147,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                               })
                             }
                             setSinDireccion(false); setMostrarAddDir(false); setDirMsg(null)
-                            if (modoEntrega === 'delivery') calcularEnvio(pos.lat, pos.lng, socioId).catch(() => {})
+                            if (modoEntrega === 'delivery') calcularEnvio(pos.lat, pos.lng, null).catch(() => {})
                           } catch { setDirMsg('No se pudo obtener la ubicación') }
                           finally { setGeoLoading(false) }
                         }} disabled={geoLoading} style={{
@@ -1150,7 +1177,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                                   })
                                 }
                                 setSinDireccion(false); setMostrarAddDir(false)
-                                if (modoEntrega === 'delivery') calcularEnvio(place.lat, place.lng, 'pido').catch(() => {})
+                                if (modoEntrega === 'delivery') calcularEnvio(place.lat, place.lng, null).catch(() => {})
                               }
                             }}
                             placeholder="Buscar dirección..."
