@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
+// build-marker: 2026-06-27-riders-socios-online (forzar redeploy y verificar build)
+export const DRIVERS_BUILD = 'riders-socios-online-27jun'
+
 // useDriversOnline — ¿hay repartidor disponible para este restaurante AHORA?
 //
 // MODELO ACTUAL (socio = rider): el reparto lo hacen los SOCIOS vinculados al
