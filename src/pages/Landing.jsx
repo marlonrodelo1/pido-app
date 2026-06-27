@@ -384,9 +384,9 @@ const Hero = ({ onCta }) => (
             margin: 0,
           }}
         >
-          Tu propio Glovo.
+          Tu propio delivery.
           <br />
-          <span style={{ color: 'var(--c-terracotta)' }}>Sin comisiones.</span>
+          <span style={{ color: 'var(--c-terracotta)' }}>Solo 10% por pedido.</span>
         </h1>
         <p
           style={{
@@ -397,9 +397,9 @@ const Hero = ({ onCta }) => (
             maxWidth: 480,
           }}
         >
-          Recibe pedidos en tu tienda online por{' '}
-          <b style={{ color: 'var(--c-ink)' }}>39€/mes</b>. Sin contratos. El 100% de
-          cada pedido es tuyo.
+          Recibe pedidos en tu tienda online con tu marca. Solo{' '}
+          <b style={{ color: 'var(--c-ink)' }}>10% por pedido</b> — la mitad que Glovo. Sin
+          cuotas mensuales.
         </p>
         <div
           style={{
@@ -699,8 +699,9 @@ const Hero = ({ onCta }) => (
 /* ───────────────────── COMPARATIVA ───────────────────── */
 const Compare = () => {
   const filas = [
-    { l: 'Comisión por pedido', p: '0 %', g: '25–35 %', je: '14–30 %', pT: 'sage', oT: 'danger' },
-    { l: 'Cuota mensual', p: '39 €', g: '0 €', je: '0 €' },
+    { l: 'Comisión por pedido', p: '10 %', g: '25–35 %', je: '14–30 %', pT: 'sage', oT: 'danger' },
+    { l: 'Cuota mensual', p: '0 €', g: '0 €', je: '0 €', pT: 'sage' },
+    { l: 'Alta (pago único)', p: '150 €', g: '0 €', je: '0 €' },
     { l: 'Tu propia URL', p: '✓', g: '✗', je: '✗', pT: 'sage', oT: 'stone' },
     {
       l: 'Dinero directo a tu cuenta',
@@ -836,15 +837,15 @@ const Valor = () => (
           Todo lo que necesitas
         </h2>
         <p style={{ fontSize: 17, color: 'var(--c-stone)', marginTop: 10 }}>
-          Sin sorpresas, sin comisiones
+          Sin sorpresas, sin cuotas mensuales
         </p>
       </div>
       <div className="landing-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
         {[
           {
             i: <Percent size={26} />,
-            t: '0% comisión',
-            d: 'Nunca te quitamos ni un céntimo de cada pedido. Lo que cobras al cliente, llega a tu cuenta.',
+            t: 'Solo 10% por pedido',
+            d: 'La comisión más baja: 10% por pedido entregado, menos de la mitad que Glovo o Just Eat.',
             mono: null,
           },
           {
@@ -966,7 +967,7 @@ const Como = () => (
             n: '3',
             i: <Share2 size={20} />,
             t: 'Compartes tu URL y vendes',
-            d: 'Sin comisiones, ya. El dinero llega a tu cuenta.',
+            d: 'Solo 10% por pedido. El resto llega a tu cuenta en la liquidación semanal.',
           },
         ].map((p, i) => (
           <div key={i} style={{ textAlign: 'center', position: 'relative' }}>
@@ -1070,10 +1071,10 @@ const Precio = ({ onCta }) => (
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              39
+              10
             </span>
             <span style={{ fontSize: 24, color: 'var(--c-terracotta)', fontWeight: 700 }}>
-              €
+              %
             </span>
             <span
               style={{
@@ -1083,7 +1084,7 @@ const Precio = ({ onCta }) => (
                 marginLeft: 4,
               }}
             >
-              /mes
+              por pedido
             </span>
           </div>
         </div>
@@ -1097,7 +1098,8 @@ const Precio = ({ onCta }) => (
         >
           {[
             'Pedidos ilimitados',
-            '0% comisión, siempre',
+            'Sin cuota mensual',
+            'Alta única de 150€',
             'Red de reparto incluida',
             'Tu propia URL en pidoo.es',
             'Stripe Connect Express',
@@ -1139,7 +1141,7 @@ const Testim = () => {
     {
       n: 'Carmen',
       r: 'Trattoria Nonna · Madrid',
-      q: 'Antes pagaba 28% a Glovo. Con Pidoo recupero esos 800€ al mes. Mi propia URL es lo mejor.',
+      q: 'Antes pagaba 28% a Glovo. Con Pidoo pago un 10% y encima tengo mi propia URL. El ahorro es enorme.',
       i: 'C',
       tone: 'var(--c-terracotta)',
     },
@@ -1163,7 +1165,7 @@ const Testim = () => {
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 50 }}>
           <h2 className="landing-h2" style={{ fontSize: 40, color: 'var(--c-ink)', margin: 0, letterSpacing: '-0.03em', fontWeight: 800 }}>
-            Restaurantes que cobran al 100%
+            Restaurantes que pagan menos comisión
           </h2>
         </div>
         <div className="landing-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
@@ -1259,11 +1261,11 @@ const FAQ = () => {
     },
     {
       q: '¿Qué pasa con el IVA?',
-      a: 'Tú facturas a tus clientes finales como siempre. Nosotros te emitimos una factura mensual por la suscripción Pidoo de 39€ + IVA (21% en península, 0% en Canarias, IPSI en Ceuta y Melilla).',
+      a: 'Tú facturas a tus clientes finales como siempre. Pidoo te emite una factura por su comisión del 10% por pedido + IVA según tu zona (0% en Canarias, 21% en península, IPSI en Ceuta y Melilla).',
     },
     {
       q: '¿Hay permanencia?',
-      a: 'No, ninguna. Pagas mes a mes y cancelas cuando quieras.',
+      a: 'No, ninguna. No hay cuota mensual: solo pagas el 10% de los pedidos que entran. El alta es un pago único de 150€.',
     },
   ]
   return (
@@ -1400,7 +1402,7 @@ const Footer = () => (
               maxWidth: 280,
             }}
           >
-            La forma honesta de tener tu propio delivery. Sin comisiones, 39€/mes.
+            La forma honesta de tener tu propio delivery. Solo 10% por pedido, sin cuotas.
           </div>
         </div>
         {[
