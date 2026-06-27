@@ -110,7 +110,12 @@ export function CartProvider({ children }) {
 
     setEnvioLoading(true)
     setEnvioError(false)
-    try {
+
+    // Un intento contra la edge. Devuelve un resultado "definitivo" (recogida /
+    // fuera_radio / ok) que NO se reintenta, o lanza un error TRANSITORIO (red)
+    // que sí se reintenta. Así evitamos caer al envío inventado de 2,50 € por un
+    // simple fallo de red puntual.
+    const intentar = async () => {
       const { data, error } = await supabase.functions.invoke('calcular_envio', {
         body: {
           canal: 'pido',
@@ -122,22 +127,29 @@ export function CartProvider({ children }) {
       })
       if (error) {
         const msg = error?.context ? await error.context.json().catch(() => null) : null
-        // delivery deshabilitado (restaurante sin reparto / socio offline) → tratar como recogida,
-        // NO mostrar un envío estimado inventado de 2,50€.
-        if (msg?.delivery_disabled) { setEnvio(0); setEnvioError(false); return }
-        const fuera = msg?.fuera_de_radio
-        throw { message: msg?.error || error.message, fuera_de_radio: fuera }
+        if (msg?.delivery_disabled) return { tipo: 'recogida' }
+        if (msg?.fuera_de_radio) return { tipo: 'fuera_radio', error: msg?.error || error.message }
+        // error transitorio → lanzar para reintentar
+        throw new Error(msg?.error || error.message || 'envio_error')
       }
-      if (data?.delivery_disabled) { setEnvio(0); setEnvioError(false); return }
-      if (data?.fuera_de_radio) {
-        throw { message: data.error, fuera_de_radio: true }
+      if (data?.delivery_disabled) return { tipo: 'recogida' }
+      if (data?.fuera_de_radio) return { tipo: 'fuera_radio', error: data.error }
+      if (typeof data?.envio === 'number') return { tipo: 'ok', envio: data.envio, distancia: data.distancia_km ?? null }
+      return { tipo: 'desconocido' }
+    }
+
+    try {
+      let res = null, lastErr = null
+      for (let i = 0; i < 3; i++) {
+        try { res = await intentar(); lastErr = null; break }
+        catch (e) { lastErr = e; if (i < 2) await new Promise(r => setTimeout(r, 600 * (i + 1))) }
       }
-      if (typeof data?.envio === 'number') {
-        setEnvio(data.envio)
-        setDistanciaKm(data.distancia_km ?? null)
-      } else {
-        console.warn('[calcularEnvio] respuesta inesperada', data)
-      }
+      if (lastErr) throw lastErr // reintentos agotados → fallback
+
+      if (res.tipo === 'recogida') { setEnvio(0); setEnvioError(false); return }
+      if (res.tipo === 'fuera_radio') { throw { message: res.error, fuera_de_radio: true } }
+      if (res.tipo === 'ok') { setEnvio(res.envio); setDistanciaKm(res.distancia) }
+      else console.warn('[calcularEnvio] respuesta inesperada')
     } catch (err) {
       if (err?.fuera_de_radio) throw err
       setEnvio(2.50)
