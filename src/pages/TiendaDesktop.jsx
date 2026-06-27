@@ -423,7 +423,7 @@ function CategoriaSidebar({ categorias, productos, activeId, onChange }) {
 }
 
 /* ─── CartSticky (carrito persistente columna derecha) ─────── */
-function CartSticky({ est, deliveryDisponible, onCheckout }) {
+function CartSticky({ est, deliveryDisponible, cerrado, onCheckout }) {
   const {
     carrito, removeItem, updateCantidad, totalItems,
     subtotal, envio, total, propina,
@@ -581,17 +581,18 @@ function CartSticky({ est, deliveryDisponible, onCheckout }) {
                 <span style={{ fontSize: 22, color: C.ink, fontWeight: 800 }}>{fmt(total)}</span>
               </div>
               <button
-                onClick={onCheckout}
+                onClick={cerrado ? undefined : onCheckout}
+                disabled={cerrado}
                 style={{
                   width: '100%', marginTop: 14, padding: '14px 0', borderRadius: 12,
-                  border: 'none', background: C.terracotta,
-                  color: '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
-                  cursor: 'pointer', boxShadow: SH.glossy,
+                  border: 'none', background: cerrado ? C.cream2 : C.terracotta,
+                  color: cerrado ? C.stone : '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
+                  cursor: cerrado ? 'not-allowed' : 'pointer', boxShadow: cerrado ? 'none' : SH.glossy,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   letterSpacing: '0.01em',
                 }}
               >
-                <Lock size={14}/> Pagar {fmt(total)}
+                <Lock size={14}/> {cerrado ? 'Restaurante cerrado' : `Pagar ${fmt(total)}`}
               </button>
             </div>
           </>
@@ -1028,6 +1029,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
           <CartSticky
             est={est}
             deliveryDisponible={deliveryDisponible}
+            cerrado={cerrado}
             onCheckout={() => onCheckout?.()}
           />
         </div>

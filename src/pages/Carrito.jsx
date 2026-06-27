@@ -544,6 +544,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   async function iniciarPago() {
     if (isPaying.current) return
+    // Blindaje: nunca crear un pedido a un restaurante cerrado, aunque el botón
+    // se haya quedado habilitado (carrera de carga o carrito persistido en localStorage).
+    if (restCerrado) {
+      setErrorMsg('Este restaurante está cerrado ahora mismo. No se pueden hacer pedidos.')
+      return
+    }
     // Login obligatorio para todos (guest checkout desactivado: lo requieren Stripe + RLS).
     if (!user) {
       onRequireLogin?.()

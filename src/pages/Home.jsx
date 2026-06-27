@@ -189,7 +189,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       .order('orden')
       .then(({ data }) => { setCategoriasGenerales(data || []); setCatActiva(null) })
     // Cargar promociones activas
-    supabase.from('promociones').select('*, establecimientos(id, nombre, logo_url, banner_url, rating, total_resenas, radio_cobertura_km, activo, horario, categoria_padre)')
+    supabase.from('promociones').select('*, establecimientos(id, nombre, logo_url, banner_url, rating, total_resenas, radio_cobertura_km, activo, horario, categoria_padre, latitud, longitud)')
       .eq('activa', true)
       .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
       .then(({ data }) => {
@@ -406,6 +406,21 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
     }
     return lista
   }, [establecimientos, busqueda, catActiva, categoriasGenerales, userLocation, restaurantesFlags])
+
+  // Las promos solo deben aparecer si su restaurante está dentro del radio que el
+  // usuario realmente ve (mismo criterio que la lista de restaurantes). Sin ubicación
+  // no se filtra (se muestran todas), igual que con los restaurantes.
+  const promocionesVisibles = useMemo(() => {
+    return promociones.filter(p => {
+      const e = p.establecimientos
+      if (!e) return false
+      if (userLocation && e.latitud && e.longitud) {
+        const dist = haversineKm(userLocation.lat, userLocation.lng, e.latitud, e.longitud)
+        if (dist > radioDescubrimientoKm) return false
+      }
+      return true
+    })
+  }, [promociones, userLocation, radioDescubrimientoKm])
 
   // Destacados:
   // - Modo marketplace de socio: usa el flag `destacado` de socio_establecimiento
@@ -640,11 +655,11 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       )}
 
       {/* ── Ofertas Irresistibles (gradient cards, 128px, 22px radius) ── */}
-      {!busqueda && !catActiva && promociones.length > 0 && (
+      {!busqueda && !catActiva && promocionesVisibles.length > 0 && (
         <div className="home-fade" style={{ animationDelay: '0.2s', marginBottom: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
           <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollSnapType: 'x mandatory' }}>
-            {promociones.map((promo, idx) => {
+            {promocionesVisibles.map((promo, idx) => {
               const est = promo.establecimientos
               if (!est) return null
               return (
@@ -674,48 +689,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         </div>
       )}
 
-      {/* ── CTA Repartidores (oculto en marketplace de socio) ── */}
-      {!socioData && !busqueda && !catActiva && landingRiders.activa && landingRiders.config.visible && (
-        <div
-          className="home-fade"
-          onClick={() => onOpenRepartidores?.()}
-          style={{
-            animationDelay: '0.25s',
-            position: 'relative', overflow: 'hidden',
-            borderRadius: 22, padding: 20, marginBottom: 24,
-            background: 'linear-gradient(135deg, #C5562C 0%, #FF4500 100%)',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          }}
-        >
-          <div style={{ position: 'relative', zIndex: 2, flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
-              {landingRiders.config.titulo}
-            </div>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-              {landingRiders.config.subtitulo}
-            </div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onOpenRepartidores?.() }}
-            style={{
-              position: 'relative', zIndex: 2, flexShrink: 0,
-              padding: '8px 16px', borderRadius: 999, border: 'none',
-              background: '#fff', color: 'var(--c-primary)',
-              fontSize: 11, fontWeight: 800, cursor: 'pointer',
-              fontFamily: 'inherit', letterSpacing: '0.05em',
-            }}
-          >
-            {landingRiders.config.boton}
-          </button>
-          <Bike
-            size={48}
-            strokeWidth={2}
-            color="rgba(0,0,0,0.35)"
-            style={{ position: 'absolute', right: 110, bottom: -4, zIndex: 1 }}
-          />
-        </div>
-      )}
+      {/* CTA "Gana dinero repartiendo" eliminado del Home a petición de Marlon. */}
 
       {/* ── Cerca de ti (vertical stack, glass cards, 192px image, text overlay) ── */}
       <div className="home-fade" style={{ animationDelay: '0.3s', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
