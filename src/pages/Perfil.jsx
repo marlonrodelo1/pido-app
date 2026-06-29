@@ -76,17 +76,18 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
     setSaving(true)
     setMsg(null)
     try {
-      const email = user?.email || perfil?.email
+      // Solo actualizamos los campos editables. NO incluir `rol` ni hacer upsert:
+      // la fila siempre existe para un usuario logueado, y un upsert con
+      // rol:'cliente' degradaba a restaurantes/socios que entran a la app cliente
+      // (les rompía el acceso a su propio panel). Un update simple lo evita.
       const { data, error } = await supabase
         .from('usuarios')
-        .upsert({
-          id: user.id,
-          email,
-          rol: 'cliente',
+        .update({
           nombre: nombre.trim() || perfil?.nombre || '',
           apellido: apellido.trim() || null,
           telefono: telefono.trim() || null,
-        }, { onConflict: 'id' })
+        })
+        .eq('id', user.id)
         .select()
         .single()
       if (error) throw error

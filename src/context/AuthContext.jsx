@@ -86,15 +86,11 @@ export function AuthProvider({ children }) {
       return
     }
 
-    // Validar que el rol sea 'cliente' — pido-app es solo para clientes
-    if (data && data.rol && data.rol !== 'cliente') {
-      await supabase.auth.signOut()
-      setUser(null)
-      setPerfil(null)
-      setLoading(false)
-      setAuthError('Esta app es solo para clientes. Usa la app correspondiente a tu rol.')
-      return
-    }
+    // Cualquier usuario autenticado puede usar la app de cliente para pedir
+    // (un dueño de restaurante o socio también es cliente potencial). NO se
+    // expulsa por rol: el rol solo gobierna el acceso a los paneles, protegido
+    // por RLS en el backend. (Antes había un signOut duro que dejaba fuera con
+    // su email a las cuentas de restaurante/socio/superadmin.)
 
     // Si viene de Google OAuth y no tiene rol asignado, asegurar que sea 'cliente'
     if (data && !data.rol) {

@@ -11,7 +11,11 @@ export async function getCurrentPosition() {
     if (perm.location !== 'granted') {
       throw new Error('Permiso de ubicación denegado')
     }
-    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true })
+    // Para descubrir restaurantes / geocodificar una dirección NO necesitamos
+    // precisión de metros; alta precisión sin timeout puede colgarse esperando
+    // un fix GPS en interiores. COARSE + timeout + maximumAge devuelve en 1-3s
+    // o cae al fallback (dirección guardada) sin dejar la pantalla colgada.
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 })
     return { lat: pos.coords.latitude, lng: pos.coords.longitude }
   }
 
@@ -24,7 +28,7 @@ export async function getCurrentPosition() {
     navigator.geolocation.getCurrentPosition(
       pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       err => reject(err),
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     )
   })
 }

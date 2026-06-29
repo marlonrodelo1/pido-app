@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike, Globe } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -155,6 +155,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   const [landingRiders, setLandingRiders] = useState({ activa: true, config: { titulo: 'Gana dinero repartiendo', subtitulo: 'Crea tu propio negocio', boton: 'APLICAR' } })
   // Radio global de descubrimiento (km). Configurable por superadmin.
   const [radioDescubrimientoKm, setRadioDescubrimientoKm] = useState(15)
+  // Anti-parpadeo: evita refetches solapados y colapsa ráfagas al reabrir.
+  const inFlightRef = useRef(false)
+  const lastVisibleRefetchRef = useRef(0)
+  const realtimeDebounceRef = useRef(null)
 
   useEffect(() => {
     supabase.from('configuracion_plataforma')
@@ -271,85 +275,100 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   }, [categoriaPadre, filterIdsKey])
 
   // Realtime: cuando un establecimiento cambia (tiene_delivery se sincroniza
-  // con el estado del socio en Shipday), refresca el listado.
+  // con el estado del socio), refresca el listado. Se AGRUPAN las ráfagas en un
+  // único refetch SILENCIOSO (sin "cargando") para no parpadear la lista cuando
+  // llegan varios cambios seguidos (recálculo de rating, sync de socio, etc.).
   useEffect(() => {
     const ch = supabase
       .channel('home-establecimientos-realtime')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'establecimientos' }, () => {
-        fetchEstablecimientos()
+        if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
+        realtimeDebounceRef.current = setTimeout(() => fetchEstablecimientos({ silent: true }), 1500)
       })
       .subscribe()
-    return () => { try { supabase.removeChannel(ch) } catch (_) {} }
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current)
+      try { supabase.removeChannel(ch) } catch (_) {}
+    }
   }, [categoriaPadre, filterIdsKey])
 
-  // Refrescar al volver al foreground.
+  // Refrescar al volver al foreground. Un solo evento (visibilitychange cubre
+  // webview/PWA; 'focus' duplicaba el disparo) y con guarda de 5s para no
+  // recargar dos veces seguidas. Refetch SILENCIOSO: no muestra skeletons.
   useEffect(() => {
     function onVisible() {
-      if (document.visibilityState === 'visible') fetchEstablecimientos()
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastVisibleRefetchRef.current < 5000) return
+      lastVisibleRefetchRef.current = now
+      fetchEstablecimientos({ silent: true })
     }
     document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', onVisible)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', onVisible)
-    }
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [categoriaPadre, filterIdsKey])
 
-  async function fetchEstablecimientos() {
-    setLoading(true)
-    // Si venimos de un marketplace de socio con filtro vacío, no cargamos nada
-    if (Array.isArray(restaurantesFilter) && restaurantesFilter.length === 0) {
-      setEstablecimientos([])
-      setLoading(false)
-      return
-    }
-    let query = supabase
-      .from('establecimientos')
-      .select('*')
-      .eq('activo', true)
-
-    if (categoriaPadre) {
-      query = query.eq('categoria_padre', categoriaPadre)
-    }
-
-    if (Array.isArray(restaurantesFilter) && restaurantesFilter.length > 0) {
-      query = query.in('id', restaurantesFilter)
-    }
-
-    let { data } = await query.order('rating', { ascending: false })
-
-    // Ordenar: abiertos primero, cerrados por horario al final
-    if (data) {
-      data = data.sort((a, b) => {
-        const aOpen = estaAbierto(a).abierto ? 0 : 1
-        const bOpen = estaAbierto(b).abierto ? 0 : 1
-        if (aOpen !== bOpen) return aOpen - bOpen
-        return (b.rating || 0) - (a.rating || 0)
-      })
-    }
-
-    if (data && data.length > 0) {
-      const estIds = data.map(e => e.id)
-
-      const { data: estCats } = await supabase
-        .from('establecimiento_categorias')
-        .select('establecimiento_id, categoria_id')
-        .in('establecimiento_id', estIds)
-
-      const catMap = {}
-      for (const ec of (estCats || [])) {
-        if (!catMap[ec.establecimiento_id]) catMap[ec.establecimiento_id] = []
-        catMap[ec.establecimiento_id].push(ec.categoria_id)
+  async function fetchEstablecimientos({ silent = false } = {}) {
+    // Evita refetches SILENCIOSOS solapados (foreground + realtime pueden
+    // coincidir al reabrir). Una carga NO silenciosa (montaje / cambio de
+    // categoría o filtro) nunca se descarta: debe correr siempre.
+    if (silent && inFlightRef.current) return
+    inFlightRef.current = true
+    // En recargas silenciosas NO encendemos el "cargando": la lista ya está
+    // pintada y React reconcilia por key={r.id} sin remontar las tarjetas →
+    // sin parpadeo de skeletons ni reinicio de la animación de entrada.
+    if (!silent) setLoading(true)
+    try {
+      // Si venimos de un marketplace de socio con filtro vacío, no cargamos nada
+      if (Array.isArray(restaurantesFilter) && restaurantesFilter.length === 0) {
+        setEstablecimientos([])
+        return
       }
-      setEstablecimientos(data.map(e => ({ ...e, _catIds: catMap[e.id] || [] })))
-      // En modelo Shipday la disponibilidad de delivery vive en
-      // establecimientos.tiene_delivery (sincronizado por cron + triggers
-      // con socios.marketplace_activo). Ya no usamos drivers_status legacy.
-    } else {
-      setEstablecimientos(data || [])
-    }
+      let query = supabase
+        .from('establecimientos')
+        .select('*')
+        .eq('activo', true)
 
-    setLoading(false)
+      if (categoriaPadre) {
+        query = query.eq('categoria_padre', categoriaPadre)
+      }
+
+      if (Array.isArray(restaurantesFilter) && restaurantesFilter.length > 0) {
+        query = query.in('id', restaurantesFilter)
+      }
+
+      let { data } = await query.order('rating', { ascending: false })
+
+      // Ordenar: abiertos primero, cerrados por horario al final
+      if (data) {
+        data = data.sort((a, b) => {
+          const aOpen = estaAbierto(a).abierto ? 0 : 1
+          const bOpen = estaAbierto(b).abierto ? 0 : 1
+          if (aOpen !== bOpen) return aOpen - bOpen
+          return (b.rating || 0) - (a.rating || 0)
+        })
+      }
+
+      if (data && data.length > 0) {
+        const estIds = data.map(e => e.id)
+
+        const { data: estCats } = await supabase
+          .from('establecimiento_categorias')
+          .select('establecimiento_id, categoria_id')
+          .in('establecimiento_id', estIds)
+
+        const catMap = {}
+        for (const ec of (estCats || [])) {
+          if (!catMap[ec.establecimiento_id]) catMap[ec.establecimiento_id] = []
+          catMap[ec.establecimiento_id].push(ec.categoria_id)
+        }
+        setEstablecimientos(data.map(e => ({ ...e, _catIds: catMap[e.id] || [] })))
+      } else {
+        setEstablecimientos(data || [])
+      }
+    } finally {
+      setLoading(false)
+      inFlightRef.current = false
+    }
   }
 
   async function toggleFav(id) {
