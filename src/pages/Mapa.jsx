@@ -26,7 +26,7 @@ const lightMapStyles = [
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#5C7A8C' }] },
 ]
 
-export default function Mapa({ onOpenRest }) {
+export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
   const { perfil } = useAuth()
   const [establecimientos, setEstablecimientos] = useState([])
   const [center, setCenter] = useState({ lat: 28.1235, lng: -15.4363 }) // Canarias por defecto
@@ -48,7 +48,7 @@ export default function Mapa({ onOpenRest }) {
         .then(pos => { setCenter({ lat: pos.lat, lng: pos.lng }); setGeoError(false) })
         .catch(() => { setGeoError(true) })
     }
-  }, [])
+  }, [restaurantesFilter])
 
   function haversineKm(lat1, lng1, lat2, lng2) {
     const R = 6371
@@ -60,6 +60,17 @@ export default function Mapa({ onOpenRest }) {
   }
 
   async function fetchData() {
+    // Marketplace del socio: SOLO los restaurantes vinculados a este socio,
+    // sin filtro de radio (deben verse todos, estén donde estén).
+    if (Array.isArray(restaurantesFilter)) {
+      if (restaurantesFilter.length === 0) { setEstablecimientos([]); return }
+      const { data } = await supabase
+        .from('establecimientos')
+        .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
+        .in('id', restaurantesFilter).eq('activo', true)
+      setEstablecimientos(data || [])
+      return
+    }
     // Radio global de descubrimiento (configurable por superadmin).
     let radioKm = 15
     const { data: cfg } = await supabase.from('configuracion_plataforma')

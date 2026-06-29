@@ -109,7 +109,9 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
                 <img src={socioData.logo_url} alt={socioData.nombre_comercial || ''}
                   style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--c-border)', flexShrink: 0 }} />
               )}
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--c-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>By Pidoo</span>
+              {socioData.nombre_comercial && (
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--c-text)', letterSpacing: '-0.01em' }}>{socioData.nombre_comercial}</span>
+              )}
             </div>
           )}
           <button onClick={() => setOnboarded(false)} style={{
@@ -197,7 +199,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />
             : seccion === 'mapa'
-            ? <Mapa onOpenRest={abrirRest} />
+            ? <Mapa onOpenRest={abrirRest} restaurantesFilter={restaurantesFilter} />
             : seccion === 'pedidos'
             ? <MisPedidos onTrack={handleTrack} />
             : seccion === 'notificaciones'
@@ -297,6 +299,8 @@ const globalCss = `
 *{box-sizing:border-box;margin:0;padding:0}
 ::-webkit-scrollbar{display:none}
 body{background:#F7F3EC;color:#1A1815;margin:0}
+input::placeholder,textarea::placeholder{color:rgba(107,99,86,0.75);opacity:1}
+input::-webkit-input-placeholder,textarea::-webkit-input-placeholder{color:rgba(107,99,86,0.75);opacity:1}
 @media(min-width:768px){
   .tablet-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:14px!important}
   .tablet-grid>*{margin-bottom:0!important}

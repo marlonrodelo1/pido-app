@@ -150,7 +150,7 @@ export default function Login({ nextPath = null }) {
         ) : (
           <button onClick={() => { setModo('login'); setError(null); setErrores({}) }} style={{
             display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-            color: 'var(--c-primary-light)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            color: 'var(--c-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'inherit', marginBottom: 20, padding: 0,
           }}>
             <ArrowLeft size={16} strokeWidth={2.5} /> Volver
@@ -314,7 +314,7 @@ export default function Login({ nextPath = null }) {
         {modo === 'login' && (
           <div style={{ textAlign: 'center', marginTop: 18 }}>
             <button onClick={() => { setModo('reset'); setError(null); setErrores({}) }} style={{
-              background: 'none', border: 'none', color: 'var(--c-primary-light)',
+              background: 'none', border: 'none', color: 'var(--c-primary)',
               fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}>
               ¿Olvidaste tu contraseña?
@@ -339,7 +339,7 @@ export default function Login({ nextPath = null }) {
                 {aceptaTerminos && '✓'}
               </div>
               <span style={{ fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.4 }}>
-                Acepto los <a href="/terminos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-primary-light)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>términos y condiciones</a> y la <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-primary-light)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>política de privacidad</a>
+                Acepto los <a href="/terminos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-primary)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>términos y condiciones</a> y la <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-primary)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>política de privacidad</a>
               </span>
             </button>
             {errores.terminos && <div style={{ color: '#EF4444', fontSize: 11, marginTop: 4, marginLeft: 30 }}>{errores.terminos}</div>}
