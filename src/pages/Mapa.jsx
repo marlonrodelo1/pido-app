@@ -67,7 +67,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       const { data } = await supabase
         .from('establecimientos')
         .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
-        .in('id', restaurantesFilter).eq('activo', true)
+        .in('id', restaurantesFilter).eq('activo', true).eq('estado', 'activo')
       setEstablecimientos(data || [])
       return
     }
@@ -86,6 +86,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       .from('establecimientos')
       .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
       .eq('activo', true)
+      .eq('estado', 'activo')
       .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
       .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta)
 

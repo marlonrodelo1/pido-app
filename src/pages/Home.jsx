@@ -327,6 +327,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         .from('establecimientos')
         .select('*')
         .eq('activo', true)
+        .eq('estado', 'activo')
 
       if (categoriaPadre) {
         query = query.eq('categoria_padre', categoriaPadre)

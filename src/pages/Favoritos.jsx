@@ -15,7 +15,7 @@ export default function Favoritos({ onOpenRest }) {
     try {
       const { data: favIds, error: rpcError } = await supabase.rpc('get_favoritos')
       if (rpcError || !favIds || favIds.length === 0) { setRestaurantes([]); return }
-      const { data } = await supabase.from('establecimientos').select('*').in('id', favIds)
+      const { data } = await supabase.from('establecimientos').select('*').in('id', favIds).eq('activo', true).eq('estado', 'activo')
       setRestaurantes(data || [])
     } catch { setRestaurantes([]) }
     finally { setLoading(false) }
