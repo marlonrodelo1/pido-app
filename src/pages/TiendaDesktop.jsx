@@ -615,7 +615,7 @@ function ResLine({ label, value, tone }) {
 function HeroBannerWide({ est }) {
   const tagline = [est.tipo, est.direccion?.split(',').slice(-2, -1)?.[0]?.trim()].filter(Boolean).join(' · ')
   return (
-    <div style={{ position: 'relative', height: 228, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', height: 'clamp(170px, 20vw, 240px)', overflow: 'hidden' }}>
       {est.banner_url ? (
         <>
           <div style={{
@@ -835,47 +835,54 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
       <HeroBannerWide est={est}/>
 
       {/* Contenido */}
-      <div style={{ maxWidth: 1380, margin: '0 auto', padding: '0 clamp(20px, 3vw, 32px)', marginTop: -54 }}>
-        {/* Identidad restaurante */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 22 }}>
+      <div style={{ maxWidth: 1380, margin: '0 auto', padding: '0 clamp(20px, 3vw, 32px)' }}>
+        {/* Identidad restaurante — el logo solapa el banner; nombre y chips quedan
+            debajo, sobre fondo crema, siempre legibles (estilo marketplace). */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(14px, 2vw, 22px)' }}>
           <div style={{
-            width: 110, height: 110, borderRadius: '50%',
+            width: 'clamp(84px, 9vw, 116px)', height: 'clamp(84px, 9vw, 116px)',
+            borderRadius: '50%',
             background: '#fff', border: `5px solid ${C.cream}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: SH.md, overflow: 'hidden', flexShrink: 0,
+            boxShadow: SH.lg, overflow: 'hidden', flexShrink: 0,
+            marginTop: 'clamp(-58px, -5vw, -42px)',
           }}>
             {est.logo_url
               ? <img src={est.logo_url} alt={est.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }}/>
               : <div style={{ transform: 'scale(0.9)' }}><FoodIcon kw={est.tipo || ''} size={70}/></div>
             }
           </div>
-          <div style={{ flex: 1, paddingBottom: 12 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingBottom: 6 }}>
             <h1 style={{
-              fontSize: 32, fontWeight: 800, color: C.ink, margin: 0,
-              letterSpacing: '-0.02em', lineHeight: 1.1,
+              fontSize: 'clamp(23px, 2.6vw, 34px)', fontWeight: 800, color: C.ink, margin: 0,
+              letterSpacing: '-0.02em', lineHeight: 1.12,
+              overflow: 'hidden', textOverflow: 'ellipsis',
             }}>{est.nombre}</h1>
             {(est.tipo || est.direccion) && (
               <div style={{
-                fontSize: 12, color: C.stone, marginTop: 4,
+                fontSize: 12, color: C.stone, marginTop: 5,
                 fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {est.tipo}{est.tipo && est.direccion ? ' · ' : ''}{est.direccion?.split(',')[0]}
               </div>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
-              <Chip tone={cerrado ? 'danger' : 'sage'} dot>
-                {cerrado ? (estadoAbierto.proximaApertura || 'Cerrado') : 'Abierto'}
-              </Chip>
-              {est.rating > 0 && (
-                <Chip tone="paper">
-                  <Star size={11} fill={C.warning} color={C.warning} style={{ marginRight: 2 }}/>
-                  {est.rating.toFixed(1)}
-                </Chip>
-              )}
-              {deliveryDisponible && <Chip tone="paper"><Bike size={11} style={{ marginRight: 4 }}/> Delivery</Chip>}
-              <Chip tone={deliveryDisponible ? 'paper' : 'warning'}><ShoppingBag size={11} style={{ marginRight: 4 }}/> {deliveryDisponible ? 'Recogida' : 'Solo recogida'}</Chip>
-            </div>
           </div>
+        </div>
+
+        {/* Chips de estado — fila propia, siempre debajo del banner y legibles */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+          <Chip tone={cerrado ? 'danger' : 'sage'} dot>
+            {cerrado ? (estadoAbierto.proximaApertura || 'Cerrado') : 'Abierto'}
+          </Chip>
+          {est.rating > 0 && (
+            <Chip tone="paper">
+              <Star size={11} fill={C.warning} color={C.warning} style={{ marginRight: 2 }}/>
+              {est.rating.toFixed(1)}
+            </Chip>
+          )}
+          {deliveryDisponible && <Chip tone="paper"><Bike size={11} style={{ marginRight: 4 }}/> Delivery</Chip>}
+          <Chip tone={deliveryDisponible ? 'paper' : 'warning'}><ShoppingBag size={11} style={{ marginRight: 4 }}/> {deliveryDisponible ? 'Recogida' : 'Solo recogida'}</Chip>
         </div>
 
         {/* Banners de estado */}
