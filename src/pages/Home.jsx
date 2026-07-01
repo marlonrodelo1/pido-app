@@ -323,9 +323,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         setEstablecimientos([])
         return
       }
+      // Categorías EMBEBIDAS en la misma consulta: antes eran 2 round-trips en serie
+      // (establecimientos -> luego establecimiento_categorias = waterfall). Ahora una
+      // sola query trae ambas cosas y se elimina el segundo viaje al servidor.
       let query = supabase
         .from('establecimientos')
-        .select('*')
+        .select('*, establecimiento_categorias(categoria_id)')
         .eq('activo', true)
         .eq('estado', 'activo')
 
@@ -349,23 +352,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         })
       }
 
-      if (data && data.length > 0) {
-        const estIds = data.map(e => e.id)
-
-        const { data: estCats } = await supabase
-          .from('establecimiento_categorias')
-          .select('establecimiento_id, categoria_id')
-          .in('establecimiento_id', estIds)
-
-        const catMap = {}
-        for (const ec of (estCats || [])) {
-          if (!catMap[ec.establecimiento_id]) catMap[ec.establecimiento_id] = []
-          catMap[ec.establecimiento_id].push(ec.categoria_id)
-        }
-        setEstablecimientos(data.map(e => ({ ...e, _catIds: catMap[e.id] || [] })))
-      } else {
-        setEstablecimientos(data || [])
-      }
+      setEstablecimientos((data || []).map(e => ({
+        ...e,
+        _catIds: (e.establecimiento_categorias || []).map(c => c.categoria_id),
+      })))
     } finally {
       setLoading(false)
       inFlightRef.current = false
