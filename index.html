@@ -20,6 +20,12 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://pidoo.es/" />
+    <!-- Preconnect: la primera query de datos y las fuentes no pagan DNS+TLS tras parsear el JS -->
+    <link rel="preconnect" href="https://rmrbxrabngdmpgpfmjbo.supabase.co" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fuentes en un solo <link> (antes: @import en index.css + @import runtime en AppShell → render-blocking + FOUT tardío) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" />
     <title>Pidoo · Tu comida favorita, a un clic</title>
   </head>
   <body>

@@ -369,7 +369,9 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   function toggleExtra(op, grupo) {
     const opWithGrupo = { ...op, grupo_id: grupo.id }
     setExSel(prev => {
-      if (grupo.tipo === 'unico') {
+      // 'single' llega del importador last.shop; el render ya lo trata como radio
+      // obligatorio, pero aquí y en grupoValido solo se contemplaba 'unico'.
+      if (grupo.tipo === 'unico' || grupo.tipo === 'single') {
         // Radio: reemplaza cualquier opción previa de este grupo
         const sinEsteGrupo = prev.filter(e => e.grupo_id !== grupo.id)
         const yaSel = prev.find(e => e.grupo_id === grupo.id && e.id === op.id)
@@ -387,7 +389,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   }
 
   function grupoValido(g) {
-    if (g.tipo === 'unico') return exSel.some(e => e.grupo_id === g.id)
+    if (g.tipo === 'unico' || g.tipo === 'single') return exSel.some(e => e.grupo_id === g.id)
     return true
   }
   const puedeConfirmar = gruposExtras.every(grupoValido)

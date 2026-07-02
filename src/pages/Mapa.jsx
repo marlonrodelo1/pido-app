@@ -6,6 +6,9 @@ import { getCurrentPosition } from '../lib/geolocation'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 160px)', borderRadius: 16 }
 
+// Fuera del componente: useJsApiLoader exige referencia estable entre renders.
+const MAPS_LIBRARIES = ['places']
+
 // Modo claro tipo Pidoo (#F7F3EC). Suaviza colores Google por defecto y
 // quita POIs ruidosos para que el mapa pegue con el resto de la app.
 const lightMapStyles = [
@@ -36,6 +39,10 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    // Sin 'places', el script de Maps que inyecta este loader hacía que
+    // AddressInput (que espera window.google.maps.places) nunca inicializara
+    // si el usuario visitaba el Mapa antes que el carrito.
+    libraries: MAPS_LIBRARIES,
   })
 
   useEffect(() => {

@@ -38,7 +38,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
   const [carritoOpen, setCarritoOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const [perfilSubInicial, setPerfilSubInicial] = useState(null)
-  const { totalItems } = useCart()
+  const { totalItems, setOrigenPedido } = useCart()
 
   // Si NO estamos en el marketplace de un socio (socioData null = /app general),
   // limpiar el contexto socio para que los pedidos NO se etiqueten como del
@@ -46,6 +46,11 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
   useEffect(() => {
     if (!socioData) {
       try { sessionStorage.removeItem('pidoo_socio_id'); sessionStorage.removeItem('pidoo_socio_slug') } catch (_) {}
+      // Mismo leak con el canal de venta: 'tienda_publica' persiste en localStorage
+      // si el usuario cerró la pestaña dentro de una tienda (el cleanup de unmount
+      // no llega a ejecutarse) y contaminaba comisión y tarifa de envío de los
+      // pedidos hechos después desde la app general.
+      setOrigenPedido('pido')
     }
   }, [socioData])
 
@@ -291,7 +296,6 @@ const shellStyle = {
 }
 
 const globalCss = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
