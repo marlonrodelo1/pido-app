@@ -214,6 +214,17 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
   useEffect(() => { fetchCarta() }, [est.id])
 
+  // El detalle sustituye a la Home en el mismo scroll: sin esto se abre "a
+  // mitad" (hereda el scroll que llevabas en la lista) con el banner cortado.
+  // Al volver, se restaura el punto de la Home donde estabas.
+  useEffect(() => {
+    // El detalle sustituye a la Home en el mismo scroll (que en esta app vive
+    // en el <body>, no en window): sin esto se abre "a mitad" con el banner
+    // cortado. La restauración al volver la hace AppShell.cerrarRest.
+    window.scrollTo(0, 0)
+    document.body.scrollTop = 0
+  }, [est.id])
+
   // Al abrir el restaurante, fuerza una verificacion en directo a Shipday
   // del estado del socio. La edge actualiza socios.en_servicio si difiere
   // → triggers cascada → tiene_delivery → Realtime refresca esta misma

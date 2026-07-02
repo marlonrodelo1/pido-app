@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { Bell, Share2, CircleUser, X } from 'lucide-react'
@@ -39,6 +39,9 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
   const [loginOpen, setLoginOpen] = useState(false)
   const [perfilSubInicial, setPerfilSubInicial] = useState(null)
   const { totalItems, setOrigenPedido } = useCart()
+  // Scroll de la Home antes de abrir un restaurante (ver abrirRest/cerrarRest).
+  // Debe declararse aquí, ANTES de los return tempranos (reglas de hooks).
+  const scrollHomePrevio = useRef(0)
 
   // Si NO estamos en el marketplace de un socio (socioData null = /app general),
   // limpiar el contexto socio para que los pedidos NO se etiqueten como del
@@ -87,7 +90,26 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
     )
   }
 
-  function abrirRest(r) { setRestOpen(r); setSeccion('home') }
+  // El scroll de la Home hay que capturarlo AQUÍ, antes de desmontar la vista:
+  // cuando RestDetalle monta (cargando, página corta) el navegador ya ha
+  // recortado body.scrollTop y se pierde la posición real.
+  function abrirRest(r) {
+    scrollHomePrevio.current = Math.max(window.scrollY, document.body.scrollTop)
+    setRestOpen(r); setSeccion('home')
+  }
+  function cerrarRest() {
+    setRestOpen(null)
+    const objetivo = scrollHomePrevio.current
+    if (objetivo <= 0) return
+    // La Home recarga datos async: reintenta hasta que la altura alcance (~1,2s máx)
+    const restaurar = (intento = 0) => {
+      window.scrollTo(0, objetivo)
+      document.body.scrollTop = objetivo
+      const actual = Math.max(window.scrollY, document.body.scrollTop)
+      if (actual + 5 < objetivo && intento < 8) setTimeout(() => restaurar(intento + 1), 150)
+    }
+    setTimeout(restaurar, 0)
+  }
   function handlePedidoCreado(pedido) { setPedidoActivo(pedido); setSeccion('tracking') }
   function handleTrack(pedido) { setPedidoActivo(pedido); setSeccion('tracking') }
   function handleTrackingClose() { setPedidoActivo(null); setSeccion('home') }
@@ -193,7 +215,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           {seccion === 'tracking' && pedidoActivo
             ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
             : restOpen && seccion === 'home'
-            ? <RestDetalle establecimiento={restOpen} onBack={() => setRestOpen(null)} onRequireLogin={() => setLoginOpen(true)} socioData={socioData} />
+            ? <RestDetalle establecimiento={restOpen} onBack={cerrarRest} onRequireLogin={() => setLoginOpen(true)} socioData={socioData} />
             : seccion === 'repartidores'
             ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'
