@@ -406,7 +406,9 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     }}>
 
       {/* ── Hero compacto: card con banner de fondo + logo overlay + nombre dentro ── */}
-      <div style={{ padding: '14px 14px 0' }}>
+      {/* Padding horizontal 0: el ancho lo marca el wrapper del AppShell (20px),
+          igual que las cards de Home. Antes se sumaban 14-18px extra por dentro. */}
+      <div style={{ padding: '14px 0 0' }}>
         <div style={{
           position: 'relative', height: 200, borderRadius: 18, overflow: 'hidden',
           background: est.banner_url
@@ -507,7 +509,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       </div>
 
       {/* ── Chips (rating · delivery · recogida) + descripción ── */}
-      <div style={{ padding: '14px 18px 0' }}>
+      <div style={{ padding: '14px 0 0' }}>
         <div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {est.rating > 0 && (
@@ -653,7 +655,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           <div style={{ textAlign: 'center', padding: '40px 0', color: C.stone }}>Cargando carta...</div>
         ) : productos.length === 0 ? (
           /* Catálogo vacío */
-          <div style={{ padding: '40px 18px 60px' }}>
+          <div style={{ padding: '40px 0 60px' }}>
             <div style={{
               background: C.paper, borderRadius: 16, padding: '40px 24px',
               border: `1px solid ${C.border}`, textAlign: 'center',
@@ -680,7 +682,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               <div style={{
                 position: 'sticky', top: 0, zIndex: 5,
                 background: C.cream, borderBottom: `1px solid ${C.cream2}`,
-                padding: '12px 18px', display: 'flex', gap: 8,
+                padding: '12px 0', display: 'flex', gap: 8,
                 overflowX: 'auto',
               }}>
                 <button
@@ -713,7 +715,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               </div>
             )}
 
-            <div style={{ padding: '18px 18px 100px' }}>
+            <div style={{ padding: '18px 0 100px' }}>
               {/* Productos por categoría */}
               {categorias
                 .filter(cat => !catFiltro || cat.id === catFiltro)
