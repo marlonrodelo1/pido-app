@@ -7,6 +7,7 @@ import { getCurrentPosition } from '../lib/geolocation'
 import Stars from '../components/Stars'
 import EntregaBadge from '../components/EntregaBadge'
 import { estaAbierto, horarioHoyTexto } from '../lib/horario'
+import { optimizarImagen } from '../lib/img'
 
 function InstagramIcon({ size = 18, color = '#1A1815' }) {
   return (
@@ -326,9 +327,13 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       // Categorías EMBEBIDAS en la misma consulta: antes eran 2 round-trips en serie
       // (establecimientos -> luego establecimiento_categorias = waterfall). Ahora una
       // sola query trae ambas cosas y se elimina el segundo viaje al servidor.
+      // Columnas explícitas: select('*') traía TODAS las columnas del restaurante
+      // (user_id del dueño, api keys legacy, config interna) en la query más
+      // frecuente de la app. Si una vista nueva necesita otro campo, añadirlo aquí.
+      const COLS_ESTABLECIMIENTO = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre'
       let query = supabase
         .from('establecimientos')
-        .select('*, establecimiento_categorias(categoria_id)')
+        .select(`${COLS_ESTABLECIMIENTO}, establecimiento_categorias(categoria_id)`)
         .eq('activo', true)
         .eq('estado', 'activo')
 
@@ -600,10 +605,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                     border: restaurantesFlags ? '2px solid #C5562C' : G.border,
                     marginBottom: 16,
                   }}>
-                    <div style={{
-                      width: '100%', height: '100%',
-                      background: r.banner_url ? `url(${r.banner_url}) center/cover` : 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)',
-                    }} />
+                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)' }}>
+                      {r.banner_url && (
+                        <img src={optimizarImagen(r.banner_url, 640)} alt="" loading="lazy" decoding="async"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      )}
+                    </div>
                     {/* Status badge */}
                     <div style={{
                       position: 'absolute', top: 16, left: 16,
@@ -757,12 +764,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
             >
               {/* Image with gradient overlay and text */}
               <div style={{ height: 192, position: 'relative' }}>
-                <div style={{
-                  width: '100%', height: '100%',
-                  background: r.banner_url
-                    ? `url(${r.banner_url}) center/cover`
-                    : 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)',
-                }} />
+                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)' }}>
+                  {r.banner_url && (
+                    <img src={optimizarImagen(r.banner_url, 640)} alt="" loading="lazy" decoding="async"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  )}
+                </div>
                 {/* Gradient overlay */}
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }} />
                 {/* Fav button */}

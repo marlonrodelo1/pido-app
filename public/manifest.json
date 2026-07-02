@@ -2,7 +2,7 @@
   "name": "Pidoo",
   "short_name": "Pidoo",
   "description": "Tus restaurantes, locales y farmacias más cerca. 100% canario.",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#FAFAF7",
   "theme_color": "#FAFAF7",

@@ -516,7 +516,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   }
 
   async function confirmarPago(pedido, stripePaymentId) {
-    await supabase.from('pedidos').update({ estado: 'nuevo', stripe_payment_id: stripePaymentId }).eq('id', pedido.id)
+    // El pago YA está cobrado: este update es lo que hace visible el pedido al
+    // restaurante (filtra estado='nuevo'). Si falla y no se avisa, el cliente
+    // paga y el pedido queda invisible en 'pendiente_pago'.
+    const marcarNuevo = () => supabase.from('pedidos')
+      .update({ estado: 'nuevo', stripe_payment_id: stripePaymentId })
+      .eq('id', pedido.id)
+      .select('id')
+    let { data: filas, error } = await marcarNuevo()
+    if (error || !filas?.length) {
+      ({ data: filas, error } = await marcarNuevo())
+    }
+    if (error || !filas?.length) {
+      setErrorMsg(`El pago se procesó correctamente pero hubo un problema al registrar el pedido. Contacta con soporte indicando el código: ${pedido.codigo}`)
+      setPasoTarjeta(false); setClientSecret(null)
+      isPaying.current = false; pagoEnviado.current = false
+      return
+    }
     finalizarPedido(pedido)
   }
 
@@ -537,7 +553,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     const pedido = await insertarPedidoEnBD('nuevo')
     if (!pedido) return
     if (stripePaymentId) {
-      await supabase.from('pedidos').update({ stripe_payment_id: stripePaymentId }).eq('id', pedido.id)
+      // El pedido ya es visible ('nuevo'); si falla el guardado del payment id,
+      // reintenta una vez y sigue (no bloquea al cliente, pero queda avisado en consola).
+      let { error } = await supabase.from('pedidos').update({ stripe_payment_id: stripePaymentId }).eq('id', pedido.id)
+      if (error) {
+        ({ error } = await supabase.from('pedidos').update({ stripe_payment_id: stripePaymentId }).eq('id', pedido.id))
+        if (error) console.warn('[Carrito] no se pudo guardar stripe_payment_id', error)
+      }
     }
     finalizarPedido(pedido)
   }
@@ -680,6 +702,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           onClick={() => {
             setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
             setCodigoPedido(null); setClientSecret(null)
+            // Mismo reset que "Volver al carrito": sin esto, cerrar tocando el
+            // fondo durante el paso de tarjeta dejaba isPaying=true para siempre
+            // y el botón de pagar quedaba muerto hasta recargar.
+            isPaying.current = false; pagoEnviado.current = false
           }}
         >
           <div

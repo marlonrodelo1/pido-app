@@ -553,20 +553,38 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
 
           {esDelivery && !riderOk && (
-            <div style={{
-              borderRadius: 12, padding: '12px 14px',
-              background: C.warningSoft,
-              marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              <span style={{ fontSize: 18 }}>🛵</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#8B6126' }}>Buscando repartidor…</div>
-                <div style={{ fontSize: 11, color: '#8B6126', opacity: 0.85 }}>
-                  Te avisaremos en cuanto uno acepte tu pedido
+            pedido.shipday_status === 'no_rider' ? (
+              // Se agotaron los intentos de asignación: sin esta rama el cliente
+              // veía "Buscando repartidor…" indefinidamente.
+              <div style={{
+                borderRadius: 12, padding: '12px 14px',
+                background: 'rgba(239,68,68,0.10)',
+                marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ fontSize: 18 }}>🛵</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#B4372A' }}>Estamos gestionando tu envío</div>
+                  <div style={{ fontSize: 11, color: '#B4372A', opacity: 0.9 }}>
+                    Ningún repartidor pudo aceptar tu pedido de momento. Estamos en ello — si tarda, escríbenos por soporte con el código {pedido.codigo}.
+                  </div>
                 </div>
               </div>
-              <span style={{ fontSize: 14, animation: 'pulse2 1.5s ease-in-out infinite' }}>🔍</span>
-            </div>
+            ) : (
+              <div style={{
+                borderRadius: 12, padding: '12px 14px',
+                background: C.warningSoft,
+                marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ fontSize: 18 }}>🛵</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#8B6126' }}>Buscando repartidor…</div>
+                  <div style={{ fontSize: 11, color: '#8B6126', opacity: 0.85 }}>
+                    Te avisaremos en cuanto uno acepte tu pedido
+                  </div>
+                </div>
+                <span style={{ fontSize: 14, animation: 'pulse2 1.5s ease-in-out infinite' }}>🔍</span>
+              </div>
+            )
           )}
 
           {esDelivery && mostrarBotonTrackingMapa && (

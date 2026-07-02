@@ -71,6 +71,16 @@ export function CartProvider({ children }) {
     }
   }
 
+  // Reemplaza el carrito entero de una sola vez (p. ej. "repetir pedido").
+  // Llamar addItem en bucle no sirve: lee `carrito` del closure (stale) y,
+  // si había carrito de otro restaurante, dispara un confirm por cada item
+  // dejando al final solo el último.
+  function replaceCart(items) {
+    setCarrito(items)
+    setEnvio(0)
+    setDistanciaKm(null)
+  }
+
   function removeItem(index) {
     setCarrito(prev => prev.filter((_, i) => i !== index))
   }
@@ -172,7 +182,7 @@ export function CartProvider({ children }) {
   const total = subtotal + envioFinal + propina
 
   const contextValue = useMemo(() => ({
-    carrito, addItem, removeItem, updateCantidad, clearCart,
+    carrito, addItem, replaceCart, removeItem, updateCantidad, clearCart,
     propina, setPropina, metodoPago, setMetodoPago,
     modoEntrega, setModoEntrega, entregaManual, elegirEntrega,
     totalItems, subtotal, envio: envioFinal, total,

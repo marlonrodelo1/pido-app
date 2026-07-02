@@ -15,7 +15,10 @@ export default function Favoritos({ onOpenRest }) {
     try {
       const { data: favIds, error: rpcError } = await supabase.rpc('get_favoritos')
       if (rpcError || !favIds || favIds.length === 0) { setRestaurantes([]); return }
-      const { data } = await supabase.from('establecimientos').select('*').in('id', favIds).eq('activo', true).eq('estado', 'activo')
+      // Mismas columnas explícitas que Home (evita traer PII/config interna).
+      const { data } = await supabase.from('establecimientos')
+        .select('id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre')
+        .in('id', favIds).eq('activo', true).eq('estado', 'activo')
       setRestaurantes(data || [])
     } catch { setRestaurantes([]) }
     finally { setLoading(false) }

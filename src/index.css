@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+/* Plus Jakarta Sans + DM Sans se cargan desde index.html (<link>) — el @import
+   aquí bloqueaba el primer pintado hasta resolver la CSS de Google Fonts. */
 
 /* ─── Design Tokens (cream/terracotta/sage — pivote SaaS mayo 2026) ───────────── */
 :root {

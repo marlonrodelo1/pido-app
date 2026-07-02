@@ -14,7 +14,7 @@ const ESTADO_COLORS = {
 
 export default function MisPedidos({ onTrack }) {
   const { user } = useAuth()
-  const { addItem } = useCart()
+  const { carrito, replaceCart } = useCart()
   const [pedidos, setPedidos] = useState([])
   const [sociosMap, setSociosMap] = useState({})
   const [loading, setLoading] = useState(true)
@@ -29,6 +29,7 @@ export default function MisPedidos({ onTrack }) {
     const { data, error: queryError } = await supabase
       .from('pedidos').select('*, establecimientos(nombre)')
       .eq('usuario_id', user.id).gte('created_at', hace90d)
+      .neq('estado', 'pendiente_pago')
       .order('created_at', { ascending: false }).limit(50)
     if (queryError) { setError('No se pudieron cargar los pedidos'); setLoading(false); return }
     const lista = data || []
@@ -49,15 +50,47 @@ export default function MisPedidos({ onTrack }) {
   }
 
   async function repetirPedido(pedido) {
-    const { data: items } = await supabase.from('pedido_items').select('*').eq('pedido_id', pedido.id)
-    if (!items || items.length === 0) return
-    for (const item of items) {
-      addItem({
+    const { data: items, error: itemsError } = await supabase.from('pedido_items').select('*').eq('pedido_id', pedido.id)
+    if (itemsError || !items || items.length === 0) return
+
+    // Estado ACTUAL de los productos: sin esto se repetía con el precio histórico
+    // (aunque el restaurante lo hubiera subido) y con productos ya retirados.
+    const ids = [...new Set(items.map(i => i.producto_id).filter(Boolean))]
+    const { data: productos, error: prodError } = await supabase.from('productos')
+      .select('id, precio, disponible').in('id', ids)
+    if (prodError) return
+    const prodMap = Object.fromEntries((productos || []).map(p => [p.id, p]))
+
+    const vigentes = items.filter(i => prodMap[i.producto_id] && prodMap[i.producto_id].disponible !== false)
+    if (vigentes.length === 0) {
+      window.alert('Los productos de este pedido ya no están disponibles en la carta.')
+      return
+    }
+
+    const nuevos = vigentes.map(item => {
+      const actual = prodMap[item.producto_id]
+      // El precio histórico incluye extras/tamaño (no se puede recomponer desde
+      // aquí); solo los items sin configuración se actualizan al precio vigente.
+      const sinConfig = (!item.extras || item.extras.length === 0) && !item.tamano
+      return {
         producto_id: item.producto_id, establecimiento_id: pedido.establecimiento_id,
         establecimiento_nombre: pedido.establecimientos?.nombre || '',
-        nombre: item.nombre_producto, precio_unitario: item.precio_unitario,
+        nombre: item.nombre_producto,
+        precio_unitario: sinConfig && actual.precio != null ? Number(actual.precio) : item.precio_unitario,
         cantidad: item.cantidad, tamano: item.tamano || null, extras: item.extras || null,
-      })
+      }
+    })
+
+    // Un ÚNICO confirm (addItem en bucle preguntaba una vez por item y acababa
+    // dejando solo el último en el carrito).
+    if (carrito.length > 0 && carrito[0].establecimiento_id !== pedido.establecimiento_id) {
+      if (!window.confirm('Tienes productos de otro restaurante. ¿Quieres vaciar el carrito y añadir este pedido?')) return
+      replaceCart(nuevos)
+    } else {
+      replaceCart([...carrito, ...nuevos])
+    }
+    if (vigentes.length < items.length) {
+      window.alert('Algunos productos de aquel pedido ya no están disponibles y no se han añadido.')
     }
     setRepetido(pedido.id); setTimeout(() => setRepetido(null), 3000)
   }
