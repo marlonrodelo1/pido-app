@@ -330,7 +330,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       // Columnas explícitas: select('*') traía TODAS las columnas del restaurante
       // (user_id del dueño, api keys legacy, config interna) en la query más
       // frecuente de la app. Si una vista nueva necesita otro campo, añadirlo aquí.
-      const COLS_ESTABLECIMIENTO = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre'
+      const COLS_ESTABLECIMIENTO = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, destacado'
       let query = supabase
         .from('establecimientos')
         .select(`${COLS_ESTABLECIMIENTO}, establecimiento_categorias(categoria_id)`)
@@ -440,13 +440,17 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   // Destacados:
   // - Modo marketplace de socio: usa el flag `destacado` de socio_establecimiento
   //   (ordenado por orden_destacado ASC). NO se aplica el filtro de rating.
-  // - Modo global pidoo.es: comportamiento legacy por rating >= 4.5.
+  // - Modo global pidoo.es: flag manual `establecimientos.destacado` (van primero)
+  //   + los automáticos por rating >= 4.5.
   const destacados = restaurantesFlags
     ? establecimientos
         .filter(r => restaurantesFlags[r.id]?.destacado)
         .sort((a, b) => (restaurantesFlags[a.id]?.orden_destacado ?? 999) - (restaurantesFlags[b.id]?.orden_destacado ?? 999))
         .slice(0, 10)
-    : establecimientos.filter(r => r.rating >= 4.5).slice(0, 5)
+    : establecimientos
+        .filter(r => r.destacado || r.rating >= 4.5)
+        .sort((a, b) => (b.destacado === true) - (a.destacado === true) || (b.rating || 0) - (a.rating || 0))
+        .slice(0, 5)
 
   const promoBadge = (promo) => {
     if (promo.tipo === 'descuento_porcentaje') return `-${promo.valor}%`
