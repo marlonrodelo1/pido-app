@@ -605,10 +605,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                     border: restaurantesFlags ? '2px solid #C5562C' : G.border,
                     marginBottom: 16,
                   }}>
-                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)' }}>
+                    <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)', position: 'relative' }}>
                       {r.banner_url && (
-                        <img src={optimizarImagen(r.banner_url, 640)} alt="" loading="lazy" decoding="async"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        // position absolute: si la img va en flujo, su ancho natural
+                        // estira la card del carrusel (minWidth 280 → ancho de la foto)
+                        <img src={optimizarImagen(r.banner_url, 960)} alt="" loading="lazy" decoding="async"
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                       )}
                     </div>
                     {/* Status badge */}
@@ -764,10 +766,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
             >
               {/* Image with gradient overlay and text */}
               <div style={{ height: 192, position: 'relative' }}>
-                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)' }}>
+                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)', position: 'relative' }}>
                   {r.banner_url && (
                     <img src={optimizarImagen(r.banner_url, 640)} alt="" loading="lazy" decoding="async"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                   )}
                 </div>
                 {/* Gradient overlay */}

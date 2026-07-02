@@ -11,7 +11,7 @@ export function optimizarImagen(url, width = 640) {
     }
     if (url.includes('/storage/v1/object/public/')) {
       const u = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-      return `${u}${u.includes('?') ? '&' : '?'}width=${width}&quality=75`
+      return `${u}${u.includes('?') ? '&' : '?'}width=${width}&quality=80`
     }
   } catch (_) { /* noop: mejor original que roto */ }
   return url
