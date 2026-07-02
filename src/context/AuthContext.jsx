@@ -108,9 +108,13 @@ export function AuthProvider({ children }) {
     const claimTokens = () => {
       supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).then(() => {}).catch(() => {})
     }
+    // Escalera hasta 45s (igual que el fix del socio del 2 jul): en iOS el token
+    // del AppDelegate puede tardar >15s en insertarse con red lenta en frío.
     setTimeout(claimTokens, 2000)
     setTimeout(claimTokens, 6000)
     setTimeout(claimTokens, 15000)
+    setTimeout(claimTokens, 30000)
+    setTimeout(claimTokens, 45000)
   }
 
   async function login(email, password) {

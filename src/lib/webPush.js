@@ -27,6 +27,13 @@ function getFirebaseMessaging() {
  * Registra Firebase Cloud Messaging y guarda el FCM token en Supabase.
  */
 export async function registerWebPush(userType, ids = {}) {
+  // En la app nativa el push va por FCM nativo (pushNotifications.js). Intentar
+  // FCM web dentro del WebView de Capacitor solo mete filas DEBUG de ruido y
+  // duplica la petición de permiso.
+  try {
+    const { Capacitor } = await import('@capacitor/core')
+    if (Capacitor.isNativePlatform()) return false
+  } catch (_) { /* sin Capacitor = web pura, seguimos */ }
   const debugSteps = []
   const log = (s) => { debugSteps.push(s); console.warn('[PUSH]', s) }
 
