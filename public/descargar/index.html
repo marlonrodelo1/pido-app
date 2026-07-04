@@ -80,7 +80,7 @@
   if(isIOS){ ios.classList.add('you'); box.insertBefore(ios, and); }
   else if(isAnd){ and.classList.add('you'); box.insertBefore(and, ios); }
   // opcional: nombre del restaurante desde ?r=slug
-  var names = {'come-y-calla':'Come y Calla','maxpizza':"Max's Pizza",'octava-isla':'Octava Isla','rincon-de-fran':'Rincón de Fran'};
+  var names = {'come-y-calla':'Come y Calla','maxpizza':"Max's Pizza",'octava-isla':'Octava Isla','rincon-de-fran':'Rincón de Fran','cafe-bar-australia':'Café Bar Australia'};
   var r = new URLSearchParams(location.search).get('r');
   if(r && names[r]){ var el=document.getElementById('rest'); el.textContent = names[r]+' y '; el.style.display='inline'; }
 })();
