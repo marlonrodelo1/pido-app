@@ -97,12 +97,14 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
       .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta)
 
-    // Si tenemos ubicacion del cliente, filtrar por radio global. Si no,
-    // mostrar todo el bounding box.
+    // Un restaurante aparece si el cliente está dentro del radio que ESE restaurante
+    // configuró (radio_cobertura_km), igual que en el listado del Home — así mapa y
+    // listado coinciden. Fallback al radio global si no lo tiene. Sin ubicación,
+    // se muestra todo el bounding box.
     const filtered = (perfil?.latitud && perfil?.longitud)
       ? (estData || []).filter(e =>
           e.latitud != null && e.longitud != null &&
-          haversineKm(perfil.latitud, perfil.longitud, e.latitud, e.longitud) <= radioKm
+          haversineKm(perfil.latitud, perfil.longitud, e.latitud, e.longitud) <= (e.radio_cobertura_km || radioKm)
         )
       : (estData || [])
     setEstablecimientos(filtered)
@@ -132,7 +134,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       {/* Contadores flotantes */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <div style={{ background: 'rgba(0,0,0,0.06)', border: '1px solid var(--c-border)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, color: 'var(--c-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 14 }}>🍽️</span> {establecimientos.length} establecimientos
+          {establecimientos.length} establecimientos
         </div>
       </div>
 

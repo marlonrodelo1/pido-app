@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Stars from '../components/Stars'
+import { estaAbierto } from '../lib/horario'
 
 export default function Favoritos({ onOpenRest }) {
   const { user } = useAuth()
@@ -15,10 +16,13 @@ export default function Favoritos({ onOpenRest }) {
     try {
       const { data: favIds, error: rpcError } = await supabase.rpc('get_favoritos')
       if (rpcError || !favIds || favIds.length === 0) { setRestaurantes([]); return }
-      // Mismas columnas explícitas que Home (evita traer PII/config interna).
+      // No filtramos por `activo`: un favorito debe seguir apareciendo aunque el
+      // restaurante esté Cerrado ahora mismo (se marca "Cerrado"). Solo excluimos los
+      // que ya no están en la plataforma (estado != 'activo'). Columnas explícitas
+      // como en Home (evita traer PII/config interna).
       const { data } = await supabase.from('establecimientos')
-        .select('id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre')
-        .in('id', favIds).eq('activo', true).eq('estado', 'activo')
+        .select('id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, activo')
+        .in('id', favIds).eq('estado', 'activo')
       setRestaurantes(data || [])
     } catch { setRestaurantes([]) }
     finally { setLoading(false) }
@@ -50,7 +54,12 @@ export default function Favoritos({ onOpenRest }) {
             {r.logo_url ? <img src={r.logo_url} alt="" style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} /> : '🍽️'}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>{r.nombre}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--c-text)' }}>{r.nombre}</div>
+              {!estaAbierto(r).abierto && (
+                <span style={{ fontSize: 9, fontWeight: 800, color: '#DC2626', background: 'rgba(239,68,68,0.12)', padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cerrado</span>
+              )}
+            </div>
             <div style={{ fontSize: 11, color: 'var(--c-muted)', display: 'flex', gap: 8, alignItems: 'center' }}>
               <Stars rating={r.rating} size={11} />
               <span style={{ fontWeight: 600 }}>{r.rating?.toFixed(1)}</span>

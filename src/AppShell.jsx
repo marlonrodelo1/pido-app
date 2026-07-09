@@ -118,7 +118,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
   const catLabel = categoriaPadre === 'comida' ? 'Comida' : categoriaPadre === 'farmacia' ? 'Farmacia' : 'Market'
 
   return (
-    <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(20px + 64px + 20px + env(safe-area-inset-bottom, 0px))' }}>
+    <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(64px + 20px + env(safe-area-inset-bottom, 0px))' }}>
       <style>{globalCss}</style>
 
       <div style={{
@@ -185,8 +185,8 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
                 }
               : {
                   title: 'Pidoo',
-                  text: 'Descubre pidoo 🍕 Tus restaurantes, locales y farmacias más cerca. 100% canario 🌴',
-                  url: 'https://pidoo.es',
+                  text: 'Descárgate pidoo 🍕 Tus restaurantes, locales y farmacias a domicilio. 100% canario 🌴',
+                  url: 'https://pidoo.es/descargar',
                 }
             if (navigator.share) { try { await navigator.share(shareData) } catch (_) {} }
             else { try { await navigator.clipboard.writeText(shareData.url) } catch (_) {} }
@@ -282,7 +282,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           >
             <X size={18} strokeWidth={2.2} />
           </button>
-          <Login nextPath={socioData?.slug ? `/s/${socioData.slug}` : null} />
+          <Login dark nextPath={socioData?.slug ? `/s/${socioData.slug}` : null} />
         </div>
       )}
     </div>

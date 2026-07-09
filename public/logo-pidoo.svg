@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="452" height="164" viewBox="28 178 452 164">
+  <text x="40" y="260" font-family="'Arial Black', 'Inter', 'DM Sans', system-ui, sans-serif" font-weight="900" font-size="150" fill="#FF6B2C" dominant-baseline="central" letter-spacing="-3">Pid</text>
+  <circle cx="328" cy="260" r="54" fill="none" stroke="#FF6B2C" stroke-width="24"/>
+  <circle cx="438" cy="260" r="34" fill="#FF6B2C"/>
+</svg>

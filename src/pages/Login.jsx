@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Capacitor } from '@capacitor/core'
 import { Mail, Lock, User, Phone, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
-export default function Login({ nextPath = null }) {
+export default function Login({ nextPath = null, dark = false }) {
   const { login, registro, resetPassword, authError, setAuthError } = useAuth()
   const [modo, setModo] = useState('login')
   const [email, setEmail] = useState('')
@@ -21,6 +21,16 @@ export default function Login({ nextPath = null }) {
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [blockedUntil, setBlockedUntil] = useState(null)
   const lastSubmit = useRef(0)
+
+  // Colores de los textos "flotantes" (sin fondo propio) según el glaseado del modal:
+  // AppShell usa overlay OSCURO (dark=true) → texto claro; TiendaPublica usa overlay
+  // claro (dark=false) → texto oscuro como estaba. Los inputs/tabs tienen fondo propio.
+  const titleColor = dark ? '#FFFFFF' : 'var(--c-text)'
+  const subColor = dark ? 'rgba(255,255,255,0.90)' : 'var(--c-muted)'
+  const hintColor = dark ? 'rgba(255,255,255,0.72)' : '#767575'
+  const termsColor = dark ? 'rgba(255,255,255,0.85)' : 'var(--c-muted)'
+  const sepColor = dark ? 'rgba(255,255,255,0.60)' : '#767575'
+  const dividerColor = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.05)'
 
   function validar() {
     const e = {}
@@ -83,11 +93,11 @@ export default function Login({ nextPath = null }) {
     return (
       <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', marginBottom: 8, textAlign: 'center', letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: titleColor, marginBottom: 8, textAlign: 'center', letterSpacing: '-0.02em' }}>
           Confirma tu correo
         </div>
-        <p style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 28, textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>
-          Enviamos un enlace de confirmación a <strong style={{ color: 'var(--c-text)' }}>{email}</strong>. Revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
+        <p style={{ fontSize: 13, color: subColor, marginBottom: 28, textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>
+          Enviamos un enlace de confirmación a <strong style={{ color: titleColor }}>{email}</strong>. Revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta.
         </p>
         <button onClick={() => { setModo('login'); setRegistroExitoso(false); setError(null); setErrores({}) }} style={{
           padding: '14px 32px', borderRadius: 10, border: 'none',
@@ -105,11 +115,11 @@ export default function Login({ nextPath = null }) {
     return (
       <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>📩</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', marginBottom: 8, textAlign: 'center', letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: titleColor, marginBottom: 8, textAlign: 'center', letterSpacing: '-0.02em' }}>
           Revisa tu email
         </div>
-        <p style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 28, textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
-          Enviamos un enlace a <strong style={{ color: 'var(--c-text)' }}>{email}</strong> para restablecer tu contraseña
+        <p style={{ fontSize: 13, color: subColor, marginBottom: 28, textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
+          Enviamos un enlace a <strong style={{ color: titleColor }}>{email}</strong> para restablecer tu contraseña
         </p>
         <button onClick={() => { setModo('login'); setResetEnviado(false); setError(null); setErrores({}) }} style={{
           padding: '14px 32px', borderRadius: 10, border: 'none',
@@ -126,8 +136,8 @@ export default function Login({ nextPath = null }) {
   return (
     <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'center' }}>
       {/* Logo */}
-      <div style={{ fontSize: 48, fontWeight: 800, color: 'var(--c-primary)', marginBottom: 8, letterSpacing: '-0.04em' }}>pidoo</div>
-      <p style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 36, textAlign: 'center' }}>
+      <img src="/logo-cliente-t.png" alt="Pidoo" style={{ width: 170, height: 'auto', display: 'block', marginBottom: 12 }} />
+      <p style={{ fontSize: 13, color: subColor, marginBottom: 36, textAlign: 'center' }}>
         {modo === 'reset' ? 'Introduce tu email para recuperar tu contraseña' : 'Tu comida favorita, al alcance de un toque'}
       </p>
 
@@ -199,7 +209,7 @@ export default function Login({ nextPath = null }) {
             </button>
             {errores.password && <div style={errorTextStyle}>{errores.password}</div>}
             {modo === 'registro' && !errores.password && (
-              <div style={{ fontSize: 11, color: '#767575', marginTop: 4, marginLeft: 4 }}>
+              <div style={{ fontSize: 11, color: hintColor, marginTop: 4, marginLeft: 4 }}>
                 Mínimo 8 caracteres · 1 mayúscula · 1 número
               </div>
             )}
@@ -255,9 +265,9 @@ export default function Login({ nextPath = null }) {
         {modo !== 'reset' && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-              <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.05)' }} />
-              <span style={{ fontSize: 11, color: '#767575', fontWeight: 600 }}>o</span>
-              <div style={{ flex: 1, height: 1, background: 'rgba(0,0,0,0.05)' }} />
+              <div style={{ flex: 1, height: 1, background: dividerColor }} />
+              <span style={{ fontSize: 11, color: sepColor, fontWeight: 600 }}>o</span>
+              <div style={{ flex: 1, height: 1, background: dividerColor }} />
             </div>
             <button onClick={async () => {
               setError(null); setLoading(true)
@@ -331,14 +341,14 @@ export default function Login({ nextPath = null }) {
             }}>
               <div style={{
                 width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                border: aceptaTerminos ? 'none' : errores.terminos ? '1.5px solid #EF4444' : '1.5px solid rgba(0,0,0,0.08)',
+                border: aceptaTerminos ? 'none' : errores.terminos ? '1.5px solid #EF4444' : dark ? '1.5px solid rgba(255,255,255,0.5)' : '1.5px solid rgba(0,0,0,0.08)',
                 background: aceptaTerminos ? 'var(--c-primary)' : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, color: '#1A1815', transition: 'all 0.15s',
+                fontSize: 12, color: '#fff', transition: 'all 0.15s',
               }}>
                 {aceptaTerminos && '✓'}
               </div>
-              <span style={{ fontSize: 12, color: 'var(--c-muted)', lineHeight: 1.4 }}>
+              <span style={{ fontSize: 12, color: termsColor, lineHeight: 1.4 }}>
                 Acepto los <a href="/terminos" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-primary)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>términos y condiciones</a> y la <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--c-primary)', fontWeight: 600, textDecoration: 'none' }} onClick={e => e.stopPropagation()}>política de privacidad</a>
               </span>
             </button>

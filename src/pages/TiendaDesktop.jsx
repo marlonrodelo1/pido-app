@@ -125,6 +125,7 @@ function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
     const item = {
       producto_id: p.id,
       nombre: p.nombre,
+      imagen_url: p.imagen_url || null,
       tamano: tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].nombre : null,
       extras: extrasRich,
       precio_unitario: precioTotal / cant,
@@ -780,6 +781,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
     const item = {
       producto_id: p.id,
       nombre: p.nombre,
+      imagen_url: p.imagen_url || null,
       tamano: null, extras: [],
       precio_unitario: getPrecioMostrado(p),
       cantidad: 1,

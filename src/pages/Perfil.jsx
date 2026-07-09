@@ -7,7 +7,6 @@ import AddressInput from '../components/AddressInput'
 
 export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   const { user, perfil, logout, updatePerfil, fetchPerfil } = useAuth()
-  const [editando, setEditando] = useState(false)
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
   const [telefono, setTelefono] = useState('')
@@ -62,14 +61,24 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     if (!allowedTypes.includes(file.type)) { setMsg('Solo se permiten imágenes (JPG, PNG, WebP, GIF)'); return }
     if (file.size > 5 * 1024 * 1024) { setMsg('La imagen no puede superar 5MB'); return }
-    const ext = file.name.split('.').pop()
-    const path = `${perfil.id}_${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    if (error) { setMsg('Error al subir foto'); return }
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-    await updatePerfil({ avatar_url: publicUrl })
-    setMsg('Foto actualizada')
-    setTimeout(() => setMsg(null), 1500)
+    // La subida directa a Storage por SDK falla (Storage no valida el JWT ES256 → te
+    // trata como anónimo y la policy la bloquea). Subimos por edge con service_role,
+    // mismo patrón que las imágenes de productos/socios.
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const { data, error } = await supabase.functions.invoke('subir-avatar', { body: form })
+      if (error) {
+        const emsg = error?.context ? await error.context.json().catch(() => null) : null
+        setMsg(emsg?.error || 'Error al subir foto'); return
+      }
+      if (!data?.publicUrl) { setMsg('Error al subir foto'); return }
+      await updatePerfil({ avatar_url: data.publicUrl })
+      setMsg('Foto actualizada')
+      setTimeout(() => setMsg(null), 1500)
+    } catch {
+      setMsg('Error al subir foto')
+    }
   }
 
   const handleGuardar = async () => {
@@ -93,7 +102,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
       if (error) throw error
       fetchPerfil(user.id)  // Refresh perfil state
       setMsg('Perfil actualizado')
-      setTimeout(() => { setEditando(false); setMsg(null) }, 1200)
+      setTimeout(() => { setMsg(null) }, 1200)
     } catch { setMsg('Error al guardar') }
     finally { setSaving(false) }
   }
@@ -183,7 +192,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
     { icon: MapPin, label: 'Mis direcciones', action: () => { setSubSeccion('direcciones'); fetchDirecciones() } },
     { icon: CreditCard, label: 'Método de pago', action: () => setSubSeccion('pagos') },
     { icon: Tag, label: 'Promociones', action: () => setSubSeccion('promos') },
-    { icon: Settings, label: 'Configuración', action: () => setSubSeccion('config') },
+    { icon: Settings, label: 'Configuración del perfil', action: () => { setNombre(perfil?.nombre || ''); setApellido(perfil?.apellido || ''); setTelefono(perfil?.telefono || ''); setSubSeccion('config') } },
     { icon: HelpCircle, label: 'Ayuda', action: () => setSubSeccion('ayuda') },
   ]
 
@@ -335,8 +344,8 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
             <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Método de pago</h2>
             <div style={{ fontSize: 13, color: 'var(--c-muted)', marginBottom: 16 }}>Elige tu método preferido para próximos pedidos</div>
             {[
-              { id: 'tarjeta', label: 'Tarjeta', emoji: '💳', desc: 'Pago seguro con Stripe' },
-              { id: 'efectivo', label: 'Efectivo', emoji: '💵', desc: 'Paga al recibir tu pedido' },
+              { id: 'tarjeta', label: 'Tarjeta', desc: 'Pago seguro con Stripe' },
+              { id: 'efectivo', label: 'Efectivo', desc: 'Paga al recibir tu pedido' },
             ].map(m => {
               const sel = perfil?.metodo_pago_preferido === m.id
               return (
@@ -346,7 +355,6 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
                   border: sel ? '2px solid var(--c-primary)' : '1px solid rgba(0,0,0,0.08)',
                   background: sel ? 'rgba(255,107,44,0.1)' : 'rgba(0,0,0,0.04)',
                 }}>
-                  <span style={{ fontSize: 28 }}>{m.emoji}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: sel ? 'var(--c-primary)' : '#1A1815' }}>{m.label}</div>
                     <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>{m.desc}</div>
@@ -362,15 +370,39 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
 
         {subSeccion === 'config' && (
           <>
-            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Configuración</h2>
-            <div style={{ ...glass }}>
-              {[{ label: 'Notificaciones', desc: 'Activadas' }, { label: 'Idioma', desc: 'Español' }].map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{item.label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--c-muted)' }}>{item.desc}</span>
-                </div>
-              ))}
+            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Configuración del perfil</h2>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Nombre</label>
+              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre" style={inputDark} />
             </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Apellido</label>
+              <input value={apellido} onChange={e => setApellido(e.target.value)} placeholder="Apellido" style={inputDark} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Teléfono</label>
+              <input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="Teléfono" style={inputDark} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Email</label>
+              <input value={user?.email || perfil?.email || ''} disabled style={{ ...inputDark, opacity: 0.6, cursor: 'not-allowed' }} />
+            </div>
+            {msg && (
+              <div style={{
+                textAlign: 'center', fontSize: 12, fontWeight: 600, marginBottom: 14,
+                color: msg.includes('Error') ? '#EF4444' : '#22C55E',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              }}>
+                <Check size={14} /> {msg}
+              </div>
+            )}
+            <button onClick={handleGuardar} disabled={saving} style={{
+              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+              background: saving ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)', color: saving ? '#6B6356' : '#fff',
+              fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+            }}>
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
           </>
         )}
 
@@ -379,9 +411,12 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
             <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Ayuda</h2>
             <div style={glass}>
               {[
-                { q: '¿Cómo hago un pedido?', a: 'Elige un restaurante, añade productos al carrito y confirma tu pedido.' },
-                { q: '¿Cómo contacto con soporte?', a: 'Escríbenos a soporte@pidoo.es' },
-                { q: '¿Puedo cancelar un pedido?', a: 'Puedes cancelar antes de que el restaurante acepte tu pedido.' },
+                { q: '¿Cómo hago un pedido?', a: 'Elige un restaurante, añade productos al carrito, confirma tu dirección y paga. Te llega a domicilio o lo recoges tú.' },
+                { q: '¿Qué métodos de pago hay?', a: 'Puedes pagar con tarjeta (pago seguro con Stripe) o en efectivo al recibir el pedido, según lo que acepte cada restaurante.' },
+                { q: '¿Cómo sigo mi pedido?', a: 'En "Pedidos" ves el estado en tiempo real: aceptado, en preparación, en camino y entregado.' },
+                { q: '¿Entrega a domicilio o recogida?', a: 'Si hay repartidor disponible puedes pedir a domicilio; si no, puedes recogerlo tú en el restaurante. La opción disponible se muestra en el carrito.' },
+                { q: '¿Puedo cancelar un pedido?', a: 'Sí, puedes cancelar antes de que el restaurante lo acepte. Si pagaste con tarjeta, el reembolso es automático.' },
+                { q: '¿Cómo cambio mi dirección?', a: 'Entra en Perfil → Mis direcciones para añadir, cambiar o eliminar tus direcciones de entrega.' },
               ].map((item, i) => (
                 <details key={i} style={{ padding: '14px 16px' }}>
                   <summary style={{ fontSize: 14, fontWeight: 600, cursor: 'pointer', listStyle: 'none', display: 'flex', justifyContent: 'space-between' }}>
@@ -390,6 +425,21 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
                   <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 8, lineHeight: 1.5 }}>{item.a}</div>
                 </details>
               ))}
+            </div>
+
+            {/* Contacto directo con soporte */}
+            <div style={{ ...glass, marginTop: 16, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text)', marginBottom: 4 }}>¿No encuentras tu respuesta?</div>
+              <div style={{ fontSize: 12, color: 'var(--c-muted)', marginBottom: 12 }}>Escríbenos y te ayudamos con cualquier duda.</div>
+              <a href="mailto:soporte@pidoo.es" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '14px', borderRadius: 12, textDecoration: 'none',
+                background: 'var(--c-btn-gradient)', color: '#fff', fontSize: 14, fontWeight: 700,
+                boxSizing: 'border-box',
+              }}>
+                <Mail size={16} strokeWidth={2} /> Contactar con soporte
+              </a>
+              <div style={{ fontSize: 11, color: 'var(--c-muted)', marginTop: 10 }}>soporte@pidoo.es</div>
             </div>
           </>
         )}
@@ -426,16 +476,6 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
         </div>
         <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>{user?.email || perfil?.email}</div>
         {perfil?.telefono && <div style={{ fontSize: 12, color: 'var(--c-muted)', marginTop: 2 }}>{perfil.telefono}</div>}
-        <button onClick={() => {
-          setNombre(perfil?.nombre || ''); setApellido(perfil?.apellido || ''); setTelefono(perfil?.telefono || '')
-          setEditando(true)
-        }} style={{
-          marginTop: 10, padding: '6px 16px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)',
-          background: 'transparent', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-          fontFamily: 'inherit', color: 'var(--c-primary)',
-        }}>
-          Editar perfil
-        </button>
       </div>
 
       {/* Menu */}
@@ -479,69 +519,6 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
         </button>
       </div>
 
-      {/* Modal Editar Perfil */}
-      {editando && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.7)', zIndex: 1000,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        }} onClick={e => e.target === e.currentTarget && setEditando(false)}>
-          <div className="modal-sheet" style={{
-            width: '100%', maxWidth: 420, background: 'rgba(20,20,20,0.95)',
-            borderRadius: '20px 20px 0 0', padding: 24,
-            animation: 'slideUp 0.3s ease',
-            backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-            boxShadow: '0 -8px 32px rgba(255,107,44,0.06)',
-            border: '1px solid rgba(0,0,0,0.08)', borderBottom: 'none',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1A1815' }}>Editar perfil</h3>
-              <button onClick={() => setEditando(false)} style={{
-                width: 32, height: 32, borderRadius: 12, background: 'rgba(0,0,0,0.08)',
-                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <X size={16} strokeWidth={2} color="#1A1815" />
-              </button>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Nombre</label>
-              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre" style={inputDark} />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Apellido</label>
-              <input value={apellido} onChange={e => setApellido(e.target.value)} placeholder="Apellido" style={inputDark} />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Teléfono</label>
-              <input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="Teléfono" style={inputDark} />
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Email</label>
-              <input value={user?.email || perfil?.email || ''} disabled style={{ ...inputDark, opacity: 0.5, cursor: 'not-allowed', background: 'rgba(0,0,0,0.04)' }} />
-            </div>
-
-            {msg && (
-              <div style={{
-                textAlign: 'center', fontSize: 12, fontWeight: 600, marginBottom: 14,
-                color: msg.includes('Error') ? '#EF4444' : '#22C55E',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-              }}>
-                <Check size={14} /> {msg}
-              </div>
-            )}
-
-            <button onClick={handleGuardar} disabled={saving} style={{
-              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-              background: saving ? 'rgba(0,0,0,0.06)' : 'var(--c-btn-gradient)', color: saving ? '#6B6356' : '#fff',
-              fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
-            }}>
-              {saving ? 'Guardando...' : 'Guardar cambios'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Modal Eliminar Cuenta */}
       {showDeleteModal && (
         <div style={{
@@ -550,9 +527,9 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         }} onClick={e => { if (e.target === e.currentTarget && !deleting) setShowDeleteModal(false) }}>
           <div className="modal-sheet" style={{
-            width: '100%', maxWidth: 420, background: 'rgba(20,20,20,0.97)',
+            width: '100%', maxWidth: 420, background: '#FFFFFF',
             borderRadius: '20px 20px 0 0', padding: 24, animation: 'slideUp 0.3s ease',
-            backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
             border: '1px solid rgba(239,68,68,0.25)', borderBottom: 'none',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -567,7 +544,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
             </div>
 
             <p style={{ fontSize: 13, color: 'var(--c-muted)', lineHeight: 1.5, marginBottom: 16 }}>
-              Esta acción es <strong style={{ color: '#1A1815' }}>permanente</strong>. Se borrarán tu perfil, direcciones, notificaciones, métodos de pago y suscripciones push. Tu historial de pedidos se anonimiza por requisito legal/contable. No podrás recuperar la cuenta.
+              Esta acción es <strong style={{ color: '#EF4444' }}>permanente y no se puede deshacer</strong>. Se eliminarán tu perfil, direcciones, notificaciones y datos de la app. Tu historial de pedidos se conserva de forma anónima por obligación legal/contable. No podrás recuperar la cuenta.
             </p>
 
             <label style={{ ...labelStyle, color: 'rgba(239,68,68,0.7)' }}>Escribe ELIMINAR para confirmar</label>
@@ -619,27 +596,55 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   )
 }
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 function PromosSection() {
+  const { perfil } = useAuth()
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    supabase.from('promociones').select('*, establecimientos(nombre, logo_url)')
+    supabase.from('promociones').select('*, establecimientos(nombre, logo_url, latitud, longitud, radio_cobertura_km, activo, estado)')
       .eq('activa', true)
       .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
       .then(({ data }) => { setPromos(data || []); setLoading(false) })
   }, [])
+
+  // Solo mostrar promos de restaurantes que le APARECEN al usuario en el listado:
+  // activos (Abierto/Cerrado toggle), verificados (estado='activo') y dentro del radio
+  // que el propio restaurante configuró (si el usuario tiene ubicación guardada). Mismo
+  // criterio que el Home, para no anunciar promos de sitios que no puede pedir.
+  const RADIO_DEFAULT = 15
+  const promosVisibles = promos.filter(p => {
+    const e = p.establecimientos
+    if (!e) return false
+    if (e.activo !== true || e.estado !== 'activo') return false
+    if (perfil?.latitud && perfil?.longitud && e.latitud && e.longitud) {
+      const dist = haversineKm(perfil.latitud, perfil.longitud, e.latitud, e.longitud)
+      if (dist > (e.radio_cobertura_km || RADIO_DEFAULT)) return false
+    }
+    return true
+  })
+
   return (
     <>
       <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>Promociones</h2>
       {loading && <div style={{ textAlign: 'center', padding: 30, color: 'var(--c-muted)' }}>Cargando...</div>}
-      {!loading && promos.length === 0 && (
+      {!loading && promosVisibles.length === 0 && (
         <div style={{ background: 'rgba(0,0,0,0.05)', borderRadius: 14, padding: 24, textAlign: 'center', border: '1px solid rgba(0,0,0,0.06)' }}>
           <Tag size={32} strokeWidth={1.5} color="var(--c-muted)" style={{ marginBottom: 12 }} />
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>Sin promociones activas</div>
           <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>Las promociones aparecen aqui cuando los restaurantes las publican</div>
         </div>
       )}
-      {promos.map(p => (
+      {promosVisibles.map(p => (
         <div key={p.id} style={{
           background: 'rgba(0,0,0,0.05)', borderRadius: 14, padding: '14px 16px',
           border: '1px solid rgba(220,38,38,0.2)', marginBottom: 10,

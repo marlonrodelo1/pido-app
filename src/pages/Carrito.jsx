@@ -9,8 +9,9 @@ import { crearPagoStripe, listarTarjetas, pagarConTarjetaGuardada, TARJETAS_GUAR
 import { sendPush } from '../lib/webPush'
 import { estaAbierto } from '../lib/horario'
 import { getCurrentPosition } from '../lib/geolocation'
-import { CreditCard, Lock, X, ArrowLeft, Check, Navigation, MapPin } from 'lucide-react'
+import { CreditCard, Lock, X, ArrowLeft, Check, Navigation, MapPin, Trash2 } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
+import { FoodIcon } from '../lib/food'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -20,6 +21,7 @@ const C = {
   cream: '#F7F3EC', cream2: '#EFE9DD', paper: '#FBF8F2',
   ink: '#1A1815', ink2: '#2B2823', stone: '#6B6356',
   terracotta: '#C5562C', terracotta2: '#A8451F', terracottaSoft: '#F1D9CC',
+  burnt: '#E4671F', burntText: '#A85018', burntGlaze: 'linear-gradient(180deg,#FDE8D6 0%,#F7CFB2 100%)',
   sage: '#8B9D7A', sage2: '#6F8460', sageSoft: '#DDE3D3',
   warning: '#C99551', warningSoft: '#F0E1C8',
   danger: '#B5564A', dangerSoft: '#F1D0CB',
@@ -35,10 +37,10 @@ const S = {
   label: { fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 },
   selBtn: (active) => ({
     flex: 1, padding: '12px 0', borderRadius: 12,
-    border: active ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
-    background: active ? C.terracottaSoft : C.paper,
+    border: active ? `1.5px solid ${C.burnt}` : `1px solid ${C.border}`,
+    background: active ? C.burntGlaze : C.paper,
     fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-    color: active ? C.terracotta2 : C.ink,
+    color: active ? C.burntText : C.ink,
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     transition: 'all 0.15s ease',
   }),
@@ -124,7 +126,7 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
         fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
         fontFamily: 'inherit', letterSpacing: '0.01em',
       }}>
-        {loading ? 'Procesando pago...' : `Pagar ${total.toFixed(2)} €`}
+        {loading ? 'Procesando pago...' : `Pagar ${fmt(total)}`}
       </button>
     </div>
   )
@@ -264,8 +266,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
             estado.razon === 'sin_horario'
               ? `${data.nombre} no tiene horario configurado y no acepta pedidos en este momento.`
               : estado.proximaApertura
-                ? `${data.nombre} esta cerrado. ${estado.proximaApertura}.`
-                : `${data.nombre} esta cerrado ahora mismo.`
+                ? `${data.nombre} está cerrado. ${estado.proximaApertura}.`
+                : `${data.nombre} está cerrado ahora mismo.`
           )
         })
       supabase.from('promociones').select('*').eq('establecimiento_id', estId).eq('activa', true)
@@ -375,6 +377,22 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     const stillValid = metodosDisponibles.some(m => m.id === metodoPago)
     if (!stillValid) setMetodoPago(metodosDisponibles[0].id)
   }, [metodosDisponibles, metodoPago, setMetodoPago])
+
+  // Al abrir el carrito, pre-seleccionar el método de pago PREFERIDO del perfil
+  // (Perfil → Método de pago) si está disponible en este restaurante. Se aplica
+  // una sola vez por apertura; el usuario puede cambiarlo para este pedido.
+  const prefMetodoAplicadaRef = useRef(false)
+  useEffect(() => {
+    if (!open) { prefMetodoAplicadaRef.current = false; return }
+    if (prefMetodoAplicadaRef.current) return
+    if (metodosDisponibles.length === 0) return
+    const pref = perfil?.metodo_pago_preferido
+    if (!pref) { prefMetodoAplicadaRef.current = true; return }
+    if (metodosDisponibles.some(m => m.id === pref)) {
+      setMetodoPago(pref)
+      prefMetodoAplicadaRef.current = true
+    }
+  }, [open, metodosDisponibles, perfil?.metodo_pago_preferido, setMetodoPago])
 
   // Guest checkout DESACTIVADO para el lanzamiento: el flujo Stripe y las policies RLS
   // de `pedidos` requieren cuenta (usuario_id = auth.uid()). Exigir cuenta además
@@ -729,7 +747,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 appearance: {
                   theme: 'stripe',
                   variables: {
-                    colorPrimary: '#C5562C',
+                    colorPrimary: '#E4671F',
                     colorBackground: '#FFFFFF',
                     colorText: '#1A1815',
                     colorDanger: '#B5564A',
@@ -788,56 +806,106 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
                 {/* Items */}
                 <div style={{ marginBottom: 18 }}>
-                  {carrito.map((item, idx) => (
+                  {/* Cabecera lista: contador + vaciar */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={S.label}>{totalItems} {totalItems === 1 ? 'artículo' : 'artículos'}</span>
+                    <button
+                      onClick={clearCart}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        background: 'none', border: 'none', color: C.stone,
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0,
+                      }}
+                    >
+                      <Trash2 size={13} strokeWidth={2} /> Vaciar
+                    </button>
+                  </div>
+
+                  {carrito.map((item, idx) => {
+                    // Extras aplanados a texto con su sobreprecio: "Bacon extra (+1,00 €)"
+                    const extrasList = item.extras?.length > 0
+                      ? (typeof item.extras[0] === 'object' && item.extras[0] !== null && 'opciones' in item.extras[0]
+                          ? item.extras.flatMap(g => (g.opciones || []).map(o => o.precio > 0 ? `${o.nombre} (+${fmt(o.precio)})` : o.nombre))
+                          : item.extras)
+                      : []
+                    return (
                     <div key={idx} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
-                      padding: 12, marginBottom: 8,
-                      background: C.paper, borderRadius: 14,
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: 10, marginBottom: 8,
+                      background: C.paper, borderRadius: 16,
                       border: `1px solid ${C.border}`,
                     }}>
+                      {/* Miniatura del producto (imagen o icono de comida) */}
+                      <div style={{
+                        width: 56, height: 56, borderRadius: 12, overflow: 'hidden', flexShrink: 0,
+                        background: C.cream2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {item.imagen_url
+                          ? <img src={item.imagen_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <FoodIcon kw={item.nombre} size={56} />}
+                      </div>
+
+                      {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink, lineHeight: 1.3 }}>{item.nombre}</div>
-                        {item.tamano && <div style={{ fontSize: 11, color: C.stone, marginTop: 3 }}>{item.tamano}</div>}
-                        {item.extras?.length > 0 && (
-                          <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.45 }}>
-                            {typeof item.extras[0] === 'object' && item.extras[0] !== null && 'opciones' in item.extras[0]
-                              ? item.extras.map(g => (g.opciones || []).map(o => o.nombre).join(', ')).filter(Boolean).join(' · ')
-                              : item.extras.join(', ')}
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.ink, lineHeight: 1.25 }}>{item.nombre}</div>
+                        {item.tamano && <div style={{ fontSize: 11, color: C.stone, marginTop: 2 }}>{item.tamano}</div>}
+                        {extrasList.length > 0 && (
+                          <div style={{ fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.4 }}>
+                            {extrasList.join(' · ')}
                           </div>
                         )}
-                        <div style={{ fontSize: 14, fontWeight: 800, color: C.terracotta, marginTop: 6 }}>
-                          {fmt(item.precio_unitario * item.cantidad)}
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: C.burnt }}>
+                            {fmt(item.precio_unitario * item.cantidad)}
+                          </span>
+                          {item.cantidad > 1 && (
+                            <span style={{ fontSize: 11, color: C.stone }}>
+                              {fmt(item.precio_unitario)} × {item.cantidad}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0,
-                      }}>
+
+                      {/* Acciones: eliminar + cantidad */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
                         <button
-                          onClick={() => updateCantidad(idx, item.cantidad - 1)}
-                          aria-label="Restar"
+                          onClick={() => removeItem(idx)}
+                          aria-label="Eliminar"
                           style={{
-                            width: 26, height: 26, borderRadius: '50%',
-                            border: `1px solid ${C.border}`, background: '#fff',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: C.ink, fontFamily: 'inherit',
+                            background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                            color: C.stone, display: 'flex',
                           }}
-                        >−</button>
-                        <span style={{ minWidth: 14, textAlign: 'center', fontWeight: 700, fontSize: 14, color: C.ink }}>
-                          {item.cantidad}
-                        </span>
-                        <button
-                          onClick={() => updateCantidad(idx, item.cantidad + 1)}
-                          aria-label="Sumar"
-                          style={{
-                            width: 26, height: 26, borderRadius: '50%',
-                            border: 'none', background: C.terracotta,
-                            cursor: 'pointer', color: '#fff', fontFamily: 'inherit',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                        >+</button>
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <button
+                            onClick={() => updateCantidad(idx, item.cantidad - 1)}
+                            aria-label="Restar"
+                            style={{
+                              width: 26, height: 26, borderRadius: '50%',
+                              border: `1px solid ${C.border}`, background: '#fff',
+                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: C.ink, fontFamily: 'inherit',
+                            }}
+                          >−</button>
+                          <span style={{ minWidth: 14, textAlign: 'center', fontWeight: 700, fontSize: 14, color: C.ink }}>
+                            {item.cantidad}
+                          </span>
+                          <button
+                            onClick={() => updateCantidad(idx, item.cantidad + 1)}
+                            aria-label="Sumar"
+                            style={{
+                              width: 26, height: 26, borderRadius: '50%',
+                              border: 'none', background: C.burnt,
+                              cursor: 'pointer', color: '#fff', fontFamily: 'inherit',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >+</button>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 {/* Tipo de entrega */}
@@ -851,7 +919,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   <div style={{ display: 'flex', gap: 6 }}>
                     {(deliveryDisponible ? ['delivery', 'recogida'] : ['recogida']).map(m => (
                       <button key={m} onClick={() => elegirEntrega(m)} style={S.selBtn(modoEntrega === m)}>
-                        {m === 'delivery' ? '🛵 Delivery' : '🛍 Recogida'}
+                        {m === 'delivery' ? 'Delivery' : 'Recogida'}
                       </button>
                     ))}
                   </div>
@@ -864,17 +932,17 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
                 {/* Propina */}
                 <div style={{ marginBottom: 14 }}>
-                  <div style={S.label}>Propina al rider</div>
+                  <div style={S.label}>{modoEntrega === 'recogida' ? 'Propina' : 'Propina al rider'}</div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {[0, 1, 2, 3].map(p => {
                       const active = propina === p
                       return (
                         <button key={p} onClick={() => setPropina(p)} style={{
                           flex: 1, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
-                          border: active ? 'none' : `1px solid ${C.border}`,
-                          background: active ? C.sage : C.paper,
-                          color: active ? '#fff' : C.stone,
-                          fontFamily: 'inherit', fontWeight: 600, fontSize: 13,
+                          border: active ? `1.5px solid ${C.burnt}` : `1px solid ${C.border}`,
+                          background: active ? C.burntGlaze : C.paper,
+                          color: active ? C.burntText : C.stone,
+                          fontFamily: 'inherit', fontWeight: active ? 700 : 600, fontSize: 13,
                         }}>
                           {p === 0 ? '0 €' : `${p} €`}
                         </button>
@@ -900,7 +968,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                         onClick={() => onRequireLogin?.()}
                         style={{
                           background: 'transparent', border: 'none', padding: 0,
-                          color: C.terracotta, fontSize: 11, fontWeight: 700,
+                          color: C.burnt, fontSize: 11, fontWeight: 700,
                           cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
                         }}
                       >
@@ -955,7 +1023,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {!user && !guestPermitido && (
                   <div style={{
                     marginBottom: 14, padding: 14, borderRadius: 14,
-                    background: C.terracottaSoft, border: `1px solid ${C.terracotta}`,
+                    background: C.burntGlaze, border: `1px solid ${C.burnt}`,
                     textAlign: 'center',
                   }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
@@ -965,7 +1033,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       onClick={() => onRequireLogin?.()}
                       style={{
                         padding: '10px 22px', borderRadius: 999, border: 'none',
-                        background: C.terracotta, color: '#fff',
+                        background: C.burnt, color: '#fff',
                         fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
@@ -986,7 +1054,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       style={S.input}
                     />
                     <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>
-                      El repartidor lo usará para llamarte si hay algún problema con la entrega.
+                      {modoEntrega === 'recogida'
+                        ? 'El restaurante lo usará para avisarte cuando tu pedido esté listo.'
+                        : 'El repartidor lo usará para llamarte si hay algún problema con la entrega.'}
                     </div>
                   </div>
                 )}
@@ -1082,7 +1152,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     <ResLine label="Descuento" value={'-' + fmt(descuento)} tone="sage" />
                   )}
                   <ResLine
-                    label={`Envío${distanciaKm && modoEntrega === 'delivery' && tarifaEnvioFija == null ? ` (${distanciaKm} km)` : ''}`}
+                    label={`Envío${distanciaKm && modoEntrega === 'delivery' && tarifaEnvioFija == null ? ` (${Number(distanciaKm).toFixed(1).replace('.', ',')} km)` : ''}`}
                     value={modoEntrega === 'recogida' ? 'Gratis' : envioLoading ? 'Calculando...' : fmt(envio)}
                     tone={modoEntrega === 'recogida' ? 'sage' : undefined}
                   />
@@ -1250,7 +1320,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {/* CTA */}
                 <button onClick={iniciarPago} disabled={isDisabled} style={{
                   width: '100%', marginTop: 14, padding: '16px 0', borderRadius: 14, border: 'none',
-                  background: isDisabled ? C.cream2 : C.terracotta,
+                  background: isDisabled ? C.cream2 : C.burnt,
                   color: isDisabled ? C.stone : '#fff', fontSize: 15, fontWeight: 700,
                   cursor: isDisabled ? 'default' : 'pointer',
                   fontFamily: 'inherit', letterSpacing: '0.01em',

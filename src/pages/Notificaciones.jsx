@@ -9,6 +9,17 @@ export default function Notificaciones() {
 
   useEffect(() => { if (user) fetchNotificaciones() }, [user])
 
+  // Realtime: las notificaciones nuevas aparecen al vuelo mientras la pantalla está
+  // abierta (antes solo se veían al reabrirla).
+  useEffect(() => {
+    if (!user) return
+    const ch = supabase.channel('notifs-list-' + user.id)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: `usuario_id=eq.${user.id}` },
+        ({ new: n }) => setNotifs(prev => (prev.some(x => x.id === n.id) ? prev : [n, ...prev].slice(0, 30))))
+      .subscribe()
+    return () => { try { supabase.removeChannel(ch) } catch (_) {} }
+  }, [user?.id])
+
   async function fetchNotificaciones() {
     const hace7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     const { data } = await supabase

@@ -49,11 +49,11 @@ export default function Onboarding({ onComplete }) {
       </div>
 
       {/* Logo */}
-      <div style={{
-        fontSize: 56, fontWeight: 800, color: 'var(--c-primary)', letterSpacing: '-0.04em',
+      <img src="/logo-cliente-t.png" alt="Pidoo" style={{
+        width: 190, height: 'auto', display: 'block',
         animation: ready ? 'logoIn 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
-        opacity: ready ? 1 : 0, marginBottom: 6, fontFamily: 'var(--font)',
-      }}>pidoo</div>
+        opacity: ready ? 1 : 0, marginBottom: 6,
+      }} />
 
       <p style={{
         fontSize: 20, color: 'var(--c-text)', fontWeight: 700, textAlign: 'center',

@@ -347,6 +347,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     const item = {
       producto_id: modal.id,
       nombre: modal.nombre,
+      imagen_url: modal.imagen_url || null,
       tamano: tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].nombre : null,
       extras: extrasRich,
       precio_unitario: precioTotal() / cant,
@@ -365,6 +366,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     const item = {
       producto_id: p.id,
       nombre: p.nombre,
+      imagen_url: p.imagen_url || null,
       tamano: null,
       extras: [],
       precio_unitario: getPrecioMostrado(p),
@@ -726,7 +728,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               </div>
             )}
 
-            <div style={{ padding: '18px 0 100px' }}>
+            <div style={{ padding: '18px 0 0' }}>
               {/* Productos por categoría */}
               {categorias
                 .filter(cat => !catFiltro || cat.id === catFiltro)
@@ -972,7 +974,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                   width: '100%', padding: '14px 18px', borderRadius: 14,
                   border: 'none', cursor: puedeConfirmar ? 'pointer' : 'not-allowed',
                   background: puedeConfirmar
-                    ? `linear-gradient(180deg, ${C.ink2}, ${C.ink})`
+                    ? `linear-gradient(135deg, ${C.terracotta} 0%, ${C.terracotta2} 100%)`
                     : C.cream2,
                   color: puedeConfirmar ? C.cream : C.stone,
                   fontFamily: 'inherit', fontWeight: 700, fontSize: 15,

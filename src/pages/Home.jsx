@@ -398,7 +398,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       // Si no hay ubicacion no filtramos (se muestran todos).
       if (userLocation && r.latitud && r.longitud) {
         const dist = haversineKm(userLocation.lat, userLocation.lng, r.latitud, r.longitud)
-        if (dist > radioDescubrimientoKm) return false
+        // El restaurante es visible si el usuario está dentro del radio que ESE
+        // restaurante configuró en su panel (radio_cobertura_km). Así, si pone 30 km,
+        // aparece hasta 30 km. Fallback al radio global si el restaurante no lo tiene.
+        if (dist > (r.radio_cobertura_km || radioDescubrimientoKm)) return false
       }
       return true
     }).map(r => {
@@ -422,20 +425,26 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
     return lista
   }, [establecimientos, busqueda, catActiva, categoriasGenerales, userLocation, restaurantesFlags])
 
-  // Las promos solo deben aparecer si su restaurante está dentro del radio que el
-  // usuario realmente ve (mismo criterio que la lista de restaurantes). Sin ubicación
-  // no se filtra (se muestran todas), igual que con los restaurantes.
-  const promocionesVisibles = useMemo(() => {
-    return promociones.filter(p => {
-      const e = p.establecimientos
-      if (!e) return false
-      if (userLocation && e.latitud && e.longitud) {
-        const dist = haversineKm(userLocation.lat, userLocation.lng, e.latitud, e.longitud)
-        if (dist > radioDescubrimientoKm) return false
+  // Las ofertas SOLO deben salir de restaurantes que le APARECEN al usuario en el
+  // listado. Nos apoyamos en la MISMA lista `establecimientos` (que ya viene filtrada
+  // por activo=true + estado='activo' + categoría desde la query) y le aplicamos el
+  // mismo radio por-restaurante. Así ofertas y "Cerca de ti" coinciden 1:1: si un
+  // restaurante no sale en el listado, su oferta tampoco.
+  const idsVisibles = useMemo(() => {
+    const set = new Set()
+    establecimientos.forEach(r => {
+      if (userLocation && r.latitud && r.longitud) {
+        const dist = haversineKm(userLocation.lat, userLocation.lng, r.latitud, r.longitud)
+        if (dist > (r.radio_cobertura_km || radioDescubrimientoKm)) return
       }
-      return true
+      set.add(r.id)
     })
-  }, [promociones, userLocation, radioDescubrimientoKm])
+    return set
+  }, [establecimientos, userLocation])
+
+  const promocionesVisibles = useMemo(() => {
+    return promociones.filter(p => p.establecimientos && idsVisibles.has(p.establecimientos.id))
+  }, [promociones, idsVisibles])
 
   // Destacados:
   // - Modo marketplace de socio: usa el flag `destacado` de socio_establecimiento
@@ -514,8 +523,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         <ChevronRight size={12} strokeWidth={2} color="#6B6356" style={{ flexShrink: 0 }} />
       </div>
 
-      {/* Aviso geolocalización */}
-      {geoError && (
+      {/* Aviso geolocalización: solo si NO tenemos ninguna ubicación (ni GPS ni
+          dirección guardada). Antes salía con cualquier fallo de GPS aunque el
+          perfil ya tuviera dirección, mostrando el aviso de forma incorrecta. */}
+      {geoError && !userLocation && (
         <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 22, ...G, display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14 }}>📍</span>
           <span style={{ fontSize: 11, color: '#C99551', fontWeight: 600 }}>Activa tu ubicación para ver restaurantes cerca de ti</span>
@@ -722,7 +733,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       </div>
 
       {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 120 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 0 }}>
           {[0, 1, 2].map(i => (
             <div key={i} style={{
               borderRadius: 22, overflow: 'hidden', ...G,
@@ -741,7 +752,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       )}
 
       {/* Vertical list — glass cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 120 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 0 }}>
         {filtrados.flatMap((r, i) => {
           const isFav = favoritos.includes(r.id)
           const estado = estaAbierto(r)

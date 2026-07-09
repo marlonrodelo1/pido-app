@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core'
 import { Star, Phone, MapPin, CheckCircle2, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import MapaReparto from '../components/MapaReparto'
 
 // Paleta directa
 const C = {
@@ -458,23 +459,27 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         @keyframes sizzle { 0%{opacity:0.3;transform:scale(0.8)} 100%{opacity:1;transform:scale(1.3)} }
         @keyframes floatPan { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
         @keyframes moto { 0%{transform:translateX(-10px)} 100%{transform:translateX(10px)} }
+        @keyframes motoRide { 0%{transform:translateY(0) rotate(-3deg)} 25%{transform:translateY(-4px) rotate(0deg)} 50%{transform:translateY(0) rotate(3deg)} 75%{transform:translateY(-4px) rotate(0deg)} 100%{transform:translateY(0) rotate(-3deg)} }
       `}</style>
 
-      {/* Subtítulo + ETA */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>
-          {pedido.estado === 'nuevo' || pedido.estado === 'aceptado'
-            ? 'Esperando confirmación'
-            : pedido.estado === 'preparando' || pedido.estado === 'listo'
-              ? esPickup ? 'Tu pedido se está preparando' : 'Preparando tu pedido'
-              : esDelivery ? 'Va de camino' : 'Recogiendo tu pedido'}
-        </div>
-        {pedido.minutos_preparacion && (pedido.estado === 'preparando' || pedido.estado === 'aceptado' || pedido.estado === 'nuevo') && (
-          <div style={{ fontSize: 13, color: C.stone, marginTop: 4 }}>
-            Estimación: <b style={{ color: C.ink }}>{pedido.minutos_preparacion} min</b>
+      {/* Subtítulo + ETA. Se oculta en "en camino/recogido" (delivery) porque el
+          estado ya lo dice el stepper y así el mapa gana espacio. */}
+      {!(esDelivery && (pedido.estado === 'en_camino' || pedido.estado === 'recogido')) && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>
+            {pedido.estado === 'nuevo' || pedido.estado === 'aceptado'
+              ? 'Esperando confirmación'
+              : pedido.estado === 'preparando' || pedido.estado === 'listo'
+                ? esPickup ? 'Tu pedido se está preparando' : 'Preparando tu pedido'
+                : esDelivery ? 'Va de camino' : 'Recogiendo tu pedido'}
           </div>
-        )}
-      </div>
+          {pedido.minutos_preparacion && (pedido.estado === 'preparando' || pedido.estado === 'aceptado' || pedido.estado === 'nuevo') && (
+            <div style={{ fontSize: 13, color: C.stone, marginTop: 4 }}>
+              Estimación: <b style={{ color: C.ink }}>{pedido.minutos_preparacion} min</b>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* STEPPER — card paper con 4 segmentos sage */}
       <div style={{
@@ -609,81 +614,16 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
             background: C.terracottaSoft, border: `1px solid ${C.terracotta}`,
             marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12,
           }}>
-            <div style={{ fontSize: 30, animation: 'moto 0.9s ease-in-out infinite alternate' }}>🛵</div>
+            <img src="/moto-pidoo.png" alt="" style={{ width: 46, height: 'auto', flexShrink: 0, animation: 'motoRide 1.2s ease-in-out infinite' }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>¡Tu pedido está en camino!</div>
               <div style={{ fontSize: 11, color: C.terracotta2, marginTop: 2 }}>Sigue al repartidor en tiempo real</div>
             </div>
           </div>
 
-          {pedido.shipday_tracking_url ? (
-            <>
-              {Capacitor.isNativePlatform() ? (
-                <button onClick={abrirTrackingExterno} style={{
-                  width: '100%', padding: '16px 20px', borderRadius: 14, border: 'none',
-                  background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
-                  color: C.cream, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  boxShadow: SH.glossy,
-                }}>
-                  <MapPin size={16} strokeWidth={2.4} />
-                  Ver ubicación en tiempo real
-                </button>
-              ) : iframeError ? (
-                <div style={{
-                  borderRadius: 14, padding: 20,
-                  background: C.paper, border: `1px solid ${C.border}`,
-                  textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 13, color: C.stone, marginBottom: 14 }}>
-                    Abre el seguimiento en una nueva pestaña
-                  </div>
-                  <button onClick={abrirTrackingExterno} style={{
-                    padding: '14px 26px', borderRadius: 12, border: 'none',
-                    background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
-                    color: C.cream, fontSize: 14, fontWeight: 700,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    boxShadow: SH.glossy,
-                  }}>
-                    <MapPin size={14} strokeWidth={2.4} /> Ver tracking
-                  </button>
-                </div>
-              ) : (
-                <div style={{
-                  borderRadius: 14, overflow: 'hidden',
-                  border: `1px solid ${C.border}`,
-                  position: 'relative', background: '#fff',
-                }}>
-                  <iframe
-                    src={pedido.shipday_tracking_url}
-                    title="Seguimiento del repartidor"
-                    style={{ width: '100%', height: 460, border: 0, display: 'block' }}
-                    onError={() => setIframeError(true)}
-                    allow="geolocation"
-                  />
-                  <button onClick={abrirTrackingExterno} style={{
-                    position: 'absolute', top: 10, right: 10,
-                    padding: '7px 12px', borderRadius: 8, border: 'none',
-                    background: 'rgba(26,24,21,0.78)', color: '#fff',
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', gap: 5,
-                  }}>
-                    <span>⤢</span> Abrir
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{
-              borderRadius: 14, padding: 20,
-              background: C.paper, border: `1px solid ${C.border}`,
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 13, color: C.stone }}>Preparando el seguimiento en tiempo real…</div>
-            </div>
-          )}
+          {/* Mapa NATIVO del reparto (estilo Uber/Glovo): restaurante + repartidor
+              en vivo + tu casa, todo dentro de la app, sin iframe ni URL externa. */}
+          <MapaReparto pedido={pedido} />
         </div>
       )}
 

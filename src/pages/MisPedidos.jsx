@@ -3,13 +3,20 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 
+// Un color por estado, con texto OSCURO y saturado para que se lea bien sobre el
+// tema claro (antes era verde claro sobre verde claro = casi invisible, y "en camino"
+// / "entregado" salían del mismo color). Azul = recién entrado, ámbar = en cocina,
+// naranja = en camino, verde = entregado, rojo = cancelado.
 const ESTADO_COLORS = {
-  entregado:  { bg: 'rgba(34,197,94,0.15)',  c: '#4ADE80' },
-  cancelado:  { bg: 'rgba(239,68,68,0.12)',  c: '#EF4444' },
-  fallido:    { bg: 'rgba(239,68,68,0.12)',  c: '#EF4444' },
-  nuevo:      { bg: 'rgba(59,130,246,0.15)', c: '#60A5FA' },
-  preparando: { bg: 'rgba(251,191,36,0.15)', c: '#FBBF24' },
-  en_camino:  { bg: 'rgba(34,197,94,0.15)',  c: '#4ADE80' },
+  nuevo:      { bg: 'rgba(37,99,235,0.12)',  c: '#1D4ED8' },
+  aceptado:   { bg: 'rgba(37,99,235,0.12)',  c: '#1D4ED8' },
+  preparando: { bg: 'rgba(245,158,11,0.16)', c: '#B45309' },
+  listo:      { bg: 'rgba(245,158,11,0.16)', c: '#B45309' },
+  recogido:   { bg: 'rgba(255,107,44,0.14)', c: '#C2410C' },
+  en_camino:  { bg: 'rgba(255,107,44,0.14)', c: '#C2410C' },
+  entregado:  { bg: 'rgba(34,197,94,0.16)',  c: '#15803D' },
+  cancelado:  { bg: 'rgba(239,68,68,0.12)',  c: '#DC2626' },
+  fallido:    { bg: 'rgba(239,68,68,0.12)',  c: '#DC2626' },
 }
 
 export default function MisPedidos({ onTrack }) {
@@ -57,7 +64,7 @@ export default function MisPedidos({ onTrack }) {
     // (aunque el restaurante lo hubiera subido) y con productos ya retirados.
     const ids = [...new Set(items.map(i => i.producto_id).filter(Boolean))]
     const { data: productos, error: prodError } = await supabase.from('productos')
-      .select('id, precio, disponible').in('id', ids)
+      .select('id, precio, disponible, imagen_url').in('id', ids)
     if (prodError) return
     const prodMap = Object.fromEntries((productos || []).map(p => [p.id, p]))
 
@@ -76,6 +83,7 @@ export default function MisPedidos({ onTrack }) {
         producto_id: item.producto_id, establecimiento_id: pedido.establecimiento_id,
         establecimiento_nombre: pedido.establecimientos?.nombre || '',
         nombre: item.nombre_producto,
+        imagen_url: actual.imagen_url || null,
         precio_unitario: sinConfig && actual.precio != null ? Number(actual.precio) : item.precio_unitario,
         cantidad: item.cantidad, tamano: item.tamano || null, extras: item.extras || null,
       }
@@ -142,7 +150,7 @@ export default function MisPedidos({ onTrack }) {
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#767575', marginBottom: 4 }}>
               <span>{p.codigo}</span>
-              <span>{p.metodo_pago === 'tarjeta' ? '💳' : '💵'} {p.metodo_pago}</span>
+              <span>{p.metodo_pago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#767575' }}>
               <span>{formatFecha(p.created_at)}</span>
