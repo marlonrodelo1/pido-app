@@ -12,8 +12,8 @@
   --c-primary-glow:   rgba(197, 86, 44, 0.15);
   --c-primary-shadow: rgba(197, 86, 44, 0.06);
 
-  /* Gradient botón principal (terracota — modelo SaaS, nada de negro) */
-  --c-btn-gradient:   linear-gradient(180deg, #C5562C 0%, #A8451F 100%);
+  /* Gradient botón principal (naranja quemado — unificado con el carrito #E4671F) */
+  --c-btn-gradient:   linear-gradient(180deg, #E4671F 0%, #C85417 100%);
 
   /* Superficies (cream world) */
   --c-bg:             #F7F3EC;

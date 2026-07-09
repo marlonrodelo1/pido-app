@@ -27,6 +27,7 @@ export default function MisPedidos({ onTrack }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [repetido, setRepetido] = useState(null)
+  const [resenados, setResenados] = useState(() => new Set())
 
   useEffect(() => { if (user) fetchPedidos() }, [user])
 
@@ -42,6 +43,14 @@ export default function MisPedidos({ onTrack }) {
     const lista = data || []
     setPedidos(lista)
     setLoading(false)
+
+    // Pedidos entregados que el usuario YA reseñó → para mostrar "Valorar" solo en los que faltan
+    const entregadosIds = lista.filter(p => p.estado === 'entregado').map(p => p.id)
+    if (entregadosIds.length > 0) {
+      const { data: rs } = await supabase.from('resenas')
+        .select('pedido_id').eq('usuario_id', user.id).in('pedido_id', entregadosIds)
+      if (rs) setResenados(new Set(rs.map(r => r.pedido_id)))
+    }
 
     const socioIds = [...new Set(lista.map(p => p.socio_id).filter(Boolean))]
     if (socioIds.length > 0) {
@@ -162,6 +171,13 @@ export default function MisPedidos({ onTrack }) {
                 border: 'none', background: 'var(--c-btn-gradient)', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit', color: '#fff',
               }}>Seguir pedido</button>
+            )}
+            {p.estado === 'entregado' && !resenados.has(p.id) && (
+              <button onClick={() => onTrack(p)} style={{
+                width: '100%', marginTop: 10, padding: '9px 0', borderRadius: 12,
+                border: 'none', background: 'var(--c-btn-gradient)', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', color: '#fff',
+              }}>⭐ Valorar pedido</button>
             )}
             {p.estado === 'entregado' && (
               <button onClick={() => repetirPedido(p)} style={{

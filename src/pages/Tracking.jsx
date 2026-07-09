@@ -21,8 +21,6 @@ const SH = {
   glossy: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.18)',
 }
 
-const AUTO_CLOSE_SECONDS = 8
-
 function estadoToStep(estado) {
   if (estado === 'nuevo' || estado === 'aceptado') return 0
   if (estado === 'preparando' || estado === 'listo') return 1
@@ -52,8 +50,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const [resenaSocioEnviada, setResenaSocioEnviada] = useState(false)
   const [yaValoradoSocio, setYaValoradoSocio] = useState(false)
   const [iframeError, setIframeError] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_SECONDS)
-  const [autoCloseCancelled, setAutoCloseCancelled] = useState(false)
 
   const esTerminado = pedido.estado === 'entregado' || pedido.estado === 'cancelado' || pedido.estado === 'fallido'
   const esDelivery = pedido.modo_entrega === 'delivery'
@@ -173,19 +169,10 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     }
   }, [pedido.id, esTerminado])
 
-  // Auto-cierre cuando pasa a entregado
-  useEffect(() => {
-    if (pedido.estado !== 'entregado') return
-    if (autoCloseCancelled) return
-    if (yaValorado || resenaEnviada) return
-
-    if (secondsLeft <= 0) {
-      onClose()
-      return
-    }
-    const t = setTimeout(() => setSecondsLeft(s => s - 1), 1000)
-    return () => clearTimeout(t)
-  }, [pedido.estado, secondsLeft, autoCloseCancelled, yaValorado, resenaEnviada, onClose])
+  // (Auto-cierre ELIMINADO) Antes, al entregar, un contador cerraba la pantalla en
+  // unos segundos y escondía el prompt de reseña → casi nadie llegaba a valorar
+  // (0 reseñas reales en todo el sistema). Ahora el pedido entregado NO se cierra
+  // solo: el formulario de valoración se muestra directo y el usuario cierra a mano.
 
   async function abrirTrackingExterno() {
     const url = pedido.shipday_tracking_url
@@ -263,7 +250,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
           <button onClick={onClose} style={{
             padding: '12px 28px', borderRadius: 12, border: 'none',
-            background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+            background: 'var(--c-btn-gradient)',
             color: C.cream, fontSize: 14, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'inherit', boxShadow: SH.glossy,
           }}>
@@ -276,7 +263,6 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
 
   // ==================== ENTREGADO ====================
   if (pedido.estado === 'entregado') {
-    const mostrarContador = !autoCloseCancelled && !yaValorado && !resenaEnviada
     // Paleta de confetti — colores cálidos del design system
     const confettiColors = ['#C5562C', '#8B9D7A', '#C99551', '#7B8FA8', '#F7F3EC', '#6B6356']
 
@@ -334,25 +320,8 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         </div>
 
-        {/* Contador auto-cierre */}
-        {mostrarContador && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-            padding: '10px 14px', borderRadius: 10,
-            background: C.cream2, marginBottom: 16,
-          }}>
-            <span style={{ fontSize: 11, color: C.stone }}>Cerrando en {secondsLeft}s...</span>
-            <button onClick={() => setAutoCloseCancelled(true)} style={{
-              background: 'none', border: 'none', fontSize: 11, fontWeight: 700,
-              color: C.terracotta, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-              Dejar valoración
-            </button>
-          </div>
-        )}
-
-        {/* Formulario valoración */}
-        {(autoCloseCancelled || yaValorado || resenaEnviada) && (
+        {/* Formulario valoración — SIEMPRE visible al entregar (sin auto-cierre) */}
+        {(
           <div style={{
             background: C.paper, border: `1px solid ${C.border}`,
             borderRadius: 14, padding: 20,
@@ -406,7 +375,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
                     )}
                     <button onClick={enviarValoracion} style={{
                       width: '100%', padding: '14px 0', borderRadius: 12, border: 'none',
-                      background: `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
+                      background: 'var(--c-btn-gradient)',
                       color: C.cream, fontSize: 14, fontWeight: 700,
                       cursor: 'pointer', fontFamily: 'inherit', boxShadow: SH.glossy,
                     }}>
