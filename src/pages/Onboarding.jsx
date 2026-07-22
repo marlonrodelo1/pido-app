@@ -23,7 +23,7 @@ const ANIMATIONS = `
 
 const EMOJIS = ['🍕','🍔','🍣','💊','🛒','🥤','🍰','🫓','☕']
 
-export default function Onboarding({ onComplete }) {
+export default function Onboarding({ onComplete, socioData = null }) {
   const [ready, setReady] = useState(false)
   const [hovered, setHovered] = useState(null)
 
@@ -31,6 +31,60 @@ export default function Onboarding({ onComplete }) {
     const t = setTimeout(() => setReady(true), 300)
     return () => clearTimeout(t)
   }, [])
+
+  // Modo SOCIO (white-label): splash breve con el branding del socio, SIN selector de
+  // categorías. Auto-avanza a los ~2.8s (o al tocar la pantalla) y entra a su tienda.
+  useEffect(() => {
+    if (!socioData) return
+    const t = setTimeout(() => onComplete('comida'), 2800)
+    return () => clearTimeout(t)
+  }, [socioData])
+
+  if (socioData) {
+    const titulo = socioData.splash_titulo || socioData.nombre_comercial || 'Bienvenido'
+    const subtitulo = socioData.splash_subtitulo || socioData.descripcion || 'Pide lo que quieras, te lo llevamos'
+    return (
+      <div onClick={() => onComplete('comida')} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}>
+        <style>{ANIMATIONS}</style>
+        {/* Emojis flotantes ambientales (neutros, no branding de Pidoo) */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          {EMOJIS.map((e, i) => (
+            <div key={i} style={{
+              position: 'absolute', top: `${10 + (i * 11) % 80}%`, left: `${5 + (i * 13) % 90}%`,
+              fontSize: 24 + (i % 3) * 8, opacity: 0.2,
+              animation: `float${(i % 3) + 1} ${4 + i * 0.5}s ease-in-out infinite`, animationDelay: `${i * 0.3}s`,
+            }}>{e}</div>
+          ))}
+        </div>
+
+        {socioData.logo_url && (
+          <img src={socioData.logo_url} alt={socioData.nombre_comercial || ''} style={{
+            width: 120, height: 120, objectFit: 'cover', borderRadius: 28, display: 'block',
+            border: '2px solid #fff', boxShadow: '0 14px 34px rgba(0,0,0,0.16)',
+            animation: ready ? 'logoIn 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
+            opacity: ready ? 1 : 0, marginBottom: 20,
+          }} />
+        )}
+        <p style={{
+          fontSize: 25, color: 'var(--c-text)', fontWeight: 800, textAlign: 'center',
+          animation: ready ? 'textIn 0.5s ease 0.2s both' : 'none', opacity: 0,
+          marginBottom: 6, letterSpacing: '-0.02em', maxWidth: 340, lineHeight: 1.2,
+        }}>{titulo}</p>
+        <p style={{
+          fontSize: 14, color: 'var(--c-muted)', textAlign: 'center',
+          animation: ready ? 'textIn 0.5s ease 0.35s both' : 'none', opacity: 0,
+          maxWidth: 320, lineHeight: 1.5,
+        }}>{subtitulo}</p>
+
+        <div style={{
+          width: 100, height: 3, borderRadius: 2, marginTop: 38,
+          background: 'linear-gradient(90deg, transparent, var(--c-primary), transparent)',
+          backgroundSize: '200% 100%',
+          animation: ready ? 'shimmer 2.5s ease-in-out infinite 1s' : 'none', opacity: 0.35,
+        }} />
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', position: 'relative', overflow: 'hidden' }}>

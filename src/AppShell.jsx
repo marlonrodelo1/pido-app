@@ -30,6 +30,9 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
   const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('pido_onboarded'))
+  // Splash del marketplace del socio: se muestra al abrir su tienda (haya o no
+  // onboarding previo), unos segundos, con su branding. En la app general = false.
+  const [socioSplash, setSocioSplash] = useState(() => !!socioData)
   const [categoriaPadre, setCategoriaPadre] = useState(() => localStorage.getItem('pido_categoria') || null)
   const [seccion, setSeccion] = useState('home')
   const [restOpen, setRestOpen] = useState(null)
@@ -77,6 +80,23 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
 
   if (loading) {
     return <div style={{ ...shellStyle, minHeight: '100vh' }} />
+  }
+
+  // Tienda de un socio (white-label): splash breve con SU branding y sin selector de
+  // categorías; auto-entra a la tienda tras unos segundos. Prevalece sobre el
+  // onboarding general (que solo aplica en la app Pidoo sin socio).
+  if (socioData && socioSplash) {
+    return (
+      <div style={shellStyle}>
+        <style>{globalCss}</style>
+        <Suspense fallback={SuspenseFallback}>
+          <Onboarding socioData={socioData} onComplete={() => {
+            setCategoriaPadre('comida'); setOnboarded(true); setSocioSplash(false)
+            localStorage.setItem('pido_onboarded', '1'); localStorage.setItem('pido_categoria', 'comida')
+          }} />
+        </Suspense>
+      </div>
+    )
   }
 
   if (!onboarded) {
@@ -141,14 +161,16 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
               )}
             </div>
           )}
-          <button onClick={() => setOnboarded(false)} style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-            borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
-            fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
-          }}>
-            {catEmoji} {catLabel}
-            <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
-          </button>
+          {!socioData && (
+            <button onClick={() => setOnboarded(false)} style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+              borderRadius: 8, border: '1px solid var(--c-border)', background: 'var(--c-surface2)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--c-text)',
+            }}>
+              {catEmoji} {catLabel}
+              <span style={{ fontSize: 8, marginLeft: 2, color: 'var(--c-muted)' }}>▼</span>
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {pedidoActivo && !['cancelado', 'fallido', 'entregado'].includes(pedidoActivo.estado) && (
