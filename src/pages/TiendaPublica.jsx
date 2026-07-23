@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import TiendaBottomNav from '../components/TiendaBottomNav'
+import AppDownloadBanner from '../components/AppDownloadBanner'
 import Login from './Login'
 import { X, Bike } from 'lucide-react'
 
@@ -325,6 +326,8 @@ export default function TiendaPublica({ establecimiento }) {
               padding: '16px 20px 0',
               maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
             }}>
+              {/* Banner de descarga de la app (solo web; se oculta en nativo) */}
+              <AppDownloadBanner />
               <RestDetalle establecimiento={establecimiento} modoTienda={true} onRequireLogin={() => setLoginOpen(true)} />
             </div>
           )}
