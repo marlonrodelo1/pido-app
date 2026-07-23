@@ -32,10 +32,10 @@ export const SolidBtn = ({ children, href, size = 'md', full = false, style = {}
       href={href}
       {...rest}
       style={{
-        background: 'linear-gradient(180deg, #C5562C 0%, #A8451F 100%)',
-        color: '#FBF8F2',
-        border: '1px solid #A8451F',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 8px 18px -6px rgba(197,86,44,0.5)',
+        background: 'linear-gradient(180deg, #FF6B2C 0%, #E4671F 100%)',
+        color: '#FFFFFF',
+        border: '1px solid #E4671F',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 18px -6px rgba(228,103,31,0.5)',
         borderRadius: 12,
         padding: `${padY}px ${padX}px`,
         fontFamily: FONT,

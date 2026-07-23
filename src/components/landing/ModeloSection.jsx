@@ -35,8 +35,8 @@ const PhoneIncomingOrder = () => (
       {/* Barra de marca del socio */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #C5562C 0%, #A8451F 100%)',
-          color: '#FBF8F2',
+          background: 'linear-gradient(135deg, #FF6B2C 0%, #E4671F 100%)',
+          color: '#FFFFFF',
           padding: '16px 16px 14px',
         }}
       >
@@ -99,8 +99,8 @@ const PhoneIncomingOrder = () => (
         <div
           style={{
             marginTop: 'auto',
-            background: 'linear-gradient(180deg, #C5562C 0%, #A8451F 100%)',
-            color: '#FBF8F2',
+            background: 'linear-gradient(180deg, #FF6B2C 0%, #E4671F 100%)',
+            color: '#FFFFFF',
             borderRadius: 12,
             padding: '13px',
             textAlign: 'center',
@@ -204,7 +204,7 @@ export default function ModeloSection() {
                 margin: '0 0 12px',
               }}
             >
-              Monta tu propio marketplace
+              Los pedidos, directos a tu marca
             </h3>
             <p style={{ fontSize: 16, color: 'var(--c-text-soft)', lineHeight: 1.6, marginBottom: 20 }}>
               Agrupa restaurantes bajo <strong>tu marca</strong>, con tu logo, tus colores y tu
