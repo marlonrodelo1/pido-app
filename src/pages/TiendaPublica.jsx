@@ -317,7 +317,16 @@ export default function TiendaPublica({ establecimiento }) {
               <Perfil />
             </div>
           ) : (
-            <RestDetalle establecimiento={establecimiento} modoTienda={true} onRequireLogin={() => setLoginOpen(true)} />
+            /* RestDetalle usa padding horizontal 0 a propósito: espera que el
+               wrapper padre le dé el margen lateral (en la app nativa lo pone
+               AppShell con padding:20). En la web pública no había wrapper, por
+               eso el contenido se pegaba a los bordes. Se replica ese padding. */
+            <div style={{
+              padding: '16px 20px 0',
+              maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
+            }}>
+              <RestDetalle establecimiento={establecimiento} modoTienda={true} onRequireLogin={() => setLoginOpen(true)} />
+            </div>
           )}
         </Suspense>
       </div>
