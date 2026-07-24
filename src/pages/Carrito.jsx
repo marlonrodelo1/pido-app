@@ -150,6 +150,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const { user, perfil, updatePerfil } = useAuth()
   const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, elegirEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
   const [tarifaEnvioFija, setTarifaEnvioFija] = useState(null)
+  const [pedidoMinimo, setPedidoMinimo] = useState(0)
   const [openInternal, setOpenInternal] = useState(false)
   const open = openProp !== undefined ? openProp : openInternal
   const setOpen = setOpenProp || setOpenInternal
@@ -200,9 +201,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     const estId = carrito[0].establecimiento_id
     let cancel = false
     function refetch() {
-      supabase.from('establecimientos').select('tiene_delivery, tarifa_envio_fija, plan_pro').eq('id', estId).single()
+      supabase.from('establecimientos').select('tiene_delivery, tarifa_envio_fija, plan_pro, pedido_minimo').eq('id', estId).single()
         .then(({ data }) => {
           if (cancel) return
+          setPedidoMinimo(Number(data?.pedido_minimo) || 0)
           const td = data?.tiene_delivery ?? true
           setTieneDelivery(td)
           if (!td) setModoEntrega('recogida')
@@ -590,6 +592,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       setErrorMsg('Este restaurante está cerrado ahora mismo. No se pueden hacer pedidos.')
       return
     }
+    // Blindaje pedido mínimo (por si el botón quedó habilitado por una carrera de carga).
+    if (bajoMinimo) {
+      setErrorMsg(`El pedido mínimo de este restaurante es ${fmt(pedidoMinimo)}. Te faltan ${fmt(faltaMinimo)}.`)
+      return
+    }
     // Login obligatorio para todos (guest checkout desactivado: lo requieren Stripe + RLS).
     if (!user) {
       onRequireLogin?.()
@@ -709,7 +716,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     }
   }
 
-  const isDisabled = loading || envioLoading || restCerrado || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
+  // Pedido mínimo del restaurante (0 = sin mínimo). Se compara con el subtotal de productos.
+  const bajoMinimo = pedidoMinimo > 0 && subtotal < pedidoMinimo
+  const faltaMinimo = Math.max(0, pedidoMinimo - subtotal)
+  const isDisabled = loading || envioLoading || restCerrado || bajoMinimo || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
 
   return (
     <>
@@ -1317,6 +1327,25 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 )}
 
+                {/* Pedido mínimo no alcanzado */}
+                {bajoMinimo && (
+                  <div style={{
+                    marginBottom: 10, padding: '14px 16px', borderRadius: 12,
+                    background: 'rgba(197,86,44,0.08)', border: '1px solid rgba(197,86,44,0.22)',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                    <span style={{ fontSize: 22 }}>🛒</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.burnt, marginBottom: 2 }}>
+                        Pedido mínimo {fmt(pedidoMinimo)}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.stone }}>
+                        Te faltan {fmt(faltaMinimo)} para poder hacer el pedido.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* CTA */}
                 <button onClick={iniciarPago} disabled={isDisabled} style={{
                   width: '100%', marginTop: 14, padding: '16px 0', borderRadius: 14, border: 'none',
@@ -1329,6 +1358,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   opacity: isDisabled ? 0.7 : 1,
                 }}>
                   {restCerrado ? 'No disponible — restaurante cerrado'
+                    : bajoMinimo ? `Te faltan ${fmt(faltaMinimo)} para el mínimo`
                     : (fueraDeRadio && modoEntrega === 'delivery') ? 'Fuera de zona — prueba recogida'
                     : (sinDireccion && modoEntrega === 'delivery') ? 'Añade tu dirección para pedir'
                     : loading ? 'Procesando...'
