@@ -38,7 +38,10 @@ export default function TiendaPublicaRoute() {
       .from('establecimientos')
       .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre')
       .eq('slug', slug)
-      .eq('activo', true)
+      // Sin filtro por 'activo': el enlace del flyer/QR de un restaurante CERRADO tiene que
+      // enseñar su tienda con el cartel de cerrado, no mandar al cliente a la home genérica
+      // (que es lo que hacía el <Navigate to="/"> de abajo). 'activo' viaja en el select y
+      // TiendaPublica ya lo interpreta con estaAbierto(): pinta "Cerrado" y no deja pedir.
       .eq('estado', 'activo')
       .maybeSingle()
       .then(({ data }) => {

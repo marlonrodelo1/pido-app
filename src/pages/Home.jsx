@@ -330,11 +330,17 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       // Columnas explícitas: select('*') traía TODAS las columnas del restaurante
       // (user_id del dueño, api keys legacy, config interna) en la query más
       // frecuente de la app. Si una vista nueva necesita otro campo, añadirlo aquí.
-      const COLS_ESTABLECIMIENTO = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, destacado'
+      // OJO: 'activo' es OBLIGATORIO en el select. Ya no filtramos por él (los cerrados
+      // se muestran en gris, ver abajo), así que es estaAbierto() quien lo interpreta:
+      // sin esta columna, un restaurante cerrado a mano se pintaría como "Abierto".
+      const COLS_ESTABLECIMIENTO = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, destacado, activo'
       let query = supabase
         .from('establecimientos')
         .select(`${COLS_ESTABLECIMIENTO}, establecimiento_categorias(categoria_id)`)
-        .eq('activo', true)
+        // Los restaurantes CERRADOS (activo=false, por su interruptor o porque su app no
+        // está conectada) ya no desaparecen: salen al final, en gris y con el badge
+        // "Cerrado", y la ficha no deja pedir. Lo que sigue oculto es lo que no está
+        // verificado: eso es estado != 'activo', no un restaurante cerrado.
         .eq('estado', 'activo')
 
       if (categoriaPadre) {
@@ -345,17 +351,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         query = query.in('id', restaurantesFilter)
       }
 
-      let { data } = await query.order('rating', { ascending: false })
+      const { data } = await query.order('rating', { ascending: false })
 
-      // Ordenar: abiertos primero, cerrados por horario al final
-      if (data) {
-        data = data.sort((a, b) => {
-          const aOpen = estaAbierto(a).abierto ? 0 : 1
-          const bOpen = estaAbierto(b).abierto ? 0 : 1
-          if (aOpen !== bOpen) return aOpen - bOpen
-          return (b.rating || 0) - (a.rating || 0)
-        })
-      }
+      // El orden "abiertos primero" ya NO se calcula aquí: se hacía una sola vez al cargar
+      // (un restaurante que cierra a las 23:00 no bajaba hasta el siguiente fetch) y en el
+      // modo marketplace del socio quedaba anulado por el orden alfabético de `filtrados`.
+      // Ahora vive en un único sitio: el comparador de `filtrados`.
 
       setEstablecimientos((data || []).map(e => ({
         ...e,
@@ -386,6 +387,15 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
     }
   }
 
+  // Un tick por minuto. Cerrar POR HORARIO no toca la BD, así que no hay realtime ni
+  // refetch que invalide el memo de abajo: sin esto, un restaurante que cierra a las 23:00
+  // se quedaba con el badge rojo pero ARRIBA, por encima del separador "Cerrados ahora".
+  const [tickMinuto, setTickMinuto] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTickMinuto(t => t + 1), 60000)
+    return () => clearInterval(id)
+  }, [])
+
   const filtrados = useMemo(() => {
     const lista = establecimientos.filter(r => {
       if (busqueda && !r.nombre.toLowerCase().includes(busqueda.toLowerCase())) return false
@@ -405,31 +415,40 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       }
       return true
     }).map(r => {
+      const _cerrado = !estaAbierto(r).abierto
       if (userLocation && r.radio_cobertura_km && r.latitud && r.longitud) {
         const dist = haversineKm(userLocation.lat, userLocation.lng, r.latitud, r.longitud)
-        return { ...r, _fueraDeRadio: dist > r.radio_cobertura_km, _distancia: dist }
+        return { ...r, _cerrado, _fueraDeRadio: dist > r.radio_cobertura_km, _distancia: dist }
       }
-      return { ...r, _fueraDeRadio: false, _distancia: null }
+      return { ...r, _cerrado, _fueraDeRadio: false, _distancia: null }
     })
+    // Los CERRADOS siempre al final (en los dos modos): se ven, pero nunca por delante
+    // de uno que sí puede servirte.
+    const porCerrado = (a, b) => (a._cerrado ? 1 : 0) - (b._cerrado ? 1 : 0)
     if (restaurantesFlags) {
-      // Modo socio: orden alfabetico, dentro de radio primero
+      // Modo socio: cerrados al final, luego dentro de radio, luego alfabetico
       lista.sort((a, b) => {
+        const ce = porCerrado(a, b)
+        if (ce !== 0) return ce
         const fr = (a._fueraDeRadio ? 1 : 0) - (b._fueraDeRadio ? 1 : 0)
         if (fr !== 0) return fr
         return (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
       })
     } else {
-      // Dentro del radio primero, fuera del radio después
-      lista.sort((a, b) => (a._fueraDeRadio ? 1 : 0) - (b._fueraDeRadio ? 1 : 0))
+      // Cerrados al final; dentro del radio primero, fuera del radio después
+      lista.sort((a, b) => {
+        const ce = porCerrado(a, b)
+        if (ce !== 0) return ce
+        return (a._fueraDeRadio ? 1 : 0) - (b._fueraDeRadio ? 1 : 0)
+      })
     }
     return lista
-  }, [establecimientos, busqueda, catActiva, categoriasGenerales, userLocation, restaurantesFlags])
+  }, [establecimientos, busqueda, catActiva, categoriasGenerales, userLocation, restaurantesFlags, tickMinuto])
 
   // Las ofertas SOLO deben salir de restaurantes que le APARECEN al usuario en el
-  // listado. Nos apoyamos en la MISMA lista `establecimientos` (que ya viene filtrada
-  // por activo=true + estado='activo' + categoría desde la query) y le aplicamos el
-  // mismo radio por-restaurante. Así ofertas y "Cerca de ti" coinciden 1:1: si un
-  // restaurante no sale en el listado, su oferta tampoco.
+  // listado. Nos apoyamos en la MISMA lista `establecimientos` (filtrada por
+  // estado='activo' + categoría desde la query; 'activo' ya NO se filtra) y le aplicamos
+  // el mismo radio por-restaurante, más el estar abierto (ver abajo).
   const idsVisibles = useMemo(() => {
     const set = new Set()
     establecimientos.forEach(r => {
@@ -437,10 +456,15 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         const dist = haversineKm(userLocation.lat, userLocation.lng, r.latitud, r.longitud)
         if (dist > (r.radio_cobertura_km || radioDescubrimientoKm)) return
       }
+      // Un cerrado se ve en el listado (en gris), pero no se le ANUNCIA una oferta que
+      // no puede servir: la tarjeta de oferta NO tiene badge de estado y su CTA llevaría
+      // a una carta bloqueada. (Ojo: Perfil.jsx › Promociones solo mira 'activo', no el
+      // horario, así que de madrugada sigue enseñando promos de cerrados. Deuda aparte.)
+      if (!estaAbierto(r).abierto) return
       set.add(r.id)
     })
     return set
-  }, [establecimientos, userLocation])
+  }, [establecimientos, userLocation, tickMinuto])
 
   const promocionesVisibles = useMemo(() => {
     return promociones.filter(p => p.establecimientos && idsVisibles.has(p.establecimientos.id))
@@ -451,14 +475,18 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   //   (ordenado por orden_destacado ASC). NO se aplica el filtro de rating.
   // - Modo global pidoo.es: flag manual `establecimientos.destacado` (van primero)
   //   + los automáticos por rating >= 4.5.
+  // Los cerrados SIGUEN en el carrusel (la tarjeta ya pinta su badge Abierto/Cerrado),
+  // pero van los últimos: un restaurante destacado no pierde su sitio cada noche ni cada
+  // vez que su app se desconecta.
+  const alFinalSiCerrado = (a, b) => (estaAbierto(a).abierto ? 0 : 1) - (estaAbierto(b).abierto ? 0 : 1)
   const destacados = restaurantesFlags
     ? establecimientos
         .filter(r => restaurantesFlags[r.id]?.destacado)
-        .sort((a, b) => (restaurantesFlags[a.id]?.orden_destacado ?? 999) - (restaurantesFlags[b.id]?.orden_destacado ?? 999))
+        .sort((a, b) => alFinalSiCerrado(a, b) || (restaurantesFlags[a.id]?.orden_destacado ?? 999) - (restaurantesFlags[b.id]?.orden_destacado ?? 999))
         .slice(0, 10)
     : establecimientos
         .filter(r => r.destacado || r.rating >= 4.5)
-        .sort((a, b) => (b.destacado === true) - (a.destacado === true) || (b.rating || 0) - (a.rating || 0))
+        .sort((a, b) => alFinalSiCerrado(a, b) || (b.destacado === true) - (a.destacado === true) || (b.rating || 0) - (a.rating || 0))
         .slice(0, 5)
 
   const promoBadge = (promo) => {
@@ -612,7 +640,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
               // offline no hay domicilio aunque el flag global del restaurante diga lo contrario.
               const sinRidersDest = estDest.abierto && (!r.tiene_delivery || (socioData && !socioData.rider_online))
               return (
-                <div key={r.id} onClick={() => onOpenRest(r)} style={{ minWidth: 280, cursor: 'pointer', flexShrink: 0 }}>
+                <div key={r.id} onClick={() => onOpenRest(r)} style={{ minWidth: 280, cursor: 'pointer', flexShrink: 0, opacity: estDest.abierto ? 1 : 0.6 }}>
                   {/* Image container — glass card (con borde naranja en modo socio destacado) */}
                   <div style={{
                     position: 'relative', height: 176, borderRadius: 22, overflow: 'hidden',
@@ -757,7 +785,21 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           const isFav = favoritos.includes(r.id)
           const estado = estaAbierto(r)
           const items = []
-          if (r._fueraDeRadio && (i === 0 || !filtrados[i - 1]._fueraDeRadio)) {
+          const prev = i > 0 ? filtrados[i - 1] : null
+          // Los cerrados van juntos al final, bajo su propio separador.
+          // (El de "Más restaurantes" es código muerto hoy: el .filter() de arriba ya
+          // descarta lo que queda fuera de radio, así que _fueraDeRadio siempre es false.)
+          // Si TODOS están cerrados, el separador quedaría suelto en lo alto de la lista
+          // sin nada encima: en ese caso no se pinta (i > 0).
+          if (r._cerrado && i > 0 && !prev?._cerrado) {
+            items.push(
+              <div key="cerrados-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+                <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#6B6356', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Cerrados ahora</span>
+                <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
+              </div>
+            )
+          } else if (!r._cerrado && r._fueraDeRadio && !prev?._fueraDeRadio) {
             items.push(
               <div key="fuera-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
                 <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
@@ -808,10 +850,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
                   background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(12px)',
                   padding: '4px 12px', borderRadius: 999,
                   fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
-                  color: '#fff', display: 'flex', alignItems: 'center', gap: 5,
+                  color: '#fff', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
                 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: estado.abierto ? '#22c55e' : '#ef4444' }} />
-                  {estado.abierto ? 'Abierto' : 'Cerrado'}
+                  {/* Si está cerrado, decir CUÁNDO abre: estaAbierto() ya lo calcula y antes
+                      se tiraba. "Cerrado" a secas no deja decidir si esperar o irse. */}
+                  {estado.abierto ? 'Abierto' : (estado.proximaApertura || 'Cerrado')}
                 </div>
                 {/* Badge sin repartidores (solo si está abierto) */}
                 {sinRiders && (

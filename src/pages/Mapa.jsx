@@ -3,8 +3,18 @@ import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF, CircleF, OverlayViewF,
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentPosition } from '../lib/geolocation'
+import { estaAbierto } from '../lib/horario'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 160px)', borderRadius: 16 }
+
+// 'horario' y 'activo' son OBLIGATORIOS: este mismo objeto se le pasa a la ficha
+// (onOpenRest), y sin ellos estaAbierto() cae en "sin horario = cerrado", con lo que
+// TODO restaurante abierto se veía cerrado al entrar desde el mapa. Además ya no
+// filtramos por 'activo': los cerrados se pintan en gris en vez de desaparecer.
+// Este objeto se pasa TAL CUAL a la ficha (onOpenRest → RestDetalle), que no refetchea al
+// montar: lo que no venga aquí, no se ve. Faltaban banner_url/descripcion/direccion (ficha
+// sin foto ni dirección) y tiene_delivery (chip "Solo recogida" falso).
+const COLS_MAPA = 'id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km, horario, activo, tiene_delivery, banner_url, descripcion, direccion'
 
 // Fuera del componente: useJsApiLoader exige referencia estable entre renders.
 const MAPS_LIBRARIES = ['places']
@@ -73,8 +83,8 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       if (restaurantesFilter.length === 0) { setEstablecimientos([]); return }
       const { data } = await supabase
         .from('establecimientos')
-        .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
-        .in('id', restaurantesFilter).eq('activo', true).eq('estado', 'activo')
+        .select(COLS_MAPA)
+        .in('id', restaurantesFilter).eq('estado', 'activo')
       setEstablecimientos(data || [])
       return
     }
@@ -91,8 +101,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
     const delta = Math.max(1, radioKm / 80)
     const { data: estData } = await supabase
       .from('establecimientos')
-      .select('id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km')
-      .eq('activo', true)
+      .select(COLS_MAPA)
       .eq('estado', 'activo')
       .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
       .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta)
@@ -135,6 +144,14 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <div style={{ background: 'rgba(0,0,0,0.06)', border: '1px solid var(--c-border)', borderRadius: 10, padding: '8px 14px', fontSize: 12, fontWeight: 700, color: 'var(--c-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
           {establecimientos.length} establecimientos
+          {(() => {
+            // Ahora el mapa también pinta los cerrados (en gris), así que el total solo
+            // no dice nada: se detalla cuántos están sirviendo ahora mismo.
+            const abiertos = establecimientos.filter(e => estaAbierto(e).abierto).length
+            return abiertos !== establecimientos.length
+              ? <span style={{ color: '#6B6356', fontWeight: 600 }}>· {abiertos} abiertos</span>
+              : null
+          })()}
         </div>
       </div>
 
@@ -186,8 +203,12 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
         />
 
         {/* Establecimientos — marcador con logo */}
-        {establecimientos.map(est => (
-          est.latitud && est.longitud && (
+        {establecimientos.map(est => {
+          if (!est.latitud || !est.longitud) return null
+          // Cerrado (por su interruptor, por su app caída o por horario): se sigue viendo
+          // en el mapa, pero apagado — nunca con el mismo aspecto que uno que sí sirve.
+          const cerrado = !estaAbierto(est).abierto
+          return (
             <OverlayViewF
               key={`est-${est.id}`}
               position={{ lat: est.latitud, lng: est.longitud }}
@@ -198,10 +219,12 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
                 onTouchEnd={(e) => { e.stopPropagation(); setSelectedEst(est) }}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
-                  border: `2.5px solid ${selectedEst?.id === est.id ? '#fff' : '#C5562C'}`,
+                  border: `2.5px solid ${selectedEst?.id === est.id ? '#fff' : (cerrado ? '#9A948B' : '#C5562C')}`,
                   overflow: 'hidden', background: '#FFFFFF',
                   transform: 'translate(-50%, -50%)',
                   cursor: 'pointer',
+                  opacity: cerrado ? 0.55 : 1,
+                  filter: cerrado ? 'grayscale(1)' : 'none',
                   boxShadow: selectedEst?.id === est.id
                     ? '0 0 0 3px #C5562C, 0 4px 12px rgba(0,0,0,0.5)'
                     : '0 2px 8px rgba(0,0,0,0.45)',
@@ -217,7 +240,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
               </div>
             </OverlayViewF>
           )
-        ))}
+        })}
 
         {/* InfoWindow establecimiento */}
         {selectedEst && (
@@ -236,6 +259,12 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
                 )}
                 <div style={{ fontWeight: 800, fontSize: 13, color: '#1A1A1A' }}>{selectedEst.nombre}</div>
               </div>
+              {!estaAbierto(selectedEst).abierto && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: '#B4443A', marginBottom: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#B4443A', flexShrink: 0 }} />
+                  {estaAbierto(selectedEst).proximaApertura || 'Cerrado ahora'}
+                </div>
+              )}
               <div style={{ fontSize: 11, color: '#666', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <span style={{ color: '#C99551' }}>★</span> {selectedEst.rating?.toFixed(1) || '—'}
                 <span style={{ margin: '0 4px' }}>·</span>

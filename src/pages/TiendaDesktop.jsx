@@ -674,7 +674,10 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
   const [tieneDeliveryLive, setTieneDeliveryLive] = useState(establecimiento.tiene_delivery)
 
   const est = establecimiento
-  const estadoAbierto = estaAbierto(est)
+  // 'activo' llega congelado desde la ruta pública (el enlace del flyer). El motor de
+  // presencia abre y cierra solo, así que se mantiene vivo con realtime + refetch.
+  const [activoLive, setActivoLive] = useState(establecimiento?.activo)
+  const estadoAbierto = estaAbierto(est ? { ...est, activo: activoLive ?? est.activo } : est)
   const cerrado = !estadoAbierto.abierto
 
   // Precio único (el trigger trg_sync_precio_tienda mantiene precio_tienda_publica := precio)
@@ -683,11 +686,16 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
   // Realtime tiene_delivery
   useEffect(() => {
     setTieneDeliveryLive(est.tiene_delivery)
+    setActivoLive(est.activo)
     if (!est.id) return
     let cancel = false
     function refetch() {
-      supabase.from('establecimientos').select('tiene_delivery').eq('id', est.id).maybeSingle()
-        .then(({ data }) => { if (!cancel && data) setTieneDeliveryLive(!!data.tiene_delivery) })
+      supabase.from('establecimientos').select('tiene_delivery, activo').eq('id', est.id).maybeSingle()
+        .then(({ data }) => {
+          if (cancel || !data) return
+          setTieneDeliveryLive(!!data.tiene_delivery)
+          setActivoLive(data.activo)
+        })
     }
     const channel = supabase
       .channel(`est_live_desktop_${est.id}`)
@@ -695,7 +703,9 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
         event: 'UPDATE', schema: 'public', table: 'establecimientos',
         filter: `id=eq.${est.id}`,
       }, (payload) => {
-        if (!cancel && payload?.new) setTieneDeliveryLive(!!payload.new.tiene_delivery)
+        if (cancel || !payload?.new) return
+        setTieneDeliveryLive(!!payload.new.tiene_delivery)
+        setActivoLive(payload.new.activo)
       })
       .subscribe()
     function onVisible() { if (document.visibilityState === 'visible') refetch() }
@@ -724,10 +734,13 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
     let item
     try { item = JSON.parse(raw) } catch (_) { localStorage.removeItem('pido_pending_cart_item'); return }
     if (!item || item.establecimiento_id !== est.id) return
+    // Si el restaurante ha cerrado mientras el cliente se logueaba, el producto no entra
+    // solo en el carrito: se queda guardado para cuando vuelva a abrir.
+    if (cerrado) { showToast(`${est.nombre} está cerrado ahora mismo`); return }
     addItem(item)
     try { localStorage.removeItem('pido_pending_cart_item') } catch (_) {}
     showToast('Producto añadido al carrito')
-  }, [user, est.id])
+  }, [user, est.id, cerrado])
 
   // Fetch carta
   useEffect(() => {

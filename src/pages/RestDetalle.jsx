@@ -181,7 +181,10 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const [toastAdded, setToastAdded] = useState(false)
 
   const est = establecimiento
-  const estadoAbierto = estaAbierto(est)
+  // 'activo' llega congelado desde el listado/la ruta pública. El motor de presencia abre
+  // y cierra restaurantes solo, así que aquí se mantiene vivo (realtime + refetch abajo).
+  const [activoLive, setActivoLive] = useState(establecimiento?.activo)
+  const estadoAbierto = estaAbierto(est ? { ...est, activo: activoLive ?? est.activo } : est)
   const cerrado = !estadoAbierto.abierto
 
   // Precio único (el trigger trg_sync_precio_tienda mantiene precio_tienda_publica := precio)
@@ -206,11 +209,14 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     let item
     try { item = JSON.parse(raw) } catch (_) { localStorage.removeItem('pido_pending_cart_item'); return }
     if (!item || item.establecimiento_id !== est.id) return
+    // Si entre "añadir" y volver del login el restaurante ha cerrado, el producto NO
+    // entra solo en el carrito: se queda guardado para cuando vuelva a abrir.
+    if (cerrado) { mostrarAvisoCerrado(); return }
     addItem(item)
     try { localStorage.removeItem('pido_pending_cart_item') } catch (_) {}
     setToastAdded(true)
     setTimeout(() => setToastAdded(false), 2500)
-  }, [user, est.id])
+  }, [user, est.id, cerrado])
 
   useEffect(() => { fetchCarta() }, [est.id])
 
@@ -247,12 +253,17 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
 
   useEffect(() => {
     setTieneDeliveryLive(est.tiene_delivery)
+    setActivoLive(est.activo)
     if (!est.id) return
     // Refresco al volver a foreground (por si Realtime perdio algun evento).
     let cancel = false
     function refetch() {
-      supabase.from('establecimientos').select('tiene_delivery').eq('id', est.id).maybeSingle()
-        .then(({ data }) => { if (!cancel && data) setTieneDeliveryLive(!!data.tiene_delivery) })
+      supabase.from('establecimientos').select('tiene_delivery, activo').eq('id', est.id).maybeSingle()
+        .then(({ data }) => {
+          if (cancel || !data) return
+          setTieneDeliveryLive(!!data.tiene_delivery)
+          setActivoLive(data.activo)
+        })
     }
     const channel = supabase
       .channel(`est_live_${est.id}`)
@@ -260,7 +271,12 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         event: 'UPDATE', schema: 'public', table: 'establecimientos',
         filter: `id=eq.${est.id}`,
       }, (payload) => {
-        if (!cancel && payload?.new) setTieneDeliveryLive(!!payload.new.tiene_delivery)
+        if (cancel || !payload?.new) return
+        setTieneDeliveryLive(!!payload.new.tiene_delivery)
+        // 'activo' TAMBIEN en vivo: el motor de presencia abre y cierra solo. Sin esto,
+        // quien abriera el enlace del flyer con el restaurante cerrado se quedaba con la
+        // pagina bloqueada en "Cerrado" aunque reabriera 2 minutos despues.
+        setActivoLive(payload.new.activo)
       })
       .subscribe()
     function onVisible() { if (document.visibilityState === 'visible') refetch() }

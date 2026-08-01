@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { estaAbierto } from '../lib/horario'
 
 // Un color por estado, con texto OSCURO y saturado para que se lea bien sobre el
 // tema claro (antes era verde claro sobre verde claro = casi invisible, y "en camino"
@@ -80,6 +81,19 @@ export default function MisPedidos({ onTrack }) {
     const vigentes = items.filter(i => prodMap[i.producto_id] && prodMap[i.producto_id].disponible !== false)
     if (vigentes.length === 0) {
       window.alert('Los productos de este pedido ya no están disponibles en la carta.')
+      return
+    }
+
+    // Repetir un pedido a un restaurante CERRADO llenaba el carrito y el cliente no se
+    // enteraba hasta el checkout. Ahora que los cerrados se ven en el listado, este
+    // camino es mucho más frecuente.
+    // Si la lectura falla, NO se sigue: dejar pasar el carrito "por si acaso" es lo que
+    // acaba en el error crudo de PD101 al pagar. Y se mira 'estado' además de 'activo':
+    // un restaurante suspendido está oculto en el resto de la app, aquí también.
+    const { data: estRep } = await supabase.from('establecimientos')
+      .select('nombre, activo, horario, estado').eq('id', pedido.establecimiento_id).maybeSingle()
+    if (!estRep || estRep.estado !== 'activo' || !estaAbierto(estRep).abierto) {
+      window.alert(`${estRep?.nombre || 'Este restaurante'} no está aceptando pedidos ahora mismo.`)
       return
     }
 
