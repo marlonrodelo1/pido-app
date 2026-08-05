@@ -503,7 +503,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: cerrado ? C.danger : C.sage, flexShrink: 0 }} />
             {cerrado
               ? (estadoAbierto.proximaApertura || 'Cerrado')
-              : `Abierto ahora${estadoAbierto.turnoActual?.cierra ? ` · Cierra ${estadoAbierto.turnoActual.cierra}` : ''}`
+              : `Abierto${estadoAbierto.turnoActual?.abre ? ` · ${estadoAbierto.turnoActual.abre}–${estadoAbierto.turnoActual.cierra}` : ''}`
             }
           </div>
 

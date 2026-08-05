@@ -890,8 +890,12 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
 
         {/* Chips de estado — fila propia, siempre debajo del banner y legibles */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+          {/* De qué hora a qué hora, dentro del chip que ya había: informa sin
+              robarle sitio al banner. Cerrado ya dice cuándo vuelve a abrir. */}
           <Chip tone={cerrado ? 'danger' : 'sage'} dot>
-            {cerrado ? (estadoAbierto.proximaApertura || 'Cerrado') : 'Abierto'}
+            {cerrado
+              ? (estadoAbierto.proximaApertura || 'Cerrado')
+              : `Abierto${estadoAbierto.turnoActual?.abre ? ` · ${estadoAbierto.turnoActual.abre}–${estadoAbierto.turnoActual.cierra}` : ''}`}
           </Chip>
           {est.rating > 0 && (
             <Chip tone="paper">
