@@ -21,6 +21,16 @@ const SH = {
   glossy: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.18)',
 }
 
+// Qué le decimos al cliente sobre su pago. Solo `tarjeta` está cobrado de
+// verdad; datáfono y efectivo se pagan al recibir, y un método desconocido se
+// trata como pendiente antes que decirle "ya pagado" y que luego le cobren.
+function textoPagoCliente(metodo) {
+  if (metodo === 'tarjeta') return '💳 Pagado con tarjeta'
+  if (metodo === 'pagado_local') return '✅ Ya pagado'
+  if (metodo === 'datafono') return '💳 Pago con datáfono al recibir'
+  return '💵 Pago en efectivo'
+}
+
 function estadoToStep(estado) {
   if (estado === 'nuevo' || estado === 'aceptado') return 0
   if (estado === 'preparando' || estado === 'listo') return 1
@@ -422,7 +432,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         )}
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: C.stone }}>
-          {pedido.metodo_pago === 'tarjeta' ? '💳 Pagado con tarjeta' : '💵 Pago en efectivo'}
+          {textoPagoCliente(pedido.metodo_pago)}
         </div>
       </div>
     )
@@ -648,7 +658,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       )}
 
       <div style={{ textAlign: 'center', fontSize: 12, color: C.stone }}>
-        {pedido.metodo_pago === 'tarjeta' ? '💳 Pagado con tarjeta' : '💵 Pago en efectivo'}
+        {textoPagoCliente(pedido.metodo_pago)}
       </div>
     </div>
   )

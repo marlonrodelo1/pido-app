@@ -340,6 +340,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [restConfig, setRestConfig] = useState({
     acepta_efectivo: true,
     acepta_tarjeta_online: true,
+    acepta_datafono: false,
     exige_registro_cliente: false,
   })
   // Hasta que no sabemos qué quiere el restaurante no se decide si se puede
@@ -355,7 +356,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     ;(async () => {
       const { data } = await supabase
         .from('establecimientos')
-        .select('acepta_efectivo, acepta_tarjeta_online, exige_registro_cliente')
+        .select('acepta_efectivo, acepta_tarjeta_online, acepta_datafono, exige_registro_cliente')
         .eq('id', estId)
         .maybeSingle()
       if (cancel) return
@@ -363,6 +364,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         setRestConfig({
           acepta_efectivo: data.acepta_efectivo ?? true,
           acepta_tarjeta_online: data.acepta_tarjeta_online ?? true,
+          acepta_datafono: data.acepta_datafono ?? false,
           exige_registro_cliente: data.exige_registro_cliente ?? false,
         })
       }
@@ -373,13 +375,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     return () => { cancel = true }
   }, [open, carrito[0]?.establecimiento_id])
 
-  // Métodos disponibles según config del restaurante. Solo dos:
-  // tarjeta online (Stripe) y efectivo al entregar. Para clientes invitados
-  // (sin login) se oculta la tarjeta online porque el flujo Stripe requiere
-  // cuenta para reembolsos y SCA 3DS.
+  // Métodos disponibles según config del restaurante:
+  //  · tarjeta  → Stripe en el checkout. Se oculta a los invitados: el flujo
+  //               necesita cuenta para el SCA 3DS y para los reembolsos.
+  //  · datáfono → tarjeta en mano, con el TPV del repartidor o del local.
+  //  · efectivo → en mano al entregar o al recoger.
   const metodosDisponibles = useMemo(() => {
     const list = []
     if (restConfig.acepta_tarjeta_online && user) list.push({ id: 'tarjeta',  label: 'Tarjeta',  icon: 'card' })
+    if (restConfig.acepta_datafono)               list.push({ id: 'datafono', label: 'Datáfono', icon: 'card' })
     if (restConfig.acepta_efectivo)               list.push({ id: 'efectivo', label: 'Efectivo', icon: null })
     return list
   }, [restConfig, user])
