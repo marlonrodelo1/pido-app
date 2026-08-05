@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { estaAbierto } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
+import { permiteInvitado } from '../lib/invitado'
 
 // Paleta directa (alineada con bundle s4-tienda + sx-extras)
 const C = {
@@ -164,6 +165,10 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
 export default function RestDetalle({ establecimiento, onBack, modoTienda = false, onRequireLogin, socioData = null }) {
   const { addItem, carrito, updateCantidad, totalItems, subtotal } = useCart()
   const { user } = useAuth()
+  // Pedir sin cuenta solo en la tienda pública del restaurante: dentro de la app
+  // (modoTienda=false) el establecimiento llega de Home.jsx, cuyo select no trae
+  // `exige_registro_cliente`, así que ahí no se decide nada.
+  const invitadoOk = modoTienda && permiteInvitado(establecimiento)
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])
   const [promociones, setPromociones] = useState([])
@@ -372,7 +377,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       establecimiento_nombre: est.nombre,
       coste_envio: 0,
     }
-    if (!user) { guardarPendingItem(item); setModal(null); return }
+    if (!user && !invitadoOk) { guardarPendingItem(item); setModal(null); return }
     addItem(item)
     setModal(null)
   }
@@ -391,7 +396,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       establecimiento_nombre: est.nombre,
       coste_envio: 0,
     }
-    if (!user) { guardarPendingItem(item); return }
+    if (!user && !invitadoOk) { guardarPendingItem(item); return }
     addItem(item)
   }
 

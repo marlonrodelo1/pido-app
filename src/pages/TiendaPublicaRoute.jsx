@@ -36,7 +36,9 @@ export default function TiendaPublicaRoute() {
     let cancelled = false
     supabase
       .from('establecimientos')
-      .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre')
+      // `exige_registro_cliente` decide si en esta tienda se puede pedir sin
+      // cuenta: si falta en el select, permiteInvitado() lo daría por permitido.
+      .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre, exige_registro_cliente')
       .eq('slug', slug)
       // Sin filtro por 'activo': el enlace del flyer/QR de un restaurante CERRADO tiene que
       // enseñar su tienda con el cartel de cerrado, no mandar al cliente a la home genérica

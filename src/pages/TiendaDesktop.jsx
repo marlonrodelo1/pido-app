@@ -13,6 +13,7 @@ import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { estaAbierto } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
+import { permiteInvitado } from '../lib/invitado'
 
 // Paleta tipo design system (DESIGN.md cream/terracotta/sage)
 const C = {
@@ -134,7 +135,9 @@ function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
       establecimiento_nombre: est.nombre,
       coste_envio: 0,
     }
-    if (!user) {
+    // En una tienda que acepta invitados se añade al carrito sin más: pedir
+    // cuenta para poder mirar la carta es lo que tira la venta.
+    if (!user && !permiteInvitado(est)) {
       try { localStorage.setItem('pido_pending_cart_item', JSON.stringify(item)) } catch (_) {}
       onAdded?.({ requireLogin: true })
       return
@@ -802,7 +805,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
       establecimiento_nombre: est.nombre,
       coste_envio: 0,
     }
-    if (!user) { guardarPendingItem(item); return }
+    if (!user && !permiteInvitado(est)) { guardarPendingItem(item); return }
     addItem(item)
     showToast('Producto añadido al carrito')
   }

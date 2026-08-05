@@ -55,20 +55,39 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const esDelivery = pedido.modo_entrega === 'delivery'
   const esPickup = pedido.modo_entrega === 'pickup' || pedido.modo_entrega === 'recogida'
 
+  // Pedido hecho SIN CUENTA: la RLS de `pedidos` no le deja leer nada, así que
+  // se consulta por el RPC con el código y el token que le dio el servidor.
+  const esInvitado = !user && !!pedidoInicial?.tracking_token
+
   useEffect(() => {
+    const cargarSocio = (socioId) => {
+      if (!socioId) return
+      supabase.from('socios')
+        .select('nombre_comercial, slug, logo_url, color_primario')
+        .eq('id', socioId).maybeSingle()
+        .then(({ data: socioData }) => { if (socioData) setSocio(socioData) })
+    }
+
+    if (esInvitado) {
+      supabase.rpc('pedido_invitado_estado', {
+        p_codigo: pedidoInicial.codigo,
+        p_token: pedidoInicial.tracking_token,
+      }).then(({ data }) => {
+        if (!data) return
+        setPedido(prev => ({ ...prev, ...data }))
+        cargarSocio(data.socio_id)
+      })
+      return
+    }
+
     supabase.from('pedidos').select('*').eq('id', pedidoInicial.id).single()
       .then(({ data }) => {
         if (data) {
           setPedido(data)
-          if (data.socio_id) {
-            supabase.from('socios')
-              .select('nombre_comercial, slug, logo_url, color_primario')
-              .eq('id', data.socio_id).maybeSingle()
-              .then(({ data: socioData }) => { if (socioData) setSocio(socioData) })
-          }
+          cargarSocio(data.socio_id)
         }
       })
-  }, [pedidoInicial.id])
+  }, [pedidoInicial.id, esInvitado])
 
   function abrirSocio() {
     if (!socio?.slug) return
@@ -145,6 +164,19 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   }, [pedido.id, pedido.socio_id, user?.id])
 
   useEffect(() => {
+    // Sin cuenta no hay realtime: Realtime respeta la RLS y no le llegaría
+    // ningún cambio. Se pregunta por el RPC cada pocos segundos.
+    if (esInvitado) {
+      const pollInvitado = setInterval(async () => {
+        const { data } = await supabase.rpc('pedido_invitado_estado', {
+          p_codigo: pedidoInicial.codigo,
+          p_token: pedidoInicial.tracking_token,
+        })
+        if (data) setPedido(prev => ({ ...prev, ...data }))
+      }, 5000)
+      return () => clearInterval(pollInvitado)
+    }
+
     const channel = supabase.channel(`tracking-${pedido.id}`)
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'pedidos',
@@ -167,7 +199,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
       supabase.removeChannel(channel)
       clearInterval(pollInterval)
     }
-  }, [pedido.id, esTerminado])
+  }, [pedido.id, esTerminado, esInvitado])
 
   // (Auto-cierre ELIMINADO) Antes, al entregar, un contador cerraba la pantalla en
   // unos segundos y escondía el prompt de reseña → casi nadie llegaba a valorar
@@ -320,8 +352,9 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
           </div>
         </div>
 
-        {/* Formulario valoración — SIEMPRE visible al entregar (sin auto-cierre) */}
-        {(
+        {/* Formulario valoración — al entregar, salvo pedido sin cuenta:
+            `resenas` exige usuario_id, así que enseñarlo sería un callejón. */}
+        {!esInvitado && (
           <div style={{
             background: C.paper, border: `1px solid ${C.border}`,
             borderRadius: 14, padding: 20,

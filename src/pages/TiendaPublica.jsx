@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
 import TiendaBottomNav from '../components/TiendaBottomNav'
 import AppDownloadBanner from '../components/AppDownloadBanner'
+import { permiteInvitado } from '../lib/invitado'
 import Login from './Login'
 import { X, Bike } from 'lucide-react'
 
@@ -239,7 +240,9 @@ export default function TiendaPublica({ establecimiento }) {
           <TiendaDesktop
             establecimiento={establecimiento}
             onCheckout={() => {
-              if (!user) { setLoginOpen(true); return }
+              // Sin cuenta se puede seguir si esta tienda lo permite: el carrito
+              // pide los datos de contacto y el pedido entra por el RPC.
+              if (!user && !permiteInvitado(establecimiento)) { setLoginOpen(true); return }
               setCarritoOpen(true)
             }}
             onRequireLogin={() => setLoginOpen(true)}

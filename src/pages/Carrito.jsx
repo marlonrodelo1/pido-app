@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { Capacitor } from '@capacitor/core'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { supabase } from '../lib/supabase'
@@ -341,23 +342,33 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     acepta_tarjeta_online: true,
     exige_registro_cliente: false,
   })
+  // Hasta que no sabemos qué quiere el restaurante no se decide si se puede
+  // pedir sin cuenta: si no, al abrir el carrito parpadearía el formulario de
+  // invitado en un restaurante que sí exige registro.
+  const [restConfigLista, setRestConfigLista] = useState(false)
   useEffect(() => {
     if (!open || carrito.length === 0) return
     const estId = carrito[0].establecimiento_id
     if (!estId) return
     let cancel = false
+    setRestConfigLista(false)
     ;(async () => {
       const { data } = await supabase
         .from('establecimientos')
         .select('acepta_efectivo, acepta_tarjeta_online, exige_registro_cliente')
         .eq('id', estId)
         .maybeSingle()
-      if (cancel || !data) return
-      setRestConfig({
-        acepta_efectivo: data.acepta_efectivo ?? true,
-        acepta_tarjeta_online: data.acepta_tarjeta_online ?? true,
-        exige_registro_cliente: data.exige_registro_cliente ?? false,
-      })
+      if (cancel) return
+      if (data) {
+        setRestConfig({
+          acepta_efectivo: data.acepta_efectivo ?? true,
+          acepta_tarjeta_online: data.acepta_tarjeta_online ?? true,
+          exige_registro_cliente: data.exige_registro_cliente ?? false,
+        })
+      }
+      // Si la lectura falla se sigue con los valores por defecto: el servidor
+      // vuelve a comprobarlo (PD112), así que no se cuela nada.
+      setRestConfigLista(true)
     })()
     return () => { cancel = true }
   }, [open, carrito[0]?.establecimiento_id])
@@ -396,10 +407,19 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     }
   }, [open, metodosDisponibles, perfil?.metodo_pago_preferido, setMetodoPago])
 
-  // Guest checkout DESACTIVADO para el lanzamiento: el flujo Stripe y las policies RLS
-  // de `pedidos` requieren cuenta (usuario_id = auth.uid()). Exigir cuenta además
-  // garantiza un teléfono de contacto para que el socio pueda llamar al cliente.
-  const guestPermitido = false
+  // Pedir SIN CUENTA. Solo en la tienda pública del restaurante abierta en el
+  // navegador (el enlace del flyer y el QR): ahí crear cuenta es la fricción que
+  // tira la venta. Dentro de la app instalada se sigue pidiendo cuenta.
+  // El pedido no entra por la RLS normal sino por el RPC `crear_pedido_invitado`,
+  // que vuelve a comprobar TODO en servidor — esto de aquí solo decide qué se
+  // enseña. Sin cuenta no hay Stripe: el invitado paga en efectivo o datáfono.
+  const guestPermitido = (
+    !user &&
+    !Capacitor.isNativePlatform() &&
+    origenPedido === 'tienda_publica' &&
+    restConfigLista &&
+    !restConfig.exige_registro_cliente
+  )
   const [guestNombre, setGuestNombre] = useState('')
   const [guestTelefono, setGuestTelefono] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -506,15 +526,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       // Snapshot del teléfono de contacto EN el pedido → el socio lo lee sin tocar la RLS de usuarios.
       cliente_telefono: (perfil?.telefono || telefonoInput || '').trim() || null,
     }
-    // Datos del guest cuando no hay sesión
-    if (!user && guestPermitido) {
-      insertPayload.guest_nombre = guestNombre.trim()
-      insertPayload.guest_telefono = guestTelefono.trim()
-      insertPayload.guest_email = guestEmail.trim() || null
-    }
-    const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert(insertPayload).select().single()
-    if (pedidoError) throw pedidoError
-    const items = carrito.map(item => {
+    // Líneas del pedido (el pedido_id se añade después, cuando existe)
+    const lineas = carrito.map(item => {
       let extrasFlat = null
       if (item.extras && item.extras.length > 0) {
         if (typeof item.extras[0] === 'object' && item.extras[0] !== null && 'opciones' in item.extras[0]) {
@@ -526,10 +539,41 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         }
       }
       return {
-        pedido_id: pedido.id, producto_id: item.producto_id, nombre_producto: item.nombre,
-        tamano: item.tamano, extras: extrasFlat, precio_unitario: item.precio_unitario, cantidad: item.cantidad,
+        producto_id: item.producto_id, nombre_producto: item.nombre,
+        tamano: item.tamano, extras: extrasFlat,
+        precio_unitario: item.precio_unitario, cantidad: item.cantidad,
       }
     })
+
+    // ── Sin cuenta: una sola llamada al RPC, que crea pedido + líneas ───────
+    // No pasa por la RLS de `pedidos` (que exige usuario_id = auth.uid()); el
+    // RPC revalida el restaurante, el método de pago, y RECALCULA subtotal y
+    // descuento en servidor, así que da igual lo que mande este navegador.
+    if (!user && guestPermitido) {
+      const { data: creado, error: rpcError } = await supabase.rpc('crear_pedido_invitado', {
+        p_pedido: {
+          ...insertPayload,
+          guest_nombre: guestNombre.trim(),
+          guest_telefono: guestTelefono.trim(),
+          guest_email: guestEmail.trim() || null,
+        },
+        p_items: lineas,
+      })
+      if (rpcError) throw new Error(rpcError.message || 'No se ha podido crear el pedido')
+      if (!creado?.id) throw new Error('No se ha podido crear el pedido')
+      // Guardado para poder seguirlo sin cuenta (código + token)
+      try {
+        const previos = JSON.parse(localStorage.getItem('pidoo_guest_pedidos') || '[]')
+        localStorage.setItem('pidoo_guest_pedidos', JSON.stringify(
+          [{ codigo: creado.codigo, token: creado.tracking_token, fecha: Date.now() }, ...previos].slice(0, 10)
+        ))
+      } catch (_) {}
+      return creado
+    }
+
+    const { data: pedido, error: pedidoError } = await supabase.from('pedidos').insert(insertPayload).select().single()
+    if (pedidoError) throw pedidoError
+    const items = lineas.map(l => ({ ...l, pedido_id: pedido.id }))
     const { error: itemsError } = await supabase.from('pedido_items').insert(items)
     if (itemsError) throw itemsError
     return pedido
@@ -597,19 +641,29 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       setErrorMsg(`El pedido mínimo de este restaurante es ${fmt(pedidoMinimo)}. Te faltan ${fmt(faltaMinimo)}.`)
       return
     }
-    // Login obligatorio para todos (guest checkout desactivado: lo requieren Stripe + RLS).
-    if (!user) {
+    // Sin cuenta solo se sigue si este restaurante lo permite y estamos en su
+    // tienda pública; si no, a iniciar sesión.
+    if (!user && !guestPermitido) {
       onRequireLogin?.()
       return
     }
-    // Teléfono de contacto obligatorio: el socio/rider debe poder llamar al cliente.
-    const telContacto = (perfil?.telefono || telefonoInput || '').trim()
-    if (telContacto.replace(/\D/g, '').length < 6) {
-      setErrorMsg('Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
-      return
-    }
-    if (!perfil?.telefono) {
-      try { await updatePerfil({ telefono: telContacto }) } catch (_) {}
+    if (!user) {
+      if (!guestValido()) {
+        setErrorMsg(modoEntrega === 'delivery'
+          ? 'Completa tu nombre, tu teléfono y la dirección de entrega.'
+          : 'Completa tu nombre y tu teléfono.')
+        return
+      }
+    } else {
+      // Teléfono de contacto obligatorio: el socio/rider debe poder llamar al cliente.
+      const telContacto = (perfil?.telefono || telefonoInput || '').trim()
+      if (telContacto.replace(/\D/g, '').length < 6) {
+        setErrorMsg('Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
+        return
+      }
+      if (!perfil?.telefono) {
+        try { await updatePerfil({ telefono: telContacto }) } catch (_) {}
+      }
     }
     if (user && modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
       setSinDireccion(true); setMostrarAddDir(true); return
@@ -637,9 +691,19 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     // establecimiento tiene riders online ahora mismo. Bloquea el pago si no.
     if (modoEntrega === 'delivery' && carrito[0]?.establecimiento_id) {
       try {
+        // Contexto MARKETPLACE del socio: si el pedido sale de /s/<slug>, hay que preguntar
+        // por ESE socio y por su fuente 'marketplace' (check v11). Sin esto, la edge evaluaba
+        // acepta_app de TODOS los socios del restaurante: un socio que hubiera pausado este
+        // restaurante o apagado su marketplace dejaba pagar al cliente un pedido que el
+        // dispatcher no podía asignar → no_rider → cancelación + reembolso.
+        const socioIdMkt = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
         const { data: avail, error: availErr } = await supabase.functions.invoke(
           'check-socio-availability-now',
-          { body: { establecimiento_id: carrito[0].establecimiento_id } },
+          {
+            body: socioIdMkt
+              ? { establecimiento_id: carrito[0].establecimiento_id, socio_id: socioIdMkt, fuente: 'marketplace' }
+              : { establecimiento_id: carrito[0].establecimiento_id, fuente: 'app' },
+          },
         )
         if (!availErr && avail && avail.disponible === false) {
           setErrorMsg('No hay repartidores disponibles en este momento. Vuelve a intentarlo en unos minutos o elige Recogida.')
@@ -719,7 +783,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   // Pedido mínimo del restaurante (0 = sin mínimo). Se compara con el subtotal de productos.
   const bajoMinimo = pedidoMinimo > 0 && subtotal < pedidoMinimo
   const faltaMinimo = Math.max(0, pedidoMinimo - subtotal)
-  const isDisabled = loading || envioLoading || restCerrado || bajoMinimo || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
+  // Sin cuenta, el botón espera a que estén el nombre, el teléfono y (si es a
+  // domicilio) la dirección. Si el invitado NO está permitido el botón sigue
+  // vivo: al pulsarlo es cuando se abre el login.
+  const isDisabled = loading || envioLoading || restCerrado || bajoMinimo
+    || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
+    || (!user && guestPermitido && !guestValido())
 
   return (
     <>
@@ -1029,8 +1098,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 )}
 
-                {/* Bloque login si el restaurante exige cuenta y no hay user */}
-                {!user && !guestPermitido && (
+                {/* Bloque login si el restaurante exige cuenta y no hay user.
+                    Se espera a saber qué quiere el restaurante: si no, al abrir
+                    el carrito parpadearía "inicia sesión" y luego "tus datos". */}
+                {!user && !guestPermitido && restConfigLista && (
                   <div style={{
                     marginBottom: 14, padding: 14, borderRadius: 14,
                     background: C.burntGlaze, border: `1px solid ${C.burnt}`,
