@@ -61,6 +61,22 @@ export function urlEsquemaApp(slug) {
   return ESQUEMA_APP + '://r/' + slug
 }
 
+/* ── Plataforma ─────────────────────────────────────────────────────────── */
+
+/** 'android' | 'ios' | 'escritorio'. Los argumentos existen para poder
+ *  probarla sin navegador; en la app se llama sin nada. */
+export function detectarPlataforma(
+  ua = (typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+  puntosTactiles = (typeof navigator !== 'undefined' ? (navigator.maxTouchPoints || 0) : 0),
+) {
+  const s = String(ua || '')
+  if (/android/i.test(s)) return 'android'
+  if (/iphone|ipad|ipod/i.test(s)) return 'ios'
+  // iPadOS 13+ se presenta como Mac; se distingue por el táctil.
+  if (/Mac/i.test(s) && puntosTactiles > 1) return 'ios'
+  return 'escritorio'
+}
+
 /* ── Parser de entrada ──────────────────────────────────────────────────── */
 
 function llevaCredenciales(u) {

@@ -3,7 +3,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  parseDeepLink, slugValido, slugDeRutaApp,
+  parseDeepLink, slugValido, slugDeRutaApp, detectarPlataforma,
   urlIntentAndroid, urlEsquemaApp, GPLAY,
 } from '../src/lib/deepLinks.js'
 
@@ -182,6 +182,28 @@ test('un slug invalido no construye enlace (no se inyecta en el intent)', () => 
     assert.equal(urlIntentAndroid(ko), null, 'deberia rechazar ' + String(ko))
     assert.equal(urlEsquemaApp(ko), null, 'deberia rechazar ' + String(ko))
   }
+})
+
+/* ── Deteccion de plataforma (decide la insignia y el modo de lanzar) ──── */
+
+test('detectarPlataforma distingue android, ios y escritorio', () => {
+  assert.equal(detectarPlataforma('Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/148', 5), 'android')
+  assert.equal(detectarPlataforma('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605', 5), 'ios')
+  assert.equal(detectarPlataforma('Mozilla/5.0 (iPad; CPU OS 17_0) Safari/605', 5), 'ios')
+  assert.equal(detectarPlataforma('Mozilla/5.0 (Windows NT 10.0) Chrome/148', 0), 'escritorio')
+  assert.equal(detectarPlataforma('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) Safari/605', 0), 'escritorio')
+})
+
+test('el iPad moderno se hace pasar por Mac: lo delata el tactil', () => {
+  const uaIpadOS = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15'
+  assert.equal(detectarPlataforma(uaIpadOS, 5), 'ios')          // iPad de verdad
+  assert.equal(detectarPlataforma(uaIpadOS, 0), 'escritorio')   // Mac de verdad
+})
+
+test('sin navegador (SSR/node) no revienta y cae a escritorio', () => {
+  assert.equal(detectarPlataforma('', 0), 'escritorio')
+  assert.equal(detectarPlataforma(null, 0), 'escritorio')
+  assert.equal(detectarPlataforma(undefined, undefined), 'escritorio')
 })
 
 test('el esquema de iOS apunta a la misma ruta que entiende el parser', () => {

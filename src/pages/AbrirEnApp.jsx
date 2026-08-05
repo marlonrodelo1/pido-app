@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Navigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { slugValido, urlIntentAndroid, urlEsquemaApp, APPSTORE, GPLAY } from '../lib/deepLinks'
+import { slugValido, urlIntentAndroid, urlEsquemaApp, detectarPlataforma, APPSTORE, GPLAY } from '../lib/deepLinks'
 
 const C = {
   bg: '#F7F3EC', paper: '#FFFFFF', ink: '#1A1815',
@@ -24,16 +24,6 @@ const C = {
  * ahí hasta que el usuario contesta. Con 2 s el rescate salta mientras el
  * usuario todavía está leyendo y manda a instalar a quien YA tiene la app. */
 const RESCATE_MS = 8000
-
-function detectarPlataforma() {
-  if (typeof navigator === 'undefined') return 'escritorio'
-  const ua = navigator.userAgent || ''
-  if (/android/i.test(ua)) return 'android'
-  if (/iphone|ipad|ipod/i.test(ua)) return 'ios'
-  // iPadOS 13+ se presenta como Mac; se distingue por el táctil.
-  if (/Mac/i.test(ua) && (navigator.maxTouchPoints || 0) > 1) return 'ios'
-  return 'escritorio'
-}
 
 export default function AbrirEnApp() {
   const { slug: slugCrudo } = useParams()

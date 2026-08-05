@@ -12,7 +12,7 @@ import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { slugValido, APPSTORE, GPLAY } from '../lib/deepLinks'
+import { slugValido, detectarPlataforma, APPSTORE, GPLAY } from '../lib/deepLinks'
 
 const DISMISS_KEY = 'pido_dl_banner_dismissed'
 
@@ -28,8 +28,23 @@ const C = {
   primary: '#C5562C',
 }
 
+// Las dos insignias oficiales tienen el MISMO ratio de contenido (~3.37), asi
+// que a igual altura se ven iguales. Hubo que recortarle al PNG de Google los
+// 29px de relleno transparente que trae de fabrica arriba y abajo: sin eso, a
+// height:40px su caja negra medía 30,7px y la de Apple 40px (23% más pequeña).
+const TIENDAS = [
+  { href: APPSTORE, src: '/badges/appstore_official.png', alt: 'Descargar en la App Store' },
+  { href: GPLAY, src: '/badges/gplay_official.png', alt: 'Disponible en Google Play' },
+]
+
 export default function AppDownloadBanner({ slug = null }) {
-  const conBotonAbrir = DEEP_LINKS_ACTIVOS && slugValido(slug)
+  // En el móvil solo tienes UNA tienda: enseñar las dos insignias es ruido, y
+  // encima obliga a que encajen entre sí. En escritorio se enseñan las dos y
+  // no se enseña el botón (llevaría a una página que solo dice "coge el móvil").
+  const [plataforma] = useState(detectarPlataforma)
+  const esMovil = plataforma === 'android' || plataforma === 'ios'
+  const conBotonAbrir = DEEP_LINKS_ACTIVOS && slugValido(slug) && esMovil
+  const tiendas = plataforma === 'ios' ? [TIENDAS[0]] : plataforma === 'android' ? [TIENDAS[1]] : TIENDAS
   const [hidden, setHidden] = useState(() => {
     // Dentro de la app nativa no tiene sentido pedir que la descarguen.
     if (Capacitor.isNativePlatform()) return true
@@ -91,14 +106,13 @@ export default function AppDownloadBanner({ slug = null }) {
         </Link>
       )}
 
-      {/* Badges oficiales */}
+      {/* Insignias oficiales. En móvil solo la de la tienda que te sirve. */}
       <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-        <a href={APPSTORE} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Descargar en la App Store">
-          <img src="/badges/appstore_official.png" alt="Descargar en la App Store" style={{ height: 40, width: 'auto', display: 'block' }} />
-        </a>
-        <a href={GPLAY} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Disponible en Google Play">
-          <img src="/badges/gplay_official.png" alt="Disponible en Google Play" style={{ height: 40, width: 'auto', display: 'block' }} />
-        </a>
+        {tiendas.map(t => (
+          <a key={t.href} href={t.href} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label={t.alt}>
+            <img src={t.src} alt={t.alt} style={{ height: 40, width: 'auto', display: 'block' }} />
+          </a>
+        ))}
       </div>
 
       {/* Cerrar */}
