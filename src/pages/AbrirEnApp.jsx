@@ -141,13 +141,18 @@ export default function AbrirEnApp() {
           </>
         )}
 
+        {/* En móvil solo la insignia de TU tienda: la otra no te sirve. */}
         <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <a href={APPSTORE} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Descargar en la App Store">
-            <img src="/badges/appstore_official.png" alt="Descargar en la App Store" style={badge} />
-          </a>
-          <a href={GPLAY} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Disponible en Google Play">
-            <img src="/badges/gplay_official_v2.png" alt="Disponible en Google Play" style={badge} />
-          </a>
+          {plataforma !== 'android' && (
+            <a href={APPSTORE} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Descargar en la App Store">
+              <img src="/badges/appstore_official.png" alt="Descargar en la App Store" style={badge} />
+            </a>
+          )}
+          {plataforma !== 'ios' && (
+            <a href={GPLAY} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Disponible en Google Play">
+              <img src="/badges/gplay_official_v2.png" alt="Disponible en Google Play" style={badge} />
+            </a>
+          )}
         </div>
 
         <Link to={'/' + rest.slug} style={enlaceWeb}>Seguir en la web</Link>
