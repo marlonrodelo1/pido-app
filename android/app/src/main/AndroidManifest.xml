@@ -35,6 +35,17 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="com.pidoo.app" android:host="login" />
             </intent-filter>
+            <!-- Deep link de restaurante: com.pidoo.app://r/<slug>.
+                 Va en un filtro APARTE del de login (que está limitado a
+                 host="login" y por eso hoy NO resolvería este host).
+                 SIN autoVerify a propósito: aquí no se reclama ningún
+                 dominio, solo el esquema propio. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.pidoo.app" android:host="r" />
+            </intent-filter>
         </activity>
 
         <provider

@@ -43,12 +43,24 @@
 	<true/>
 	<key>CFBundleURLTypes</key>
 	<array>
+		<!-- Esquema heredado del wrapper Median: lo usa el OAuth de iOS. NO TOCAR. -->
 		<dict>
 			<key>CFBundleURLName</key>
 			<string>co.median.ios.bnlkxpx</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>co.median.ios.bnlkxpx</string>
+			</array>
+		</dict>
+		<!-- Deep links de restaurante: com.pidoo.app://r/<slug>. Sin esto, la
+		     página puente /abrir/<slug> no abre nada en iPhone. Comprobar que
+		     sobrevive en el .ipa, no solo en el proyecto. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.pidoo.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.pidoo.app</string>
 			</array>
 		</dict>
 	</array>

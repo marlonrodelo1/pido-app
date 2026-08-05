@@ -4,20 +4,32 @@
  * App Store + Google Play enlazando a las stores reales (la app cliente ya
  * está publicada). Se oculta dentro de la app nativa (Capacitor) y es
  * descartable (se recuerda en localStorage para no ser pesado).
+ *
+ * Con `slug` y VITE_DEEP_LINKS_ACTIVOS=1 añade además el botón que lleva a
+ * ESE restaurante DENTRO de la app (página puente /abrir/<slug>).
  * ────────────────────────────────────────────────────────────────────────── */
 import { useState } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { Link } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { slugValido, APPSTORE, GPLAY } from '../lib/deepLinks'
 
-const APPSTORE = 'https://apps.apple.com/es/app/pidoo/id6759052572'
-const GPLAY = 'https://play.google.com/store/apps/details?id=com.pidoo.app'
 const DISMISS_KEY = 'pido_dl_banner_dismissed'
+
+/* Interruptor APAGADO por defecto. Motivo: las versiones de la app que ya
+ * están instaladas no traen el filtro de com.pidoo.app://r/<slug>, así que
+ * mientras las tiendas no aprueben la build nueva el botón manda a Play/App
+ * Store a gente que YA tiene la app. Se enciende con VITE_DEEP_LINKS_ACTIVOS=1
+ * (build arg en Dokploy) el día que las builds estén publicadas. */
+const DEEP_LINKS_ACTIVOS = import.meta.env.VITE_DEEP_LINKS_ACTIVOS === '1'
 
 const C = {
   paper: '#FBF8F2', ink: '#1A1815', stone: '#6B6356', border: '#E8E1D3',
+  primary: '#C5562C',
 }
 
-export default function AppDownloadBanner() {
+export default function AppDownloadBanner({ slug = null }) {
+  const conBotonAbrir = DEEP_LINKS_ACTIVOS && slugValido(slug)
   const [hidden, setHidden] = useState(() => {
     // Dentro de la app nativa no tiene sentido pedir que la descarguen.
     if (Capacitor.isNativePlatform()) return true
@@ -54,10 +66,30 @@ export default function AppDownloadBanner() {
             Pide más rápido desde la app
           </div>
           <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.4, marginTop: 3 }}>
-            Descarga Pidoo gratis y sigue tus pedidos desde el móvil.
+            {conBotonAbrir
+              ? 'Abre este restaurante en la app de Pidoo.'
+              : 'Descarga Pidoo gratis y sigue tus pedidos desde el móvil.'}
           </div>
         </div>
       </div>
+
+      {/* Abrir ESTE restaurante en la app. En su PROPIA fila a ancho completo:
+          metido junto a los dos badges, la fila se desbordaba entre 420 y
+          485 px (iPhone Pro Max). */}
+      {conBotonAbrir && (
+        <Link
+          to={'/abrir/' + slug}
+          style={{
+            display: 'block', width: '100%', boxSizing: 'border-box',
+            padding: '12px 16px', borderRadius: 13,
+            background: C.primary, color: '#fff',
+            fontSize: 14, fontWeight: 800, textAlign: 'center',
+            textDecoration: 'none', fontFamily: 'inherit',
+          }}
+        >
+          Abrir en la app
+        </Link>
+      )}
 
       {/* Badges oficiales */}
       <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>

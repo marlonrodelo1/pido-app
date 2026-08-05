@@ -330,7 +330,7 @@ export default function TiendaPublica({ establecimiento }) {
               maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
             }}>
               {/* Banner de descarga de la app (solo web; se oculta en nativo) */}
-              <AppDownloadBanner />
+              <AppDownloadBanner slug={establecimiento?.slug} />
               <RestDetalle establecimiento={establecimiento} modoTienda={true} onRequireLogin={() => setLoginOpen(true)} />
             </div>
           )}

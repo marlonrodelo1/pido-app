@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import { slugDeRutaApp } from './lib/deepLinks'
 import { Bell, Share2, CircleUser, X } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CartProvider, useCart } from './context/CartContext'
@@ -26,8 +27,16 @@ const SuspenseFallback = (
   </div>
 )
 
+// Mismas columnas que COLS_ESTABLECIMIENTO en Home.jsx: el restaurante que
+// llega por deep link tiene que traer EXACTAMENTE la misma forma que el que
+// llega por `onOpenRest`, o RestDetalle se encuentra campos undefined (a
+// `activo` ya le pasó: su guard es `=== false`, así que sin la columna un
+// restaurante cerrado se pintaba abierto).
+const COLS_REST_DEEP_LINK = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, destacado, activo'
+
 function AppContent({ socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, loading } = useAuth()
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('pido_onboarded'))
   // Splash del marketplace del socio: se muestra al abrir su tienda (haya o no
@@ -77,6 +86,42 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
       .subscribe()
     return () => supabase.removeChannel(ch)
   }, [user?.id])
+
+  // ── Deep link /app/r/<slug> → abrir ESE restaurante dentro del shell ────
+  // Es el destino de la página puente /abrir/<slug> y del esquema
+  // com.pidoo.app://r/<slug>. Sin esta ruta no hay deep link posible: dentro
+  // del shell el restaurante abierto es ESTADO (restOpen), no una URL.
+  //
+  // Se resuelve igual que TiendaPublicaRoute (por slug + estado 'activo'). Un
+  // restaurante CERRADO (activo=false) sí se abre a propósito: su ficha ya
+  // pinta el cartel de cerrado y bloquea el pedido, y mandar el QR de un
+  // flyer a la home genérica es peor.
+  useEffect(() => {
+    // En la tienda de un socio (/s/<slug>) esta ruta no existe; además su
+    // catálogo está filtrado y abrir por slug se lo saltaría.
+    if (socioData) return
+    const slug = slugDeRutaApp(location.pathname)
+    if (!slug) return
+
+    let cancelado = false
+    supabase.from('establecimientos').select(COLS_REST_DEEP_LINK)
+      .eq('slug', slug).eq('estado', 'activo').maybeSingle()
+      .then(({ data }) => {
+        if (cancelado) return
+        if (data) { setRestOpen(data); setSeccion('home') }
+        // La URL se CONSUME. El shell navega por estado, así que si se dejara
+        // puesta: (a) al cerrar la ficha la URL seguiría diciendo /app/r/x, y
+        // (b) el segundo toque del MISMO enlace no haría nada, porque el
+        // guard de App.jsx compara con la ruta actual y la vería igual.
+        // Si no se encontró, esto es además el "a la home" del enlace roto.
+        navigate('/app', { replace: true })
+      })
+      // Si la consulta se cae por red, a la home igual: dejar la URL puesta
+      // la volvería a intentar en cada render y el usuario se quedaría con
+      // una URL que miente.
+      .catch(() => { if (!cancelado) navigate('/app', { replace: true }) })
+    return () => { cancelado = true }
+  }, [location.pathname, socioData])
 
   if (loading) {
     return <div style={{ ...shellStyle, minHeight: '100vh' }} />

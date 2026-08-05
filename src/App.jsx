@@ -1,9 +1,10 @@
-import { useState, useEffect, lazy, Suspense, Component } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, Component } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { supabase } from './lib/supabase'
+import { parseDeepLink } from './lib/deepLinks'
 import AppShell from './AppShell'
 import Landing from './pages/Landing'
 
@@ -15,6 +16,7 @@ const Contacto = lazy(() => import('./pages/Contacto'))
 const TiendaPublicaRoute = lazy(() => import('./pages/TiendaPublicaRoute'))
 const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
+const AbrirEnApp = lazy(() => import('./pages/AbrirEnApp'))
 
 // Error Boundary — evita pantalla blanca si algo falla
 class ErrorBoundary extends Component {
@@ -96,7 +98,11 @@ function EmailConfirmadoScreen({ onClose }) {
 }
 
 function NativeBootstrap() {
-  // Inicialización Capacitor (StatusBar, deeplinks OAuth, app updates).
+  // Inicialización Capacitor (StatusBar, deep links, app updates).
+  const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
 
@@ -122,8 +128,11 @@ function NativeBootstrap() {
       if (isActive) applyStatusBar()
     })
 
-    // Capturar deep link de OAuth callback
-    const listenerHandle = CapApp.addListener('appUrlOpen', async ({ url }) => {
+    // ── Deep links ────────────────────────────────────────────────────
+    // Qué hacer con cada URL lo decide parseDeepLink (src/lib/deepLinks.js),
+    // que está probado aparte con `npm run test:deeplinks`.
+
+    const manejarOAuth = async (url) => {
       try {
         try {
           const { Browser } = await import('@capacitor/browser')
@@ -152,7 +161,42 @@ function NativeBootstrap() {
         console.error('Error procesando deep link OAuth:', err)
         applyStatusBar()
       }
+    }
+
+    const irA = (ruta) => {
+      // Sin memo de "última URL vista": eso mata el segundo toque del mismo
+      // enlace. Comparar con la ruta actual evita el doble empujón del
+      // arranque en frío y deja pasar todo lo demás.
+      if (ruta === window.location.pathname + window.location.search) return
+      navigateRef.current?.(ruta)
+    }
+
+    const manejarUrl = async (url) => {
+      const accion = parseDeepLink(url)
+      if (accion.tipo === 'oauth') { await manejarOAuth(url); return }
+      if (accion.tipo === 'interna') { irA(accion.ruta); return }
+      if (accion.tipo === 'externa') {
+        // Lo que la app no sabe abrir se devuelve al navegador. Si no, la app
+        // se abre, se queda muda y el usuario no tiene manera de volver.
+        try {
+          const { Browser } = await import('@capacitor/browser')
+          await Browser.open({ url: accion.url })
+        } catch (_) {}
+      }
+      // 'ninguna': no hay nada que hacer.
+    }
+
+    let recibidoPorListener = false
+    const listenerHandle = CapApp.addListener('appUrlOpen', ({ url }) => {
+      recibidoPorListener = true
+      manejarUrl(url)
     })
+
+    // Arranque en frío: el sistema entrega la URL ANTES de que exista el
+    // listener, así que appUrlOpen puede no llegar a dispararse nunca.
+    CapApp.getLaunchUrl()
+      .then(r => { if (!recibidoPorListener && r?.url) manejarUrl(r.url) })
+      .catch(() => {})
 
     // Chequear actualizaciones de Play Store al abrir la app
     import('@capawesome/capacitor-app-update').then(({ AppUpdate }) => {
@@ -212,6 +256,11 @@ function AppRoutes() {
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/soporte" element={<Contacto />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        {/* Página puente: manda a la app si está instalada y a la tienda si no.
+            Es lo ÚNICO que se debe reclamar en App Links — /:slug es comodín,
+            reclamarlo se llevaría la web entera dentro de la app. */}
+        <Route path="/abrir/:slug" element={<AbrirEnApp />} />
+        <Route path="/abrir" element={<Navigate to="/" replace />} />
         <Route path="/s/:slug" element={<TiendaSocio />} />
         <Route path="/:slug" element={<TiendaPublicaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
