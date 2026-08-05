@@ -11,7 +11,7 @@ import { Star, MapPin, Clock, Phone, Mail, ShoppingCart, Plus, Minus, Trash2, Lo
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
-import { estaAbierto } from '../lib/horario'
+import { estaAbierto, DIAS_ORDEN, DIAS_CORTO } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import { permiteInvitado } from '../lib/invitado'
 
@@ -1170,22 +1170,24 @@ function BannerEstado({ tono, icon, children }) {
 }
 
 function HorariosRender({ horario }) {
-  // horario es JSONB con formato { lun: [{open, close}], mar: [...] } etc.
+  // El horario de BD viene como { lunes: [{ abre, cierra }], ... }. Antes aquí
+  // se leía { lun: [{ open, close }] }: claves y campos que no existen, así que
+  // la tienda pública pintaba "Cerrado" LOS SIETE DÍAS aunque estuviera abierta.
+  // DIAS_ORDEN / DIAS_CORTO salen de lib/horario.js, que es quien manda.
   if (!horario || typeof horario !== 'object') return null
-  const dias = [
-    ['lun', 'Lun'], ['mar', 'Mar'], ['mie', 'Mié'], ['jue', 'Jue'],
-    ['vie', 'Vie'], ['sab', 'Sáb'], ['dom', 'Dom'],
-  ]
   return (
     <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.6, marginTop: 6 }}>
-      {dias.map(([key, label]) => {
+      {DIAS_ORDEN.map((key) => {
+        const label = DIAS_CORTO[key] || key
         const slots = horario[key]
-        if (!slots || (Array.isArray(slots) && slots.length === 0)) {
+        if (!Array.isArray(slots) || slots.length === 0) {
           return <div key={key}><b style={{ color: C.stone }}>{label}</b> · Cerrado</div>
         }
-        const txt = Array.isArray(slots)
-          ? slots.map(s => `${s.open}–${s.close}`).join(' · ')
-          : slots
+        const txt = slots
+          .filter(s => s?.abre && s?.cierra)
+          .map(s => `${s.abre}–${s.cierra}`)
+          .join(' · ')
+        if (!txt) return <div key={key}><b style={{ color: C.stone }}>{label}</b> · Cerrado</div>
         return <div key={key}><b style={{ color: C.stone, fontWeight: 600 }}>{label}</b> · {txt}</div>
       })}
     </div>
