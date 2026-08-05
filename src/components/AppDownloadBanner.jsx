@@ -34,7 +34,7 @@ const C = {
 // height:40px su caja negra medía 30,7px y la de Apple 40px (23% más pequeña).
 const TIENDAS = [
   { href: APPSTORE, src: '/badges/appstore_official.png', alt: 'Descargar en la App Store' },
-  { href: GPLAY, src: '/badges/gplay_official.png', alt: 'Disponible en Google Play' },
+  { href: GPLAY, src: '/badges/gplay_official_v2.png', alt: 'Disponible en Google Play' },
 ]
 
 export default function AppDownloadBanner({ slug = null }) {

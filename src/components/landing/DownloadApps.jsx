@@ -100,7 +100,7 @@ const AppCard = ({ app }) => {
         ) : (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <StoreBadge src="/badges/appstore_official.png" alt="Descargar en la App Store" href={app.ios} />
-            <StoreBadge src="/badges/gplay_official.png" alt="Disponible en Google Play" href={app.android} />
+            <StoreBadge src="/badges/gplay_official_v2.png" alt="Disponible en Google Play" href={app.android} />
           </div>
         )}
       </div>

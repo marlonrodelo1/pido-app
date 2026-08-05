@@ -146,7 +146,7 @@ export default function AbrirEnApp() {
             <img src="/badges/appstore_official.png" alt="Descargar en la App Store" style={badge} />
           </a>
           <a href={GPLAY} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }} aria-label="Disponible en Google Play">
-            <img src="/badges/gplay_official.png" alt="Disponible en Google Play" style={badge} />
+            <img src="/badges/gplay_official_v2.png" alt="Disponible en Google Play" style={badge} />
           </a>
         </div>
 

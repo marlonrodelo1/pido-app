@@ -190,7 +190,7 @@ export default function HeroGlovo() {
                 <img src="/badges/appstore_official.png" alt="Descargar en la App Store" style={{ height: 48, display: 'block' }} />
               </a>
               <a href={GPLAY} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}>
-                <img src="/badges/gplay_official.png" alt="Disponible en Google Play" style={{ height: 48, display: 'block' }} />
+                <img src="/badges/gplay_official_v2.png" alt="Disponible en Google Play" style={{ height: 48, display: 'block' }} />
               </a>
             </div>
           </div>
