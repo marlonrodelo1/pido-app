@@ -4,17 +4,15 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentPosition } from '../lib/geolocation'
 import { estaAbierto } from '../lib/horario'
+import { COLS_ESTABLECIMIENTO } from '../lib/estColumns'
 
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 160px)', borderRadius: 16 }
 
-// 'horario' y 'activo' son OBLIGATORIOS: este mismo objeto se le pasa a la ficha
-// (onOpenRest), y sin ellos estaAbierto() cae en "sin horario = cerrado", con lo que
-// TODO restaurante abierto se veía cerrado al entrar desde el mapa. Además ya no
-// filtramos por 'activo': los cerrados se pintan en gris en vez de desaparecer.
-// Este objeto se pasa TAL CUAL a la ficha (onOpenRest → RestDetalle), que no refetchea al
-// montar: lo que no venga aquí, no se ve. Faltaban banner_url/descripcion/direccion (ficha
-// sin foto ni dirección) y tiene_delivery (chip "Solo recogida" falso).
-const COLS_MAPA = 'id, nombre, latitud, longitud, tipo, logo_url, rating, radio_cobertura_km, horario, activo, tiene_delivery, banner_url, descripcion, direccion'
+// Este objeto se pasa TAL CUAL a la ficha (onOpenRest → RestDetalle): lo que no venga
+// aquí, allí sale mal. Por eso usa la lista compartida (ver lib/estColumns.js) en vez de
+// una propia. Nota: ya no filtramos por 'activo' — los cerrados se pintan en gris en
+// vez de desaparecer, así que 'activo' y 'horario' tienen que venir sí o sí.
+const COLS_MAPA = COLS_ESTABLECIMIENTO
 
 // Fuera del componente: useJsApiLoader exige referencia estable entre renders.
 const MAPS_LIBRARIES = ['places']

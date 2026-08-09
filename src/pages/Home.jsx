@@ -8,6 +8,7 @@ import Stars from '../components/Stars'
 import EntregaBadge from '../components/EntregaBadge'
 import { estaAbierto, horarioHoyTexto } from '../lib/horario'
 import { optimizarImagen } from '../lib/img'
+import { COLS_ESTABLECIMIENTO } from '../lib/estColumns'
 
 function InstagramIcon({ size = 18, color = '#1A1815' }) {
   return (
@@ -193,8 +194,12 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       .eq('categoria_padre', categoriaPadre || 'comida')
       .order('orden')
       .then(({ data }) => { setCategoriasGenerales(data || []); setCatActiva(null) })
-    // Cargar promociones activas
-    supabase.from('promociones').select('*, establecimientos(id, nombre, logo_url, banner_url, rating, total_resenas, radio_cobertura_km, activo, horario, categoria_padre, latitud, longitud)')
+    // Cargar promociones activas.
+    // El embed trae las MISMAS columnas que el listado: al tocar la card de una
+    // promoción se abre la ficha con este objeto, así que si aquí falta algo, la
+    // ficha miente. Faltaba `tiene_delivery` y un restaurante con reparto se abría
+    // en "Solo recogida" solo por haber entrado desde la promo.
+    supabase.from('promociones').select(`*, establecimientos(${COLS_ESTABLECIMIENTO}, total_resenas)`)
       .eq('activa', true)
       .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
       .then(({ data }) => {
@@ -333,7 +338,8 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       // OJO: 'activo' es OBLIGATORIO en el select. Ya no filtramos por él (los cerrados
       // se muestran en gris, ver abajo), así que es estaAbierto() quien lo interpreta:
       // sin esta columna, un restaurante cerrado a mano se pintaría como "Abierto".
-      const COLS_ESTABLECIMIENTO = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, destacado, activo'
+      // Lista compartida en lib/estColumns.js (la usan también promos, mapa,
+      // favoritos y el deep link: todos abren la misma ficha).
       let query = supabase
         .from('establecimientos')
         .select(`${COLS_ESTABLECIMIENTO}, establecimiento_categorias(categoria_id)`)

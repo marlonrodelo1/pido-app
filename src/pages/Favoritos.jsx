@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Stars from '../components/Stars'
 import { estaAbierto } from '../lib/horario'
+import { COLS_ESTABLECIMIENTO } from '../lib/estColumns'
 
 export default function Favoritos({ onOpenRest }) {
   const { user } = useAuth()
@@ -19,9 +20,9 @@ export default function Favoritos({ onOpenRest }) {
       // No filtramos por `activo`: un favorito debe seguir apareciendo aunque el
       // restaurante esté Cerrado ahora mismo (se marca "Cerrado"). Solo excluimos los
       // que ya no están en la plataforma (estado != 'activo'). Columnas explícitas
-      // como en Home (evita traer PII/config interna).
+      // y compartidas con el resto de entradas a la ficha (ver lib/estColumns.js).
       const { data } = await supabase.from('establecimientos')
-        .select('id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, activo')
+        .select(COLS_ESTABLECIMIENTO)
         .in('id', favIds).eq('estado', 'activo')
       setRestaurantes(data || [])
     } catch { setRestaurantes([]) }

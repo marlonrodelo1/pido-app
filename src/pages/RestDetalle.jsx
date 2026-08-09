@@ -257,8 +257,11 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const deliveryDisponible = tieneDeliveryLive && socioOnline
 
   useEffect(() => {
-    setTieneDeliveryLive(est.tiene_delivery)
-    setActivoLive(est.activo)
+    // Solo pisamos con lo que venga del listado si REALMENTE viene: si quien abrió la
+    // ficha no trajo la columna, `undefined` aquí se traduce en "Solo recogida" y en
+    // "abierto" (el guard de activo es `=== false`) — dos respuestas en firme y falsas.
+    if (est.tiene_delivery !== undefined) setTieneDeliveryLive(est.tiene_delivery)
+    if (est.activo !== undefined) setActivoLive(est.activo)
     if (!est.id) return
     // Refresco al volver a foreground (por si Realtime perdio algun evento).
     let cancel = false
@@ -270,6 +273,10 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           setActivoLive(data.activo)
         })
     }
+    // Y AL ABRIR, siempre: el objeto que llega del listado es una foto de cuando se
+    // cargó la Home (o del embed de una promo, que traía menos columnas). Esta consulta
+    // es la que hace que la ficha no dependa de por dónde se haya entrado.
+    refetch()
     const channel = supabase
       .channel(`est_live_${est.id}`)
       .on('postgres_changes', {

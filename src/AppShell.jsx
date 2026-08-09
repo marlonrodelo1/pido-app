@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { slugDeRutaApp } from './lib/deepLinks'
+import { COLS_ESTABLECIMIENTO } from './lib/estColumns'
 import { Bell, Share2, CircleUser, X } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CartProvider, useCart } from './context/CartContext'
@@ -27,12 +28,9 @@ const SuspenseFallback = (
   </div>
 )
 
-// Mismas columnas que COLS_ESTABLECIMIENTO en Home.jsx: el restaurante que
-// llega por deep link tiene que traer EXACTAMENTE la misma forma que el que
-// llega por `onOpenRest`, o RestDetalle se encuentra campos undefined (a
-// `activo` ya le pasó: su guard es `=== false`, así que sin la columna un
-// restaurante cerrado se pintaba abierto).
-const COLS_REST_DEEP_LINK = 'id, nombre, descripcion, direccion, latitud, longitud, banner_url, logo_url, rating, tiene_delivery, tipo, radio_cobertura_km, horario, categoria_padre, destacado, activo'
+// El restaurante que llega por deep link tiene que traer EXACTAMENTE la misma
+// forma que el que llega por `onOpenRest`. Ver lib/estColumns.js.
+const COLS_REST_DEEP_LINK = COLS_ESTABLECIMIENTO
 
 function AppContent({ socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   const navigate = useNavigate()
