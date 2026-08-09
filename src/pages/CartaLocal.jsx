@@ -107,12 +107,24 @@ export default function CartaLocal() {
         // OJO: `categorias` NO tiene columna `emoji`. Pedirla hace fallar la
         // query ENTERA y el fallo es mudo: las categorías llegan vacías y todos
         // los platos caen en "Otros" sin ningún error a la vista.
+        // SIN filtro `activa`: las categorías que el restaurante usa solo en el
+        // local (Café, Tapas, Zumos…) están inactivas a propósito, para que la
+        // tienda y la app —que sí filtran por activa— no enseñen chips vacíos.
+        // Así la carta online se queda EXACTAMENTE como estaba, sin tocar su
+        // código. Abajo solo se pintan las categorías que tienen algún plato.
         supabase.from('categorias')
           .select('id, nombre, orden')
-          .eq('establecimiento_id', est.id).eq('activa', true).order('orden'),
+          .eq('establecimiento_id', est.id).order('orden'),
+        // Entran los que están a la venta Y los `solo_carta_local` (platos que
+        // el restaurante sirve en el local pero no manda a domicilio: nacen con
+        // disponible=false para que la app y la tienda ni los vean).
+        // Un producto normal agotado (disponible=false, solo_carta_local=false)
+        // SÍ desaparece de aquí, que es lo que espera el dueño al apagarlo.
         supabase.from('productos')
           .select('id, nombre, descripcion, precio, precio_local, imagen_url, categoria_id, orden')
-          .eq('establecimiento_id', est.id).eq('disponible', true).order('orden'),
+          .eq('establecimiento_id', est.id)
+          .or('disponible.eq.true,solo_carta_local.eq.true')
+          .order('orden'),
       ])
       if (cancelado) return
       if (catRes.error) console.error('[CartaLocal] categorias:', catRes.error.message)
