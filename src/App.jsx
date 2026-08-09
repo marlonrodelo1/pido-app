@@ -17,6 +17,7 @@ const TiendaPublicaRoute = lazy(() => import('./pages/TiendaPublicaRoute'))
 const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const AbrirEnApp = lazy(() => import('./pages/AbrirEnApp'))
+const CartaLocal = lazy(() => import('./pages/CartaLocal'))
 
 // Error Boundary — evita pantalla blanca si algo falla
 class ErrorBoundary extends Component {
@@ -262,6 +263,10 @@ function AppRoutes() {
         <Route path="/abrir/:slug" element={<AbrirEnApp />} />
         <Route path="/abrir" element={<Navigate to="/" replace />} />
         <Route path="/s/:slug" element={<TiendaSocio />} />
+        {/* Carta del QR de mesa: mismos slug y dominio que la tienda, con los
+            precios de consumo en el local. Va ANTES del comodín /:slug. Es de
+            solo lectura: ver la cabecera de CartaLocal.jsx. */}
+        <Route path="/:slug/carta" element={<CartaLocal />} />
         <Route path="/:slug" element={<TiendaPublicaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

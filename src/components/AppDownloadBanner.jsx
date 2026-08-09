@@ -55,7 +55,7 @@ function MarcaPlay() {
   )
 }
 
-export default function AppDownloadBanner({ slug = null }) {
+export default function AppDownloadBanner({ slug = null, titulo = null, subtitulo = null }) {
   // En MÓVIL: un único botón. La página puente ya resuelve los dos casos —
   // si tienes la app la abre en ESTE restaurante, y si no te lleva a tu
   // tienda— así que la fila de insignias sobraba y solo metía ruido y alto.
@@ -96,12 +96,12 @@ export default function AppDownloadBanner({ slug = null }) {
         />
         <div style={{ flex: 1, minWidth: 0, paddingRight: 22 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: C.ink, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-            Pide más rápido desde la app
+            {titulo || 'Pide más rápido desde la app'}
           </div>
           <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.35, marginTop: 2 }}>
-            {conBotonAbrir
+            {subtitulo || (conBotonAbrir
               ? 'Si no la tienes, te la descargas.'
-              : 'Descarga Pidoo gratis y sigue tus pedidos desde el móvil.'}
+              : 'Descarga Pidoo gratis y sigue tus pedidos desde el móvil.')}
           </div>
         </div>
       </div>
