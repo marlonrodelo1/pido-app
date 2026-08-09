@@ -169,6 +169,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [restCerradoMsg, setRestCerradoMsg] = useState('')
   const [promoActiva, setPromoActiva] = useState(null)
   const [descuento, setDescuento] = useState(0)
+  // Regalo por cantidad ("2 pizzas = refresco gratis"). Va aparte del descuento
+  // porque NO descuenta nada: el regalo entra como línea a 0 €. Ver el bloque
+  // que lo calcula, más abajo.
+  const [regalo, setRegalo] = useState(null)
   const [notas, setNotas] = useState('')
   // Teléfono de contacto del cliente. Si el perfil ya tiene teléfono se usa ese; si no,
   // se pide aquí (obligatorio) y se guarda en el perfil + en el pedido para que el
@@ -275,8 +279,37 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         })
       supabase.from('promociones').select('*').eq('establecimiento_id', estId).eq('activa', true)
         .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
-        .then(({ data: promos }) => {
+        .then(async ({ data: promos }) => {
           if (cancelled) return
+          // ── Regalo por cantidad ────────────────────────────────────────────
+          // Quien REGALA de verdad es el servidor: el trigger trg_zz_regalo_por_cantidad
+          // mete la línea a 0 € al crear el pedido, en cualquier canal. Esto de aquí NO
+          // regala, solo lo ENSEÑA antes de pagar — hasta ahora el cliente pagaba sin
+          // saber que se lo llevaba y el refresco le aparecía después, ya en el pedido.
+          // Por eso el cálculo replica el del trigger: unidades del carrito cuya
+          // CATEGORÍA está en condicion_categoria_ids, contra condicion_cantidad.
+          // No toca el total ni `descuento`: el regalo vale 0.
+          const promoRegalo = (promos || []).find(p =>
+            p.tipo === 'regalo_por_cantidad' && p.producto_id &&
+            Array.isArray(p.condicion_categoria_ids) && p.condicion_categoria_ids.length > 0)
+          if (!promoRegalo) {
+            setRegalo(null)
+          } else {
+            // El carrito guarda nombres, no categorías: hay que preguntarlas.
+            const ids = [...new Set(carrito.map(i => i.producto_id).filter(Boolean))]
+            const { data: prods } = await supabase.from('productos').select('id, categoria_id').in('id', ids)
+            if (cancelled) return
+            const catDe = new Map((prods || []).map(p => [p.id, p.categoria_id]))
+            const unidades = carrito.reduce((n, i) =>
+              promoRegalo.condicion_categoria_ids.includes(catDe.get(i.producto_id)) ? n + i.cantidad : n, 0)
+            const objetivo = promoRegalo.condicion_cantidad || 2
+            setRegalo({
+              nombre: promoRegalo.producto_nombre || 'Regalo',
+              titulo: promoRegalo.titulo,
+              cumplido: unidades >= objetivo,
+              faltan: Math.max(0, objetivo - unidades),
+            })
+          }
           if (promos && promos.length > 0) {
             const aplicables = promos.filter(p => subtotal >= (p.minimo_compra || 0))
             if (aplicables.length > 0) {
@@ -1227,12 +1260,38 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 )}
 
+                {/* Regalo por cantidad. Banner propio: no es un descuento (el total no
+                    se mueve), es un producto que se añade solo al confirmar. */}
+                {regalo && (
+                  <div style={{
+                    marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+                    background: regalo.cumplido ? 'var(--c-success-soft)' : 'var(--c-primary-soft)',
+                    border: `1px solid ${regalo.cumplido ? 'var(--c-success)' : 'var(--c-primary)'}`,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                    <span style={{ fontSize: 20 }}>🎁</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: regalo.cumplido ? 'var(--c-success)' : 'var(--c-primary)' }}>
+                        {regalo.titulo}
+                      </div>
+                      <div style={{ fontSize: 11, color: regalo.cumplido ? 'var(--c-success)' : 'var(--c-muted)' }}>
+                        {regalo.cumplido
+                          ? `Te llevas ${regalo.nombre} gratis`
+                          : `Te falta${regalo.faltan === 1 ? '' : 'n'} ${regalo.faltan} para llevarte ${regalo.nombre} gratis`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Desglose (card paper) */}
                 <div style={{
                   background: C.paper, border: `1px solid ${C.border}`,
                   borderRadius: 14, padding: 14, marginTop: 8,
                 }}>
                   <ResLine label="Subtotal" value={fmt(subtotal)} />
+                  {regalo?.cumplido && (
+                    <ResLine label={`🎁 ${regalo.nombre}`} value="Gratis" tone="sage" />
+                  )}
                   {descuento > 0 && (
                     <ResLine label="Descuento" value={'-' + fmt(descuento)} tone="sage" />
                   )}
