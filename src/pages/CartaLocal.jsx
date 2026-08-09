@@ -2,8 +2,10 @@
  * CartaLocal — pidoo.es/<slug>/carta
  *
  * La carta que el cliente ve al escanear el QR de la mesa, con los precios de
- * CONSUMO EN EL LOCAL (`productos.precio_local`, que suelen ser distintos de
- * los de reparto).
+ * CONSUMO EN EL LOCAL (`productos.precio_local`, distintos de los de reparto).
+ *
+ * Es igual que la tienda pública por fuera —mismo hero, mismos chips, mismas
+ * cards— pero SIN barra inferior, sin botones de añadir y sin carrito.
  *
  * ES DE SOLO LECTURA A PROPÓSITO, y eso no es una decisión de UI: es la que
  * mantiene el precio de local fuera del dinero. Esta página NO monta
@@ -12,26 +14,38 @@
  * el navegador. Comisión, liquidación de los lunes, pedido mínimo y promos
  * siguen viendo un único precio, el de siempre (`productos.precio`).
  *
+ * Por eso el aspecto está REPLICADO y no importado de RestDetalle: compartir
+ * ese componente traería consigo el carrito y se perdería la garantía.
+ *
  * Si alguna vez se quisiera pedir desde la mesa, NO basta con añadir botones
  * aquí: habría que tocar enforce_pedido_item_precio(), crear_pedido_invitado,
  * el CHECK de pedidos.origen_pedido y calcular_liquidacion_restaurante.
  * ────────────────────────────────────────────────────────────────────────── */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Navigate, Link } from 'react-router-dom'
-import { Search, MapPin, Clock, X } from 'lucide-react'
+import { Search, X, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { horarioHoyTexto } from '../lib/horario'
+import { FoodIcon } from '../lib/food'
 import AppDownloadBanner from '../components/AppDownloadBanner'
 
+// Misma paleta que RestDetalle, para que las dos pantallas sean la misma marca.
 const C = {
-  bg: '#F7F3EC', paper: '#FBF8F2', ink: '#1A1815', stone: '#6B6356',
-  border: '#E8E1D3', primary: '#C5562C',
+  cream: '#F7F3EC', cream2: '#EFE9DD', paper: '#FBF8F2',
+  ink: '#1A1815', stone: '#6B6356', stone2: '#8A8174',
+  terracotta: '#C5562C', terracotta2: '#A8451F',
+  border: '#E8E1D3',
 }
+const SH = {
+  sm: '0 1px 2px rgba(26,24,21,0.06)',
+  md: '0 4px 14px rgba(26,24,21,0.08)',
+}
+const fmt = (n) => `${(Number(n) || 0).toFixed(2).replace('.', ',')} €`
 
 // Columnas explícitas (nada de `*`): no traer PII ni configuración interna a
 // una página pública que abre cualquiera sin identificarse.
 const COLS_EST =
-  'id, nombre, descripcion, direccion, logo_url, banner_url, slug, activo, horario, carta_local_activa'
+  'id, nombre, descripcion, direccion, logo_url, banner_url, slug, tipo, rating, activo, horario, carta_local_activa'
 
 /** Precio a mostrar: el de local si lo han puesto, si no el normal. */
 function precioLocal(fila) {
@@ -41,13 +55,9 @@ function precioLocal(fila) {
   return Number(fila.precio) || 0
 }
 
-function eur(n) {
-  return (Number(n) || 0).toFixed(2).replace('.', ',') + ' €'
-}
-
-const pantallaCentrada = (texto) => (
+const pantalla = (texto) => (
   <div style={{
-    minHeight: '100vh', background: C.bg, color: C.stone,
+    minHeight: '100vh', background: C.cream, color: C.stone,
     fontFamily: "'DM Sans', sans-serif",
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
   }}>{texto}</div>
@@ -64,7 +74,7 @@ export default function CartaLocal() {
   const [tamanosPorProducto, setTamanosPorProducto] = useState({})
   const [extrasPorProducto, setExtrasPorProducto] = useState({})
   const [busqueda, setBusqueda] = useState('')
-  const refsCategoria = useRef({})
+  const [catFiltro, setCatFiltro] = useState(null)
 
   /* ── 1. Resolver el restaurante por slug ─────────────────────────────── */
   useEffect(() => {
@@ -184,15 +194,18 @@ export default function CartaLocal() {
 
     const salida = []
     for (const cat of categorias) {
+      if (catFiltro && cat.id !== catFiltro) continue
       const items = visibles.filter(p => p.categoria_id === cat.id)
       if (items.length) salida.push({ id: cat.id, nombre: cat.nombre, items })
     }
-    const sueltos = visibles.filter(p => !p.categoria_id || !categorias.some(c => c.id === p.categoria_id))
-    if (sueltos.length) salida.push({ id: '_otros', nombre: 'Otros', items: sueltos })
+    if (!catFiltro) {
+      const sueltos = visibles.filter(p => !p.categoria_id || !categorias.some(c => c.id === p.categoria_id))
+      if (sueltos.length) salida.push({ id: '_otros', nombre: 'Otros', items: sueltos })
+    }
     return salida
-  }, [productos, categorias, busqueda])
+  }, [productos, categorias, busqueda, catFiltro])
 
-  if (estado === 'loading') return pantallaCentrada('Cargando carta...')
+  if (estado === 'loading') return pantalla('Cargando carta...')
   if (estado === 'notfound') return <Navigate to="/" replace />
   if (estado === 'sin-carta') return <Navigate to={'/' + slug} replace />
 
@@ -201,93 +214,110 @@ export default function CartaLocal() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: C.bg, color: C.ink,
+      minHeight: '100vh', background: C.cream, color: C.ink,
       fontFamily: "'DM Sans', sans-serif",
     }}>
       <style>{css}</style>
 
-      {/* ── Cabecera ──────────────────────────────────────────────────── */}
-      <header style={{ position: 'relative' }}>
-        {est.banner_url ? (
-          <div style={{ height: 130, overflow: 'hidden', background: C.border }}>
-            <img
-              src={est.banner_url} alt=""
-              loading="eager" decoding="async"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          </div>
-        ) : (
-          <div style={{ height: 'calc(18px + env(safe-area-inset-top, 0px))' }} />
-        )}
+      <div style={{
+        maxWidth: 720, margin: '0 auto',
+        padding: 'calc(14px + env(safe-area-inset-top, 0px)) 20px 0',
+      }}>
+        {/* ── Banner de la app ────────────────────────────────────────── */}
+        <AppDownloadBanner
+          slug={est.slug}
+          titulo="¿Prefieres que te lo llevemos a casa?"
+          subtitulo="Pide a domicilio con Pidoo. El precio a domicilio es el de la tienda online."
+        />
 
-        <div style={{
-          maxWidth: 720, margin: '0 auto', padding: '0 20px',
-          marginTop: est.banner_url ? -34 : 0, position: 'relative',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 13 }}>
-            {est.logo_url && (
+        {/* ── Hero: banner + logo + nombre, igual que la tienda ───────── */}
+        <div style={{ padding: '14px 0 0' }}>
+          <div style={{
+            position: 'relative', height: 200, borderRadius: 18, overflow: 'hidden',
+            background: est.banner_url ? '#000' : `linear-gradient(135deg, ${C.terracotta} 0%, ${C.terracotta2} 100%)`,
+            boxShadow: SH.md,
+          }}>
+            {est.banner_url && (
               <img
-                src={est.logo_url} alt={est.nombre}
-                loading="eager" decoding="async"
-                style={{
-                  width: 68, height: 68, borderRadius: 18, objectFit: 'cover',
-                  border: `2px solid ${C.paper}`, background: C.paper, flexShrink: 0,
-                  boxShadow: '0 4px 14px rgba(26,24,21,0.12)',
-                }}
+                src={est.banner_url} alt="" loading="eager" decoding="async"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
               />
             )}
-            <div style={{ minWidth: 0, paddingBottom: 4 }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 100%)',
+            }} />
+
+            {/* Solo el horario, NUNCA un "Abierto / Cerrado". Quien mira esta
+                carta está SENTADO en el bar, así que un cartel de "Cerrado
+                ahora" sería absurdo — y llegaría solo: `activo` se apaga cuando
+                el panel del restaurante pierde la conexión (motor de presencia),
+                no cuando el local echa el cierre. */}
+            {horarioHoy && (
+              <div style={{
+                position: 'absolute', top: 14, left: 14,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                padding: '6px 11px', borderRadius: 999,
+                fontSize: 11.5, fontWeight: 700, color: C.ink,
+                boxShadow: SH.sm, maxWidth: 'calc(100% - 90px)',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                <Clock size={12} strokeWidth={2.4} style={{ flexShrink: 0 }} />
+                Hoy · {horarioHoy}
+              </div>
+            )}
+
+            <div style={{
+              position: 'absolute', top: 12, right: 12,
+              width: 62, height: 62, borderRadius: '50%',
+              background: '#fff', border: '3px solid rgba(255,255,255,0.95)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: SH.md, overflow: 'hidden',
+            }}>
+              {est.logo_url
+                ? <img src={est.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <FoodIcon kw={est.tipo || ''} size={42} />}
+            </div>
+
+            <div style={{ position: 'absolute', bottom: 14, left: 16, right: 16 }}>
               <h1 style={{
-                fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em',
-                lineHeight: 1.15, margin: 0,
+                fontSize: 22, fontWeight: 800, color: '#fff',
+                letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15,
+                textShadow: '0 2px 8px rgba(0,0,0,0.45)',
               }}>{est.nombre}</h1>
-              {/* Solo el horario, NUNCA un "Abierto / Cerrado".
-                  Quien mira esta carta está SENTADO en el bar, así que un cartel
-                  de "Cerrado ahora" sería absurdo — y llegaría solo: `activo` se
-                  apaga cuando el panel del restaurante pierde la conexión
-                  (motor de presencia), no cuando el local echa el cierre. */}
-              {horarioHoy && (
+              {est.direccion && (
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
-                  fontSize: 12.5, color: C.stone, flexWrap: 'wrap',
+                  fontSize: 11, color: 'rgba(255,255,255,0.92)', marginTop: 3,
+                  fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.4)',
                 }}>
-                  <Clock size={13} strokeWidth={2.2} style={{ flexShrink: 0 }} />
-                  <span>Hoy: {horarioHoy}</span>
+                  {est.direccion.split(',')[0]}
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          {est.direccion && (
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: 6,
-              fontSize: 12.5, color: C.stone, marginTop: 10,
-            }}>
-              <MapPin size={13} strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>{est.direccion}</span>
-            </div>
-          )}
-
-          {/* Aviso de precios. Es la pieza que evita el "en la carta ponía otro
-              precio" si alguien comparte este enlace por WhatsApp. */}
-          <div style={{
-            marginTop: 14, padding: '11px 13px',
-            background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
-          }}>
-            <div style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em' }}>
-              Carta del local
-            </div>
-            <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.4, marginTop: 2 }}>
-              Precios para consumo en el establecimiento, IGIC incluido.
-              Los pedidos a domicilio tienen su propia tarifa.
-            </div>
+        {/* ── Aviso de precios ────────────────────────────────────────── */}
+        {/* Es la pieza que evita el "en la carta ponía otro precio" si alguien
+            comparte este enlace por WhatsApp. */}
+        <div style={{
+          marginTop: 14, padding: '11px 13px',
+          background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
+        }}>
+          <div style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em' }}>
+            Carta del local
+          </div>
+          <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.4, marginTop: 2 }}>
+            Precios para consumo en el establecimiento, IGIC incluido.
+            Los pedidos a domicilio tienen su propia tarifa.
           </div>
         </div>
-      </header>
 
-      {/* ── Buscador ──────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '16px 20px 0' }}>
-        <div style={{ position: 'relative' }}>
+        {/* ── Buscador ────────────────────────────────────────────────── */}
+        <div style={{ position: 'relative', marginTop: 14 }}>
           <Search
             size={16} strokeWidth={2.2}
             style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: C.stone }}
@@ -315,44 +345,32 @@ export default function CartaLocal() {
                 background: 'transparent', color: C.stone, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
-            >
-              <X size={15} strokeWidth={2.4} />
-            </button>
+            ><X size={15} strokeWidth={2.4} /></button>
           )}
         </div>
       </div>
 
-      {/* ── Índice de categorías ──────────────────────────────────────── */}
-      {grupos.length > 1 && (
-        <nav
-          aria-label="Categorías"
-          className="cl-chips"
-          style={{
-            position: 'sticky', top: 0, zIndex: 20,
-            background: C.bg, borderBottom: `1px solid ${C.border}`,
-            marginTop: 14, padding: '10px 0',
-          }}
-        >
+      {/* ── Chips de categoría, sticky (igual que la tienda) ──────────── */}
+      {categorias.length > 1 && (
+        <div className="cl-chips" style={{
+          position: 'sticky', top: 0, zIndex: 5,
+          background: C.cream, borderBottom: `1px solid ${C.cream2}`,
+          marginTop: 12,
+        }}>
           <div style={{
-            maxWidth: 720, margin: '0 auto', padding: '0 20px',
+            maxWidth: 720, margin: '0 auto', padding: '12px 20px',
             display: 'flex', gap: 8, overflowX: 'auto',
           }}>
-            {grupos.map(g => (
+            <button onClick={() => setCatFiltro(null)} style={chipStyle(!catFiltro)}>Todos</button>
+            {categorias.map(cat => (
               <button
-                key={g.id}
-                onClick={() => refsCategoria.current[g.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                style={{
-                  flexShrink: 0, padding: '7px 13px', borderRadius: 999,
-                  border: `1px solid ${C.border}`, background: C.paper,
-                  color: C.ink, fontSize: 13, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                }}
-              >
-                {g.nombre}
-              </button>
+                key={cat.id}
+                onClick={() => setCatFiltro(catFiltro === cat.id ? null : cat.id)}
+                style={chipStyle(catFiltro === cat.id)}
+              >{cat.nombre}</button>
             ))}
           </div>
-        </nav>
+        </div>
       )}
 
       {/* ── Carta ─────────────────────────────────────────────────────── */}
@@ -364,54 +382,37 @@ export default function CartaLocal() {
         )}
 
         {grupos.map(g => (
-          <section
-            key={g.id}
-            ref={(el) => { refsCategoria.current[g.id] = el }}
-            style={{ scrollMarginTop: 64, marginBottom: 26 }}
-          >
+          <section key={g.id} style={{ marginBottom: 22 }}>
             <h2 style={{
-              fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em',
-              margin: '0 0 10px',
-            }}>
-              {g.nombre}
-            </h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {g.items.map(p => (
-                <Plato
-                  key={p.id}
-                  producto={p}
-                  tamanos={tamanosPorProducto[p.id] || []}
-                  grupos={extrasPorProducto[p.id] || []}
-                />
-              ))}
-            </div>
+              fontSize: 18, fontWeight: 800, color: C.ink,
+              margin: '0 0 12px', letterSpacing: '-0.01em',
+            }}>{g.nombre}</h2>
+            {g.items.map(p => (
+              <Plato
+                key={p.id}
+                producto={p}
+                tamanos={tamanosPorProducto[p.id] || []}
+                grupos={extrasPorProducto[p.id] || []}
+              />
+            ))}
           </section>
         ))}
       </main>
 
-      {/* ── Pie: la app y el enlace a domicilio ───────────────────────── */}
+      {/* ── Pie ───────────────────────────────────────────────────────── */}
       <footer style={{
         maxWidth: 720, margin: '0 auto',
-        padding: '10px 20px calc(28px + env(safe-area-inset-bottom, 0px))',
+        padding: '6px 20px calc(28px + env(safe-area-inset-bottom, 0px))',
       }}>
-        <AppDownloadBanner
-          slug={est.slug}
-          titulo="¿Prefieres que te lo llevemos a casa?"
-          subtitulo="Pide a domicilio con Pidoo. El precio a domicilio es el de la tienda online."
-        />
-
         <Link
           to={'/' + est.slug}
           style={{
-            display: 'block', textAlign: 'center', marginTop: 14,
-            fontSize: 13.5, fontWeight: 700, color: C.primary,
-            textDecoration: 'none',
+            display: 'block', textAlign: 'center',
+            fontSize: 13.5, fontWeight: 700, color: C.terracotta, textDecoration: 'none',
           }}
         >
           Ver la tienda online y pedir a domicilio
         </Link>
-
         <p style={{
           fontSize: 11.5, color: C.stone, textAlign: 'center',
           marginTop: 16, lineHeight: 1.5,
@@ -424,81 +425,84 @@ export default function CartaLocal() {
   )
 }
 
-/* ── Una línea de la carta ──────────────────────────────────────────────── */
+function chipStyle(activo) {
+  return {
+    padding: '8px 14px', borderRadius: 999, border: 'none',
+    background: activo ? C.ink : 'transparent',
+    color: activo ? C.cream : C.stone,
+    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+  }
+}
+
+/* ── Una línea de la carta: misma card que la tienda, sin botón de añadir ── */
 function Plato({ producto, tamanos, grupos }) {
   const conTamanos = tamanos.length > 0
   const opcionesExtra = grupos.flatMap(g => (g.extras_opciones || []).filter(o => Number(o.precio) > 0))
+  // Con tamaños, el precio del producto no pinta nada: manda el del tamaño
+  // (igual que en la tienda).
+  const desde = conTamanos ? Math.min(...tamanos.map(precioLocal)) : precioLocal(producto)
 
   return (
-    <article style={{
-      display: 'flex', gap: 12, alignItems: 'flex-start',
-      background: C.paper, border: `1px solid ${C.border}`,
-      borderRadius: 16, padding: 12,
+    <div style={{
+      display: 'flex', gap: 14, alignItems: 'stretch',
+      padding: 12, marginBottom: 10,
+      background: C.cream2, borderRadius: 14,
     }}>
-      {producto.imagen_url && (
-        <img
-          src={producto.imagen_url} alt=""
-          loading="lazy" decoding="async"
-          style={{
-            width: 68, height: 68, borderRadius: 12, objectFit: 'cover',
-            flexShrink: 0, background: C.border,
-          }}
-        />
-      )}
+      <div style={{
+        width: 86, height: 86, borderRadius: 10, background: '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, overflow: 'hidden',
+      }}>
+        {producto.imagen_url
+          ? <img src={producto.imagen_url} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <FoodIcon kw={producto.nombre} size={70} />}
+      </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <h3 style={{
-            fontSize: 14.5, fontWeight: 700, letterSpacing: '-0.01em',
-            lineHeight: 1.25, margin: 0, minWidth: 0,
-          }}>{producto.nombre}</h3>
-
-          {/* Con tamaños, el precio suelto del producto no se muestra: el precio
-              real es el del tamaño (así funciona también en la tienda). */}
-          {!conTamanos && (
-            <span style={{ fontSize: 14.5, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>
-              {eur(precioLocal(producto))}
-            </span>
-          )}
-        </div>
-
-        {producto.descripcion && (
-          <p style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.4, margin: '3px 0 0' }}>
-            {producto.descripcion}
-          </p>
-        )}
-
-        {conTamanos && (
-          <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 7,
-          }}>
-            {tamanos.map((t, i) => (
-              <span key={i} style={{ fontSize: 13, color: C.ink }}>
-                {t.nombre} <b style={{ fontWeight: 800 }}>{eur(precioLocal(t))}</b>
-              </span>
-            ))}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: C.ink, marginBottom: 3, lineHeight: 1.25 }}>
+            {producto.nombre}
           </div>
-        )}
+          {producto.descripcion && (
+            <div style={{
+              fontSize: 12, color: C.stone, lineHeight: 1.4,
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            }}>{producto.descripcion}</div>
+          )}
 
-        {opcionesExtra.length > 0 && (
-          <details style={{ marginTop: 7 }}>
-            <summary style={{
-              fontSize: 12, color: C.stone, cursor: 'pointer',
-              listStyle: 'none', fontWeight: 600,
-            }}>
-              {opcionesExtra.length} extra{opcionesExtra.length === 1 ? '' : 's'} disponible{opcionesExtra.length === 1 ? '' : 's'}
-            </summary>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px', marginTop: 5 }}>
-              {opcionesExtra.map((o, i) => (
+          {conTamanos && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginTop: 6 }}>
+              {tamanos.map((t, i) => (
                 <span key={i} style={{ fontSize: 12, color: C.stone }}>
-                  {o.nombre} +{eur(o.precio)}
+                  {t.nombre} <b style={{ color: C.ink, fontWeight: 700 }}>{fmt(precioLocal(t))}</b>
                 </span>
               ))}
             </div>
-          </details>
-        )}
+          )}
+
+          {opcionesExtra.length > 0 && (
+            <details style={{ marginTop: 6 }}>
+              <summary style={{ fontSize: 11.5, color: C.stone2, cursor: 'pointer', listStyle: 'none', fontWeight: 600 }}>
+                {opcionesExtra.length} extra{opcionesExtra.length === 1 ? '' : 's'} disponible{opcionesExtra.length === 1 ? '' : 's'}
+              </summary>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px', marginTop: 4 }}>
+                {opcionesExtra.map((o, i) => (
+                  <span key={i} style={{ fontSize: 11.5, color: C.stone2 }}>{o.nombre} +{fmt(o.precio)}</span>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <span style={{ fontWeight: 800, fontSize: 17, color: C.terracotta }}>
+            {conTamanos ? `Desde ${fmt(desde)}` : fmt(desde)}
+          </span>
+        </div>
       </div>
-    </article>
+    </div>
   )
 }
 
@@ -510,4 +514,8 @@ body{background:#F7F3EC;margin:0}
 .cl-chips div{scrollbar-width:none}
 details>summary::-webkit-details-marker{display:none}
 input[type=search]::-webkit-search-cancel-button{display:none}
+@media(min-width:900px){
+  .cl-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px}
+  .cl-lista>*{margin-bottom:0!important}
+}
 `
