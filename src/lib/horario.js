@@ -53,9 +53,14 @@ function timeToMinutes(str) {
 export function estaAbierto(establecimiento) {
   if (!establecimiento) return { abierto: false }
 
-  // Si activo es false, siempre cerrado (override manual)
+  // Si activo es false, siempre cerrado (override manual o cierre por presencia:
+  // el sistema baja `activo` cuando la app de pedidos del restaurante lleva rato
+  // sin conectarse). Aun así se calcula la próxima apertura: antes esta rama salía
+  // en seco y el cliente veía un "No se pueden realizar pedidos ahora mismo" mudo,
+  // sin saber si el sitio abre esta noche o el viernes. El horario es información
+  // pública del restaurante y no tiene por qué desaparecer porque esté cerrado.
   if (establecimiento.activo === false) {
-    return { abierto: false, razon: 'manual' }
+    return { abierto: false, razon: 'manual', proximaApertura: proximaAperturaTexto(establecimiento.horario) }
   }
 
   // Si no hay horario definido, el restaurante se considera cerrado
@@ -105,6 +110,23 @@ export function estaAbierto(establecimiento) {
 }
 
 /**
+ * Texto de la próxima apertura mirando primero lo que queda de HOY y, si hoy ya no
+ * abre, el siguiente día con turnos. Devuelve null si no hay horario configurado.
+ */
+export function proximaAperturaTexto(horario) {
+  if (!horario || typeof horario !== 'object') return null
+  const ahora = new Date()
+  const dia = DIAS[ahora.getDay()]
+  const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes()
+  const turnosHoy = Array.isArray(horario[dia]) ? horario[dia] : []
+  const proximoHoy = turnosHoy
+    .filter(t => t?.abre)
+    .find(t => timeToMinutes(t.abre) > minutosAhora)
+  if (proximoHoy) return `Abre hoy a las ${proximoHoy.abre}`
+  return getProximaApertura(horario, dia)
+}
+
+/**
  * Calcula cuándo abre próximamente
  */
 function getProximaApertura(horario, diaActual) {
@@ -114,7 +136,7 @@ function getProximaApertura(horario, diaActual) {
     const nextDia = DIAS_ORDEN[(idx + i) % 7]
     const turnos = horario[nextDia]
     if (turnos && Array.isArray(turnos) && turnos.length > 0) {
-      const diaNombre = i === 1 ? 'mañana' : DIAS_LABEL[nextDia]
+      const diaNombre = i === 1 ? 'mañana' : `el ${DIAS_LABEL[nextDia].toLowerCase()}`
       return `Abre ${diaNombre} a las ${turnos[0].abre}`
     }
   }
