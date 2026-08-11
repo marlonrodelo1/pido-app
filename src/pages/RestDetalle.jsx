@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, MapPin, Star, Bike, ShoppingBag, UtensilsCrossed, Plus, Minus, Clock, ChevronDown } from 'lucide-react'
+import { ArrowLeft, MapPin, Star, Bike, ShoppingBag, UtensilsCrossed, Plus, Minus, Clock, ChevronDown, Video } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import CreadoresEscalera from '../components/CreadoresEscalera'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { estaAbierto, DIAS_ORDEN, DIAS_LABEL, getDiaActual } from '../lib/horario'
@@ -248,6 +249,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])
   const [promociones, setPromociones] = useState([])
+  const [creadores, setCreadores] = useState(null)   // {admite_altas, escalera, nombre}
   const [modal, setModal] = useState(null)
   const [tamanos, setTamanos] = useState([])
   const [gruposExtras, setGruposExtras] = useState([])
@@ -377,6 +379,17 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       window.removeEventListener('focus', onVisible)
     }
   }, [est.id, est.tiene_delivery])
+
+  // Programa de Creadores de ESTE restaurante. Va en su propio efecto y no
+  // dentro de `fetchCarta` a propósito: si falla o tarda, la carta no se
+  // entera. El RPC devuelve solo lo público (nunca el coste de los premios).
+  useEffect(() => {
+    let vivo = true
+    if (!est?.id) return
+    supabase.rpc('creadores_programa_publico', { p_establecimiento_id: est.id })
+      .then(({ data }) => { if (vivo) setCreadores(data || null) })
+    return () => { vivo = false }
+  }, [est?.id])
 
 
   async function fetchCarta() {
@@ -763,6 +776,32 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Pidoo Creadores: qué puede ganar si graba un vídeo de este pedido ──
+          Va ANTES de pedir, no después. La tarjeta que ya existía solo aparecía
+          con el pedido entregado, así que el cliente no sabía que esto existía
+          hasta que ya había pedido. Si el restaurante no tiene el programa
+          abierto, no se pinta nada. */}
+      {creadores?.admite_altas && (creadores.escalera?.length > 0) && (
+        <div style={{ padding: '18px 0 0', background: C.cream }}>
+          <div style={{
+            background: C.paper, border: `1px solid ${C.border}`, borderRadius: 16, padding: 15,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+              <Video size={15} color="#A85018" />
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>
+                Graba un vídeo y gana descuentos
+              </div>
+            </div>
+            <p style={{ fontSize: 12.5, color: C.stone, marginTop: 0, marginBottom: 10, lineHeight: 1.5 }}>
+              Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones
+              que consiga, te llevas esto para la próxima:
+            </p>
+            <CreadoresEscalera escalera={creadores.escalera} compacto
+              nota="El descuento se aplica solo al pagar tu siguiente pedido en este restaurante." />
           </div>
         </div>
       )}

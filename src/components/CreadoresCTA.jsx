@@ -24,7 +24,7 @@ import { analizarUrlVideo, NOMBRE_RED } from '../lib/videoUrl'
 // Versión del texto de condiciones que el cliente acepta. Se guarda con la
 // participación: si el texto cambia, hay que subir esto, o dentro de un año no
 // se podrá saber qué aceptó exactamente cada uno.
-export const CONDICIONES_VERSION = 'creadores-2026-08-11b'
+export const CONDICIONES_VERSION = 'creadores-2026-08-11c'
 
 const C = {
   paper: '#FBF8F2', cream2: '#EFE9DD', ink: '#1A1815', stone: '#6B6356', stone2: '#8A8174',
@@ -99,6 +99,7 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
           pedido={pedido}
           nombreRest={nombreRest}
           escalera={escalera}
+          programa={programa}
           onClose={() => setAbierto(false)}
           onHecho={() => { setYaRegistrado(true); setAbierto(false); onRegistrado?.() }}
         />,
@@ -128,18 +129,42 @@ function Desplegable({ titulo, children, abiertoPorDefecto = false }) {
   )
 }
 
-function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
+function ModalRegistrar({ pedido, nombreRest, escalera, programa, onClose, onHecho }) {
   const [url, setUrl] = useState('')
   const [acepta, setAcepta] = useState(false)
   const [grabado, setGrabado] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
-  const [copiado, setCopiado] = useState(false)
+  const [copiado, setCopiado] = useState(null)   // 'tiktok' | 'instagram' | null
   const inputCamara = useRef(null)
 
   const analisis = url.trim() ? analizarUrlVideo(url) : null
   const puedeEnviar = analisis?.ok && acepta && !enviando
-  const textoPubli = `#publi · en colaboración con ${nombreRest}`
+
+  // El texto que el cliente pega en la descripción. Lleva la identificación
+  // publicitaria (obligatoria por ley) Y las dos menciones, porque decirle
+  // "etiqueta a Dar Kebab" y que busque la cuenta a mano es garantizar que no
+  // lo haga.
+  //
+  // Va POR RED: el @ de un mismo negocio no tiene por qué ser el mismo en
+  // TikTok que en Instagram, y una mención mal escrita no etiqueta a nadie.
+  // Si falta el @, se cae al nombre del restaurante; si Pidoo aún no tiene
+  // cuenta en esa red, no se menciona (mejor eso que mandar a una que no
+  // existe).
+  function textoPubli(red) {
+    const rest  = red === 'tiktok' ? programa?.tiktok : programa?.instagram
+    const pidoo = red === 'tiktok' ? programa?.pidoo_tiktok : programa?.pidoo_instagram
+    const quien = rest ? `@${rest}` : nombreRest
+    return `#publi · en colaboración con ${quien}${pidoo ? ` y @${pidoo}` : ''}`
+  }
+
+  // Para la lista de condiciones: a quién hay que etiquetar, en cristiano.
+  const menciones = (() => {
+    const rest = programa?.instagram || programa?.tiktok
+    const pid  = programa?.pidoo_instagram || programa?.pidoo_tiktok
+    const a = rest ? `@${rest}` : nombreRest
+    return pid ? `${a} y @${pid}` : a
+  })()
 
   async function enviar() {
     if (!puedeEnviar) return
@@ -157,9 +182,9 @@ function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
     onHecho()
   }
 
-  function copiar() {
-    navigator.clipboard?.writeText(textoPubli)
-    setCopiado(true); setTimeout(() => setCopiado(false), 1600)
+  function copiar(red) {
+    navigator.clipboard?.writeText(textoPubli(red))
+    setCopiado(red); setTimeout(() => setCopiado(null), 1600)
   }
 
   return (
@@ -234,21 +259,26 @@ function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
             <div style={{ fontSize: 11.5, color: '#8A5A33', marginTop: 2, lineHeight: 1.4 }}>
               El premio va por visualizaciones, así que tiene que estar publicado.
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <a href="https://www.tiktok.com/upload" target="_blank" rel="noopener noreferrer"
-                 style={btnRed}>TikTok</a>
-              <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer"
-                 style={btnRed}>Instagram</a>
+            <div style={{ fontSize: 11.5, color: '#8A5A33', marginTop: 8, fontWeight: 700 }}>
+              Copia el texto y pégalo en la descripción: lleva las etiquetas obligatorias.
             </div>
-            <button onClick={copiar} style={{
-              width: '100%', marginTop: 8, padding: '9px 10px', borderRadius: 9,
-              border: `1px solid ${C.burnt}`, background: 'rgba(255,255,255,0.7)', cursor: 'pointer',
-              fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.burntText,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}>
-              {copiado ? <Check size={13} /> : <Copy size={13} />}
-              {copiado ? 'Copiado' : 'Copiar el texto de publicidad'}
-            </button>
+            {[
+              { red: 'tiktok', label: 'TikTok', href: 'https://www.tiktok.com/upload' },
+              { red: 'instagram', label: 'Instagram', href: 'https://www.instagram.com/' },
+            ].map(r => (
+              <div key={r.red} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <a href={r.href} target="_blank" rel="noopener noreferrer" style={btnRed}>{r.label}</a>
+                <button onClick={() => copiar(r.red)} style={{
+                  flex: 1, padding: '9px 10px', borderRadius: 9,
+                  border: `1px solid ${C.burnt}`, background: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.burntText,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                  {copiado === r.red ? <Check size={13} /> : <Copy size={13} />}
+                  {copiado === r.red ? 'Copiado' : 'Copiar texto'}
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -292,8 +322,8 @@ function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
             style={{ width: 18, height: 18, marginTop: 1, accentColor: C.burnt, flexShrink: 0 }}
           />
           <span style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.45 }}>
-            El vídeo es <strong>mío</strong>, lo he marcado como <strong>publicidad</strong> y acepto
-            las condiciones.
+            El vídeo es <strong>mío</strong>, lo he marcado como <strong>publicidad</strong>,
+            he etiquetado a <strong>{menciones}</strong> y acepto las condiciones.
           </span>
         </label>
 
@@ -301,6 +331,10 @@ function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: C.stone, lineHeight: 1.6 }}>
             <li>Lo he grabado y publicado yo, y sale mi pedido de {nombreRest}.</li>
             <li>He identificado el vídeo como publicidad. Es obligatorio por ley cuando se recibe algo a cambio de publicar.</li>
+            <li>
+              <strong>He etiquetado a {menciones}</strong> en el vídeo o en la descripción.
+              Es obligatorio: sin la etiqueta, el vídeo puede rechazarse y no da premio.
+            </li>
             <li>Autorizo a Pidoo y a {nombreRest} a <strong>ver el vídeo y sus visualizaciones</strong> para comprobar el premio.</li>
             <li>Autorizo a que <strong>lo compartan en sus redes</strong> citando mi cuenta, mientras el vídeo esté público.</li>
             <li>Tengo <strong>14 años o más</strong>.</li>
@@ -315,10 +349,12 @@ function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
             display: 'flex', alignItems: 'center', gap: 8, marginTop: 10,
             padding: '8px 10px', borderRadius: 9, background: C.cream2,
           }}>
+            {/* La red la manda el enlace que haya pegado; antes de pegarlo, el
+                texto de Instagram sirve de muestra. */}
             <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: C.stone, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {textoPubli}
+              {textoPubli(analisis?.red || 'instagram')}
             </span>
-            <button onClick={copiar} style={{
+            <button onClick={() => copiar(analisis?.red || 'instagram')} style={{
               display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', borderRadius: 8,
               border: `1px solid ${C.border}`, background: '#fff', cursor: 'pointer',
               fontSize: 11, fontWeight: 700, color: C.ink, fontFamily: 'inherit', flexShrink: 0,
@@ -331,9 +367,9 @@ function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
         <Desplegable titulo="Cómo tiene que ser tu vídeo">
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: C.stone, lineHeight: 1.6 }}>
             <li>Que se vea <strong>la comida de tu pedido</strong>. Es lo que hace que cuente.</li>
-            <li><strong>Etiqueta a {nombreRest}</strong> en el vídeo o en la descripción.</li>
+            <li><strong>Etiqueta a {menciones}</strong> en el vídeo o en la descripción. Sin eso no hay premio.</li>
             <li>Que el vídeo esté <strong>público</strong>: si tu cuenta es privada no podemos ver las visualizaciones y no hay premio.</li>
-            <li>Pega el texto de publicidad en la descripción.</li>
+            <li>Pega el texto que te damos en la descripción: ya lleva las etiquetas.</li>
             <li>Dura lo que tú quieras. Cuenta el vídeo, no su duración.</li>
             <li>Si sale el repartidor o alguien más, pídele permiso antes.</li>
           </ul>
