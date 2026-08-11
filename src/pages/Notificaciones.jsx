@@ -60,7 +60,7 @@ export default function Notificaciones() {
   }
 
   return (
-    <div className="shell-lista" style={{ animation: 'fadeIn 0.3s ease' }}>
+    <div style={{ animation: 'fadeIn 0.3s ease' }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: '0 0 16px', letterSpacing: '-0.02em' }}>Notificaciones</h2>
       {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>Cargando...</div>}
       {!loading && notifs.length === 0 && (
