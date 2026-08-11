@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Capacitor } from '@capacitor/core'
 import { Mail, Lock, User, Phone, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import LogoAnimado from '../components/LogoAnimado'
 
 export default function Login({ nextPath = null, dark = false }) {
   const { login, registro, resetPassword, authError, setAuthError } = useAuth()
@@ -135,8 +136,8 @@ export default function Login({ nextPath = null, dark = false }) {
   /* ── Login / Registro principal ── */
   return (
     <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'center' }}>
-      {/* Logo */}
-      <img src="/logo-cliente-t.png" alt="Pidoo" style={{ width: 170, height: 'auto', display: 'block', marginBottom: 12 }} />
+      {/* Logo animado (ocupa en layout lo mismo que ocupaba el PNG de 170 px) */}
+      <LogoAnimado ancho={170} style={{ marginBottom: 12 }} />
       <p style={{ fontSize: 13, color: subColor, marginBottom: 36, textAlign: 'center' }}>
         {modo === 'reset' ? 'Introduce tu email para recuperar tu contraseña' : 'Tu comida favorita, al alcance de un toque'}
       </p>

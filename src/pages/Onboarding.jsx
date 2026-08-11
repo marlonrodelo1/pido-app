@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import LogoAnimado from '../components/LogoAnimado'
 
 const CATS = [
   { id: 'comida',      nombre: 'Comida',       emoji: '🍕', desc: 'Restaurantes y cafeterías', color: '#C5562C' },
@@ -102,12 +103,9 @@ export default function Onboarding({ onComplete, socioData = null }) {
         ))}
       </div>
 
-      {/* Logo */}
-      <img src="/logo-cliente-t.png" alt="Pidoo" style={{
-        width: 190, height: 'auto', display: 'block',
-        animation: ready ? 'logoIn 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards' : 'none',
-        opacity: ready ? 1 : 0, marginBottom: 6,
-      }} />
+      {/* Logo animado. Ocupa lo mismo que ocupaba el PNG; la animación desborda a los
+          lados y este contenedor ya recorta con overflow:hidden. */}
+      <LogoAnimado ancho={190} style={{ marginBottom: 6 }} />
 
       <p style={{
         fontSize: 20, color: 'var(--c-text)', fontWeight: 700, textAlign: 'center',
