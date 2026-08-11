@@ -345,6 +345,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               setPromoActiva(menorMinimo); setDescuento(0)
             }
           } else { setPromoActiva(null); setDescuento(0) }
+
         })
     }
     run()
@@ -500,6 +501,36 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       }))
     } catch (_) {}
   }, [guestPermitido, guestNombre, guestTelefono, guestEmail, guestDireccion, guestLat, guestLng])
+
+  // Cupones de Pidoo Creadores que valen en este carrito. El importe del
+  // descuento lo calcula el SERVIDOR con la misma función que usa el trigger al
+  // cobrar (`creadores_valor_cupon`), no se replica aquí: si las dos cuentas no
+  // dieran lo mismo, el cliente vería un precio y pagaría otro.
+  //
+  // ⚠️ ESTE HOOK TIENE QUE ESTAR AQUÍ, ANTES DEL `return null` DE ABAJO.
+  // Estuvo colocado más abajo y tumbó el carrito en producción con React #300
+  // ("se han renderizado menos hooks de los esperados"): con el carrito vacío el
+  // componente sale por ese return y el hook no se ejecuta; al añadir el primer
+  // producto aparecía un hook de más y React abortaba el árbol entero.
+  useEffect(() => {
+    let vivo = true
+    const estId = carrito[0]?.establecimiento_id
+    if (!user || !estId || subtotal <= 0) { setCupones([]); setCuponSel(null); return }
+    supabase.rpc('creadores_cupones_para_carrito', {
+      p_establecimiento_id: estId,
+      p_subtotal: subtotal,
+      p_coste_envio: modoEntrega === 'recogida' ? 0 : envio,
+      p_modo_entrega: modoEntrega,
+    }).then(({ data }) => {
+      if (!vivo) return
+      const lista = data || []
+      setCupones(lista)
+      // Si el que estaba elegido ya no vale (cambió el carrito), se actualiza
+      // su importe o se suelta.
+      setCuponSel(prev => prev ? (lista.find(c => c.id === prev.id) || null) : null)
+    })
+    return () => { vivo = false }
+  }, [user, carrito, subtotal, envio, modoEntrega])
 
   function guestValido() {
     if (!guestPermitido) return true
@@ -830,30 +861,6 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     }
   }
 
-  // Cupones de Pidoo Creadores que valen en este carrito. El importe del
-  // descuento lo calcula el SERVIDOR con la misma función que usa el trigger al
-  // cobrar (`creadores_valor_cupon`), no se replica aquí: si las dos cuentas no
-  // dieran lo mismo, el cliente vería un precio y pagaría otro.
-  useEffect(() => {
-    let vivo = true
-    const estId = carrito[0]?.establecimiento_id
-    if (!user || !estId || subtotal <= 0) { setCupones([]); setCuponSel(null); return }
-    supabase.rpc('creadores_cupones_para_carrito', {
-      p_establecimiento_id: estId,
-      p_subtotal: subtotal,
-      p_coste_envio: modoEntrega === 'recogida' ? 0 : envio,
-      p_modo_entrega: modoEntrega,
-    }).then(({ data }) => {
-      if (!vivo) return
-      const lista = data || []
-      setCupones(lista)
-      // Si el que estaba elegido ya no vale (cambió el carrito), se actualiza
-      // su importe o se suelta.
-      setCuponSel(prev => prev ? (lista.find(c => c.id === prev.id) || null) : null)
-    })
-    return () => { vivo = false }
-  }, [user, carrito, subtotal, envio, modoEntrega])
-
   // Pedido mínimo del restaurante (0 = sin mínimo). Se compara con el subtotal de productos.
   const bajoMinimo = pedidoMinimo > 0 && subtotal < pedidoMinimo
   const faltaMinimo = Math.max(0, pedidoMinimo - subtotal)
@@ -869,6 +876,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       {/* ── Modal carrito (renderizado en portal a document.body para escapar stacking contexts) ── */}
       {open && typeof document !== 'undefined' && createPortal(
         <div
+          className="modal-overlay"
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,15,15,0.55)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={() => {
             setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
@@ -880,6 +888,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           }}
         >
           <div
+            className="modal-sheet"
             onClick={e => e.stopPropagation()}
             style={{
               background: C.cream,
