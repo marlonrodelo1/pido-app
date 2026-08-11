@@ -9,6 +9,7 @@ import EntregaBadge from '../components/EntregaBadge'
 import { estaAbierto, horarioHoyTexto } from '../lib/horario'
 import { optimizarImagen } from '../lib/img'
 import { COLS_ESTABLECIMIENTO } from '../lib/estColumns'
+import CreadoresBanner from '../components/CreadoresBanner'
 
 function InstagramIcon({ size = 18, color = '#1A1815' }) {
   return (
@@ -141,7 +142,7 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, onOpenDirecciones, socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
+export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, onOpenDirecciones, onOpenCreadores, socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
   const filterIdsKey = Array.isArray(restaurantesFilter) ? restaurantesFilter.join(',') : ''
   const { perfil, updatePerfil, user } = useAuth()
@@ -631,6 +632,10 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           )
         })}
       </div>
+
+      {/* ── Pidoo Creadores: lo único que cuenta el programa ANTES de pedir.
+             Se pinta solo si hay algún restaurante con el programa abierto. ── */}
+      <CreadoresBanner onAbrir={onOpenCreadores} />
 
       {/* ── Destacados (280px cards, 176px image, 22px radius, glass) ── */}
       {!busqueda && !catActiva && destacados.length > 0 && (

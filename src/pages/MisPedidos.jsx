@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { estaAbierto } from '../lib/horario'
+import CreadoresCTA from '../components/CreadoresCTA'
 
 // Un color por estado, con texto OSCURO y saturado para que se lea bien sobre el
 // tema claro (antes era verde claro sobre verde claro = casi invisible, y "en camino"
@@ -201,6 +202,9 @@ export default function MisPedidos({ onTrack }) {
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                 color: repetido === p.id ? '#4ADE80' : 'var(--c-text)',
               }}>{repetido === p.id ? 'Añadido al carrito!' : 'Repetir pedido'}</button>
+            )}
+            {p.estado === 'entregado' && (
+              <CreadoresCTA pedido={p} establecimientoNombre={p.establecimientos?.nombre} compacto />
             )}
           </div>
         )

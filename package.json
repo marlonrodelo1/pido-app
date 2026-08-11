@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/build-sw.mjs",
     "lint": "eslint .",
     "test:deeplinks": "node --test scripts/test-deeplinks.mjs",
+    "test:creadores": "node --test scripts/test-videourl.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

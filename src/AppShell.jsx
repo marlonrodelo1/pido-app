@@ -287,6 +287,11 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
             ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} onOpenDirecciones={() => {
                 if (!user) { setLoginOpen(true); return }
                 setPerfilSubInicial('direcciones'); setSeccion('perfil'); setRestOpen(null)
+              }} onOpenCreadores={() => {
+                // Sin sesión no hay premios que enseñar: se pide login, que además
+                // es el paso que hay que dar igualmente para participar.
+                if (!user) { setLoginOpen(true); return }
+                setPerfilSubInicial('creadores'); setSeccion('perfil'); setRestOpen(null)
               }} socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />
             : seccion === 'favoritos'
             ? <Favoritos onOpenRest={abrirRest} />

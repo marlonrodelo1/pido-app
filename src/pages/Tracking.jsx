@@ -4,6 +4,7 @@ import { Star, Phone, MapPin, CheckCircle2, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import MapaReparto from '../components/MapaReparto'
+import CreadoresCTA from '../components/CreadoresCTA'
 
 // Paleta directa
 const C = {
@@ -429,6 +430,14 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               </>
             )}
           </div>
+        )}
+
+        {/* Pidoo Creadores. Va DESPUÉS de la valoración a propósito: dejar una
+            reseña es un toque y ya está ahí; grabar un vídeo es mucho más
+            trabajo y no debe robarle el sitio al gesto barato. Si el
+            restaurante no tiene el programa abierto, esto no pinta nada. */}
+        {!esInvitado && (
+          <CreadoresCTA pedido={pedido} establecimientoNombre={pedido?.establecimientos?.nombre} />
         )}
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: C.stone }}>

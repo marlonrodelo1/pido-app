@@ -169,6 +169,17 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [restCerradoMsg, setRestCerradoMsg] = useState('')
   const [promoActiva, setPromoActiva] = useState(null)
   const [descuento, setDescuento] = useState(0)
+  // Pidoo Creadores. `cuponSel` es solo la INTENCIÓN del cliente: el descuento
+  // de verdad lo fija el servidor en el BEFORE INSERT de `pedidos`, con la misma
+  // fórmula que alimenta esta lista. Cupón y promo compiten y gana el mayor; si
+  // gana la promo, el servidor suelta el cupón y NO se consume.
+  const [cupones, setCupones] = useState([])
+  const [cuponSel, setCuponSel] = useState(null)
+  const descuentoCupon = Number(cuponSel?.descuento || 0)
+  // Compiten y gana el mayor: EXACTAMENTE lo que hace   // en el servidor. Si aquí y allí no se calculara igual, el cliente vería un
+  // precio y pagaría otro.
+  const cuponGana = descuentoCupon > descuento
+  const descuentoEfectivo = cuponGana ? descuentoCupon : descuento
   // Regalo por cantidad ("2 pizzas = refresco gratis"). Va aparte del descuento
   // porque NO descuenta nada: el regalo entra como línea a 0 €. Ver el bloque
   // que lo calcula, más abajo.
@@ -520,7 +531,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     }
     const codigo = codigoPedido || await generarCodigo()
     setCodigoPedido(codigo)
-    const totalFinal = Math.max(0, total - descuento)
+    const totalFinal = Math.max(0, total - descuentoEfectivo)
 
     // Resolver datos de entrega y cliente (logueado o guest)
     let dirEntrega = null
@@ -554,12 +565,14 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       codigo, usuario_id: user?.id || null, establecimiento_id: carrito[0].establecimiento_id,
       canal, socio_id: esMarketplaceSocio ? socioIdTracking : null, estado, metodo_pago: metodoPago, modo_entrega: modoEntrega,
       stripe_payment_id: null, subtotal, coste_envio: envio, propina, total: totalFinal,
-      descuento: descuento > 0 ? descuento : null,
-      promo_titulo: descuento > 0 && promoActiva ? promoActiva.titulo : null, notas,
+      descuento: descuentoEfectivo > 0 ? descuentoEfectivo : null,
+      promo_titulo: cuponGana ? cuponSel.descripcion : (descuento > 0 && promoActiva ? promoActiva.titulo : null), notas,
       lat_entrega: latEntrega,
       lng_entrega: lngEntrega,
       direccion_entrega: dirEntrega,
       origen_pedido: esMarketplaceSocio ? 'marketplace_socio' : (origenPedido || 'pido'),
+      // Solo la referencia: el importe lo calcula y lo impone el servidor.
+      cupon_creador_id: cuponSel?.id || null,
       // Snapshot del teléfono de contacto EN el pedido → el socio lo lee sin tocar la RLS de usuarios.
       cliente_telefono: (perfil?.telefono || telefonoInput || '').trim() || null,
     }
@@ -639,11 +652,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   function finalizarPedido(pedido) {
     clearCart(); setOpen(false); setPasoTarjeta(false); setClientSecret(null); setCodigoPedido(null)
-    setPedidoPendiente(null); setDescuento(0); setPromoActiva(null); setNotas('')
+    setPedidoPendiente(null); setDescuento(0); setPromoActiva(null); setCuponSel(null); setNotas('')
     setSinDireccion(false); setRestCerrado(false); setErrorMsg(null)
     sendPush({
       targetType: 'restaurante', targetId: pedido.establecimiento_id,
-      title: 'Nuevo pedido', body: `Pedido ${pedido.codigo} - ${(Math.max(0, total - descuento)).toFixed(2)} €`,
+      title: 'Nuevo pedido', body: `Pedido ${pedido.codigo} - ${(Math.max(0, total - descuentoEfectivo)).toFixed(2)} €`,
       data: { pedido_id: pedido.id },
     })
     onPedidoCreado(pedido)
@@ -755,7 +768,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     }
     isPaying.current = true; pagoEnviado.current = false; setLoading(true); setErrorMsg(null)
     try {
-      const totalConDescuento = Math.max(0, total - descuento)
+      const totalConDescuento = Math.max(0, total - descuentoEfectivo)
       if (metodoPago === 'tarjeta') {
         // Generar código sin insertar pedido en BD todavía
         const codigo = codigoPedido || await generarCodigo()
@@ -817,6 +830,30 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     }
   }
 
+  // Cupones de Pidoo Creadores que valen en este carrito. El importe del
+  // descuento lo calcula el SERVIDOR con la misma función que usa el trigger al
+  // cobrar (`creadores_valor_cupon`), no se replica aquí: si las dos cuentas no
+  // dieran lo mismo, el cliente vería un precio y pagaría otro.
+  useEffect(() => {
+    let vivo = true
+    const estId = carrito[0]?.establecimiento_id
+    if (!user || !estId || subtotal <= 0) { setCupones([]); setCuponSel(null); return }
+    supabase.rpc('creadores_cupones_para_carrito', {
+      p_establecimiento_id: estId,
+      p_subtotal: subtotal,
+      p_coste_envio: modoEntrega === 'recogida' ? 0 : envio,
+      p_modo_entrega: modoEntrega,
+    }).then(({ data }) => {
+      if (!vivo) return
+      const lista = data || []
+      setCupones(lista)
+      // Si el que estaba elegido ya no vale (cambió el carrito), se actualiza
+      // su importe o se suelta.
+      setCuponSel(prev => prev ? (lista.find(c => c.id === prev.id) || null) : null)
+    })
+    return () => { vivo = false }
+  }, [user, carrito, subtotal, envio, modoEntrega])
+
   // Pedido mínimo del restaurante (0 = sin mínimo). Se compara con el subtotal de productos.
   const bajoMinimo = pedidoMinimo > 0 && subtotal < pedidoMinimo
   const faltaMinimo = Math.max(0, pedidoMinimo - subtotal)
@@ -874,7 +911,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               }}>
                 <FormularioPago
                   clientSecret={clientSecret}
-                  total={Math.max(0, total - descuento)}
+                  total={Math.max(0, total - descuentoEfectivo)}
                   onSuccess={async (paymentId) => {
                     // Pago confirmado por Stripe → confirmar el pedido pendiente
                     // (pasarlo de 'pendiente_pago' a 'nuevo' + stripe_payment_id).
@@ -1283,12 +1320,66 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 )}
 
+                {/* Premios de Pidoo Creadores que valen aquí. Solo aparece si el
+                    cliente tiene alguno: para quien no participa, esto no existe. */}
+                {cupones.length > 0 && (
+                  <div style={{
+                    background: C.paper, border: `1px solid ${C.border}`,
+                    borderRadius: 14, padding: 12, marginTop: 8,
+                  }}>
+                    <div style={{ ...S.label, marginBottom: 8 }}>Tus premios</div>
+                    {cupones.map(c => {
+                      const activo = cuponSel?.id === c.id
+                      const pierde = activo && !cuponGana
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setCuponSel(activo ? null : c)}
+                          style={{
+                            width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                            display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6,
+                            padding: '10px 12px', borderRadius: 11,
+                            border: activo ? `1.5px solid ${C.burnt}` : `1px solid ${C.border}`,
+                            background: activo ? C.burntGlaze : '#fff',
+                          }}>
+                          <div style={{
+                            width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                            border: `1.5px solid ${activo ? C.burnt : C.border}`,
+                            background: activo ? C.burnt : 'transparent',
+                            display: 'grid', placeItems: 'center', color: '#fff', fontSize: 12, fontWeight: 900,
+                          }}>{activo ? '✓' : ''}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: activo ? C.burntText : C.ink }}>
+                              {c.descripcion}
+                            </div>
+                            <div style={{ fontSize: 11, color: C.stone, marginTop: 1 }}>{c.codigo}</div>
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: C.sage2, flexShrink: 0 }}>
+                            −{fmt(c.descuento)}
+                          </div>
+                        </button>
+                      )
+                    })}
+                    {/* Nunca se suman: si la promo del restaurante da más, se aplica
+                        esa y el premio se queda sin gastar para otro día. */}
+                    {cuponSel && !cuponGana && (
+                      <div style={{ fontSize: 11.5, color: C.stone, marginTop: 4, lineHeight: 1.45 }}>
+                        La promoción del restaurante te descuenta más, así que se aplica esa.
+                        Tu premio <strong>no se gasta</strong>: lo guardas para otro pedido.
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Desglose (card paper) */}
                 <div style={{
                   background: C.paper, border: `1px solid ${C.border}`,
                   borderRadius: 14, padding: 14, marginTop: 8,
                 }}>
                   <ResLine label="Subtotal" value={fmt(subtotal)} />
+                  {cuponGana && (
+                    <ResLine label={`🎬 ${cuponSel.descripcion}`} value={'-' + fmt(descuentoCupon)} tone="sage" />
+                  )}
                   {regalo?.cumplido && (
                     <ResLine label={`🎁 ${regalo.nombre}`} value="Gratis" tone="sage" />
                   )}
@@ -1309,7 +1400,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   <div style={{ height: 1, background: C.border, margin: '8px 0' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span style={{ fontWeight: 700, color: C.ink, fontSize: 16 }}>Total</span>
-                    <span style={{ fontSize: 24, color: C.ink, fontWeight: 800 }}>{fmt(total - descuento)}</span>
+                    <span style={{ fontSize: 24, color: C.ink, fontWeight: 800 }}>{fmt(total - descuentoEfectivo)}</span>
                   </div>
                 </div>
 
@@ -1500,10 +1591,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       <>
                         <Lock size={14} strokeWidth={2.4} />
                         {metodoPago === 'tarjeta' && tarjetaSel
-                          ? `Pagar con •••• ${tarjetasGuardadas.find(c => c.id === tarjetaSel)?.last4} · ${fmt(total - descuento)}`
+                          ? `Pagar con •••• ${tarjetasGuardadas.find(c => c.id === tarjetaSel)?.last4} · ${fmt(total - descuentoEfectivo)}`
                           : metodoPago === 'tarjeta'
-                            ? `Continuar al pago · ${fmt(total - descuento)}`
-                            : `Pedir ahora · ${fmt(total - descuento)}`}
+                            ? `Continuar al pago · ${fmt(total - descuentoEfectivo)}`
+                            : `Pedir ahora · ${fmt(total - descuentoEfectivo)}`}
                       </>
                     )
                   }

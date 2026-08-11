@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getCurrentPosition } from '../lib/geolocation'
-import { MapPin, CreditCard, Tag, Settings, HelpCircle, LogOut, ChevronRight, X, Check, Camera, User, Phone, Mail, Navigation, Plus, Trash2, Star, AlertTriangle } from 'lucide-react'
+import { MapPin, CreditCard, Tag, Settings, HelpCircle, LogOut, ChevronRight, X, Check, Camera, User, Phone, Mail, Navigation, Plus, Trash2, Star, AlertTriangle, Video } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
+import CreadoresSection from '../components/CreadoresSection'
 
 export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   const { user, perfil, logout, updatePerfil, fetchPerfil } = useAuth()
@@ -192,6 +193,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
     { icon: MapPin, label: 'Mis direcciones', action: () => { setSubSeccion('direcciones'); fetchDirecciones() } },
     { icon: CreditCard, label: 'Método de pago', action: () => setSubSeccion('pagos') },
     { icon: Tag, label: 'Promociones', action: () => setSubSeccion('promos') },
+    { icon: Video, label: 'Mis vídeos y premios', action: () => setSubSeccion('creadores') },
     { icon: Settings, label: 'Configuración del perfil', action: () => { setNombre(perfil?.nombre || ''); setApellido(perfil?.apellido || ''); setTelefono(perfil?.telefono || ''); setSubSeccion('config') } },
     { icon: HelpCircle, label: 'Ayuda', action: () => setSubSeccion('ayuda') },
   ]
@@ -367,6 +369,8 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
         )}
 
         {subSeccion === 'promos' && <PromosSection />}
+
+        {subSeccion === 'creadores' && <CreadoresSection />}
 
         {subSeccion === 'config' && (
           <>
