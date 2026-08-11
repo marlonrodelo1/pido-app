@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Video, X, Check, Copy } from 'lucide-react'
+import { Video, X, Check, Copy, ChevronDown, Camera } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { analizarUrlVideo, NOMBRE_RED } from '../lib/videoUrl'
 
@@ -13,20 +13,29 @@ import { analizarUrlVideo, NOMBRE_RED } from '../lib/videoUrl'
 // ⚠️ EL AVISO DE PUBLICIDAD NO ES DECORACIÓN. Un vídeo publicado a cambio de un
 // descuento es comunicación comercial con contraprestación, y la Ley de
 // Competencia Desleal (art. 26) y la LSSI (art. 20) obligan a identificarla. El
-// responsable último es el ANUNCIANTE, es decir el restaurante. Por eso la
-// casilla es obligatoria y el texto a copiar va aquí mismo: cerrarlo cuesta
-// cero y no cerrarlo es un problema de otro.
+// responsable último es el ANUNCIANTE, es decir el restaurante.
+//
+// EL MODAL ES DELIBERADAMENTE CORTO. La primera versión era un muro de texto
+// que en un móvil no cabía ni scrolleaba bien. Ahora solo se ve lo que hace
+// falta para actuar; lo demás vive detrás de desplegables cerrados. El
+// consentimiento sigue siendo explícito y registrado: lo que se recorta es el
+// ruido, no la cobertura.
+
+// Versión del texto de condiciones que el cliente acepta. Se guarda con la
+// participación: si el texto cambia, hay que subir esto, o dentro de un año no
+// se podrá saber qué aceptó exactamente cada uno.
+export const CONDICIONES_VERSION = 'creadores-2026-08-11b'
 
 const C = {
   paper: '#FBF8F2', cream2: '#EFE9DD', ink: '#1A1815', stone: '#6B6356', stone2: '#8A8174',
   terracotta: '#C5562C', burnt: '#E4671F', burntText: '#A85018', border: '#E8E1D3',
-  sage2: '#6F8460', sageSoft: '#DDE3D3', danger: '#B5564A', dangerSoft: '#F1D0CB',
+  sage2: '#6F8460', danger: '#B5564A', dangerSoft: '#F1D0CB',
 }
 
 const fmtNum = (n) => Number(n || 0).toLocaleString('es-ES')
 
 export default function CreadoresCTA({ pedido, establecimientoNombre, compacto = false, onRegistrado }) {
-  const [programa, setPrograma] = useState(null)   // { admite_altas, escalera }
+  const [programa, setPrograma] = useState(null)
   const [yaRegistrado, setYaRegistrado] = useState(false)
   const [abierto, setAbierto] = useState(false)
 
@@ -48,11 +57,13 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
     return () => { vivo = false }
   }, [estId, pedido?.id, pedido?.estado])
 
-  // Nada que ofrecer: ni una línea de más en la pantalla.
   if (!programa?.admite_altas || yaRegistrado) return null
 
   const escalera = programa.escalera || []
   const primero = escalera[0]
+  // El nombre lo trae el propio RPC: Tracking.jsx hace `select('*')` sin join y
+  // ahí `pedido.establecimientos` no existe. Antes salía "este restaurante".
+  const nombreRest = programa.nombre || establecimientoNombre || 'este restaurante'
 
   return (
     <>
@@ -86,7 +97,7 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
       {abierto && createPortal(
         <ModalRegistrar
           pedido={pedido}
-          establecimientoNombre={establecimientoNombre}
+          nombreRest={nombreRest}
           escalera={escalera}
           onClose={() => setAbierto(false)}
           onHecho={() => { setYaRegistrado(true); setAbierto(false); onRegistrado?.() }}
@@ -97,22 +108,38 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
   )
 }
 
-// Versión del texto de condiciones que el cliente acepta. Se guarda con la
-// participación: si el texto cambia, hay que subir esto, o dentro de un año no
-// se podrá saber qué aceptó exactamente cada uno.
-export const CONDICIONES_VERSION = 'creadores-2026-08-11'
+// ── Desplegable ─────────────────────────────────────────────────────────────
+function Desplegable({ titulo, children, abiertoPorDefecto = false }) {
+  const [ab, setAb] = useState(abiertoPorDefecto)
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 12, background: '#fff', marginTop: 10 }}>
+      <button
+        onClick={() => setAb(v => !v)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          padding: '11px 13px', background: 'none', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, color: C.ink, textAlign: 'left',
+        }}>
+        <span style={{ flex: 1 }}>{titulo}</span>
+        <ChevronDown size={15} color={C.stone} style={{ transform: ab ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
+      </button>
+      {ab && <div style={{ padding: '0 13px 13px' }}>{children}</div>}
+    </div>
+  )
+}
 
-function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHecho }) {
+function ModalRegistrar({ pedido, nombreRest, escalera, onClose, onHecho }) {
   const [url, setUrl] = useState('')
-  const [aceptaPubli, setAceptaPubli] = useState(false)
-  const [aceptaCond, setAceptaCond] = useState(false)
+  const [acepta, setAcepta] = useState(false)
+  const [grabado, setGrabado] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const [copiado, setCopiado] = useState(false)
+  const inputCamara = useRef(null)
 
   const analisis = url.trim() ? analizarUrlVideo(url) : null
-  const puedeEnviar = analisis?.ok && aceptaPubli && aceptaCond && !enviando
-  const textoPubli = `#publi · en colaboración con ${establecimientoNombre || 'este restaurante'}`
+  const puedeEnviar = analisis?.ok && acepta && !enviando
+  const textoPubli = `#publi · en colaboración con ${nombreRest}`
 
   async function enviar() {
     if (!puedeEnviar) return
@@ -130,22 +157,33 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
     onHecho()
   }
 
+  function copiar() {
+    navigator.clipboard?.writeText(textoPubli)
+    setCopiado(true); setTimeout(() => setCopiado(false), 1600)
+  }
+
   return (
     <div onClick={onClose} style={{
       position: 'fixed', inset: 0, background: 'rgba(26,24,21,0.55)', zIndex: 4000,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background: C.paper, width: '100%', maxWidth: 480,
-        borderRadius: '20px 20px 0 0', padding: 20,
-        maxHeight: '92vh', overflowY: 'auto',
-      }}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: C.paper, width: '100%', maxWidth: 480,
+          borderRadius: '20px 20px 0 0', padding: '18px 18px 24px',
+          // `dvh` respeta la barra del navegador en móvil; con `vh` el contenido
+          // quedaba por debajo del borde y no se llegaba al botón.
+          maxHeight: '86dvh', overflowY: 'auto',
+          overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
+        }}>
+
+        {/* Cabecera */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.ink }}>Registra tu vídeo</div>
-            <div style={{ fontSize: 12.5, color: C.stone, marginTop: 3, lineHeight: 1.45 }}>
-              Súbelo a TikTok o Instagram y pega aquí el enlace. Nosotros miramos las
-              visualizaciones y te avisamos cuando ganes.
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.ink }}>Gana premios con tu vídeo</div>
+            <div style={{ fontSize: 12.5, color: C.stone, marginTop: 2 }}>
+              Publícalo en TikTok o Instagram y pega el enlace aquí.
             </div>
           </div>
           <button onClick={onClose} aria-label="Cerrar" style={{
@@ -154,114 +192,116 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
           }}><X size={16} color={C.stone} /></button>
         </div>
 
+        {/* Escalera — lo único que de verdad motiva */}
         {escalera.length > 0 && (
-          <div style={{ background: C.cream2, borderRadius: 12, padding: 12, marginBottom: 14 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, color: C.stone, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 7 }}>
-              Lo que puedes ganar
-            </div>
+          <div style={{ background: C.cream2, borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
             {escalera.map(e => (
               <div key={e.nivel} style={{ display: 'flex', gap: 10, fontSize: 12.5, padding: '3px 0', color: C.ink }}>
-                <span style={{ width: 66, flexShrink: 0, color: C.stone, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ width: 62, flexShrink: 0, color: C.stone, fontVariantNumeric: 'tabular-nums' }}>
                   {fmtNum(e.views_necesarias)}
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>{e.descripcion}</span>
               </div>
             ))}
-            <div style={{ fontSize: 11, color: C.stone, marginTop: 8, lineHeight: 1.4 }}>
-              Te llevas un solo premio: el más alto que alcance el vídeo en 30 días.
-            </div>
           </div>
         )}
 
-        <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Enlace del vídeo
-        </label>
+        {/* Grabar. El móvil devuelve el vídeo a la galería, no lo publica: por eso
+            justo después aparece el paso que de verdad da el premio. */}
         <input
-          value={url}
-          onChange={e => { setUrl(e.target.value); setError(null) }}
-          placeholder="Pega aquí el enlace de tu TikTok o Reel"
-          autoComplete="off" autoCapitalize="none" spellCheck={false}
-          style={{
-            width: '100%', padding: '12px 14px', borderRadius: 11, marginTop: 6,
-            border: `1px solid ${analisis && !analisis.ok ? C.danger : C.border}`,
-            background: '#fff', fontSize: 14, color: C.ink, fontFamily: 'inherit',
-            outline: 'none', boxSizing: 'border-box',
-          }}
+          ref={inputCamara} type="file" accept="video/*" capture="environment"
+          onChange={() => setGrabado(true)}
+          style={{ display: 'none' }}
         />
-
-        {analisis && !analisis.ok && (
-          <div style={{ fontSize: 12, color: C.danger, marginTop: 6, lineHeight: 1.4 }}>{analisis.motivo}</div>
-        )}
-        {analisis?.ok && (
-          <div style={{ fontSize: 12, color: C.sage2, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <Check size={13} /> Vídeo de {NOMBRE_RED[analisis.red]} reconocido
-          </div>
-        )}
-
-        {/* Identificación publicitaria — obligatoria */}
-        <div style={{
-          marginTop: 14, padding: 12, borderRadius: 12,
-          background: '#fff', border: `1px solid ${C.border}`,
-        }}>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
-            <input
-              type="checkbox" checked={aceptaPubli}
-              onChange={e => setAceptaPubli(e.target.checked)}
-              style={{ width: 18, height: 18, marginTop: 1, accentColor: C.burnt, flexShrink: 0 }}
-            />
-            <span style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.45 }}>
-              He marcado el vídeo como <strong>contenido publicitario</strong>. Es obligatorio por
-              ley cuando se recibe algo a cambio de publicar.
-            </span>
-          </label>
-
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginTop: 10,
-            padding: '8px 10px', borderRadius: 9, background: C.cream2,
+        <button
+          onClick={() => inputCamara.current?.click()}
+          style={{
+            width: '100%', padding: '12px 0', borderRadius: 12, cursor: 'pointer',
+            border: `1.5px solid ${C.burnt}`, background: '#fff', fontFamily: 'inherit',
+            fontSize: 14, fontWeight: 800, color: C.burntText,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: C.stone, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {textoPubli}
-            </span>
-            <button
-              onClick={() => { navigator.clipboard?.writeText(textoPubli); setCopiado(true); setTimeout(() => setCopiado(false), 1600) }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', borderRadius: 8,
-                border: `1px solid ${C.border}`, background: '#fff', cursor: 'pointer',
-                fontSize: 11.5, fontWeight: 700, color: C.ink, fontFamily: 'inherit', flexShrink: 0,
-              }}>
-              {copiado ? <Check size={12} /> : <Copy size={12} />} {copiado ? 'Copiado' : 'Copiar'}
+          <Camera size={17} /> Grabar mi vídeo
+        </button>
+
+        {grabado && (
+          <div style={{
+            marginTop: 10, padding: 12, borderRadius: 12,
+            background: 'linear-gradient(135deg, #FDE8D6 0%, #F7CFB2 100%)',
+            border: `1px solid ${C.burnt}`,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.burntText }}>Ya lo tienes grabado. Ahora súbelo</div>
+            <div style={{ fontSize: 11.5, color: '#8A5A33', marginTop: 2, lineHeight: 1.4 }}>
+              El premio va por visualizaciones, así que tiene que estar publicado.
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <a href="https://www.tiktok.com/upload" target="_blank" rel="noopener noreferrer"
+                 style={btnRed}>TikTok</a>
+              <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer"
+                 style={btnRed}>Instagram</a>
+            </div>
+            <button onClick={copiar} style={{
+              width: '100%', marginTop: 8, padding: '9px 10px', borderRadius: 9,
+              border: `1px solid ${C.burnt}`, background: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, color: C.burntText,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              {copiado ? <Check size={13} /> : <Copy size={13} />}
+              {copiado ? 'Copiado' : 'Copiar el texto de publicidad'}
             </button>
           </div>
-          <div style={{ fontSize: 11, color: C.stone2, marginTop: 7, lineHeight: 1.4 }}>
-            Pégalo en la descripción, o usa la etiqueta de colaboración pagada de la propia red.
-          </div>
+        )}
+
+        {/* Enlace */}
+        <div style={{ marginTop: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Enlace del vídeo
+          </label>
+          <input
+            value={url}
+            onChange={e => { setUrl(e.target.value); setError(null) }}
+            placeholder="Pega aquí el enlace de tu TikTok o Reel"
+            autoComplete="off" autoCapitalize="none" spellCheck={false}
+            style={{
+              width: '100%', padding: '12px 14px', borderRadius: 11, marginTop: 6,
+              border: `1px solid ${analisis && !analisis.ok ? C.danger : C.border}`,
+              background: '#fff', fontSize: 14, color: C.ink, fontFamily: 'inherit',
+              outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          {analisis && !analisis.ok && (
+            <div style={{ fontSize: 12, color: C.danger, marginTop: 6, lineHeight: 1.4 }}>{analisis.motivo}</div>
+          )}
+          {analisis?.ok && (
+            <div style={{ fontSize: 12, color: C.sage2, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Check size={13} /> Vídeo de {NOMBRE_RED[analisis.red]} reconocido
+            </div>
+          )}
         </div>
 
-        {/* Segunda casilla: lo que el cliente DECLARA y AUTORIZA. Separada de la
-            anterior a propósito: son dos actos distintos —una obligación legal
-            suya y una autorización a Pidoo— y mezclarlas en una sola casilla
-            debilita las dos. Ambas quedan registradas con fecha y versión. */}
-        <div style={{
-          marginTop: 10, padding: 12, borderRadius: 12,
-          background: '#fff', border: `1px solid ${C.border}`,
+        {/* Consentimiento: una línea corta, el detalle detrás del desplegable.
+            Sigue siendo un acto afirmativo y queda registrado con fecha y versión. */}
+        <label style={{
+          display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer',
+          marginTop: 14, padding: 12, borderRadius: 12, background: '#fff',
+          border: `1px solid ${acepta ? C.burnt : C.border}`,
         }}>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
-            <input
-              type="checkbox" checked={aceptaCond}
-              onChange={e => setAceptaCond(e.target.checked)}
-              style={{ width: 18, height: 18, marginTop: 1, accentColor: C.burnt, flexShrink: 0 }}
-            />
-            <span style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.45 }}>
-              Declaro que el vídeo es <strong>mío</strong> y acepto las condiciones del programa.
-            </span>
-          </label>
+          <input
+            type="checkbox" checked={acepta}
+            onChange={e => setAcepta(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 1, accentColor: C.burnt, flexShrink: 0 }}
+          />
+          <span style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.45 }}>
+            El vídeo es <strong>mío</strong>, lo he marcado como <strong>publicidad</strong> y acepto
+            las condiciones.
+          </span>
+        </label>
 
-          <ul style={{
-            margin: '9px 0 0 28px', padding: 0, listStyle: 'disc',
-            fontSize: 11.5, color: C.stone, lineHeight: 1.55,
-          }}>
-            <li>Lo he grabado y publicado yo, y sale mi pedido de {establecimientoNombre || 'este restaurante'}.</li>
-            <li>Autorizo a Pidoo y al restaurante a <strong>ver el vídeo y su número de visualizaciones</strong> para comprobar el premio.</li>
+        <Desplegable titulo="Ver condiciones">
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: C.stone, lineHeight: 1.6 }}>
+            <li>Lo he grabado y publicado yo, y sale mi pedido de {nombreRest}.</li>
+            <li>He identificado el vídeo como publicidad. Es obligatorio por ley cuando se recibe algo a cambio de publicar.</li>
+            <li>Autorizo a Pidoo y a {nombreRest} a <strong>ver el vídeo y sus visualizaciones</strong> para comprobar el premio.</li>
             <li>Autorizo a que <strong>lo compartan en sus redes</strong> citando mi cuenta, mientras el vídeo esté público.</li>
             <li>Tengo <strong>14 años o más</strong>.</li>
             <li>
@@ -271,7 +311,36 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
               <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: C.terracotta, fontWeight: 700 }}>política de privacidad</a>.
             </li>
           </ul>
-        </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginTop: 10,
+            padding: '8px 10px', borderRadius: 9, background: C.cream2,
+          }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: C.stone, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {textoPubli}
+            </span>
+            <button onClick={copiar} style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', borderRadius: 8,
+              border: `1px solid ${C.border}`, background: '#fff', cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, color: C.ink, fontFamily: 'inherit', flexShrink: 0,
+            }}>
+              {copiado ? <Check size={12} /> : <Copy size={12} />} {copiado ? 'Copiado' : 'Copiar'}
+            </button>
+          </div>
+        </Desplegable>
+
+        <Desplegable titulo="Cómo tiene que ser tu vídeo">
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: C.stone, lineHeight: 1.6 }}>
+            <li>Que se vea <strong>la comida de tu pedido</strong>. Es lo que hace que cuente.</li>
+            <li><strong>Etiqueta a {nombreRest}</strong> en el vídeo o en la descripción.</li>
+            <li>Que el vídeo esté <strong>público</strong>: si tu cuenta es privada no podemos ver las visualizaciones y no hay premio.</li>
+            <li>Pega el texto de publicidad en la descripción.</li>
+            <li>Dura lo que tú quieras. Cuenta el vídeo, no su duración.</li>
+            <li>Si sale el repartidor o alguien más, pídele permiso antes.</li>
+          </ul>
+          <div style={{ fontSize: 11, color: C.stone2, marginTop: 8, lineHeight: 1.5 }}>
+            {nombreRest} puede rechazar un vídeo que no tenga que ver con su local, indicando el motivo.
+          </div>
+        </Desplegable>
 
         {error && (
           <div style={{
@@ -283,7 +352,7 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
         <button
           onClick={enviar} disabled={!puedeEnviar}
           style={{
-            width: '100%', marginTop: 16, padding: '14px 0', borderRadius: 13, border: 'none',
+            width: '100%', marginTop: 14, padding: '14px 0', borderRadius: 13, border: 'none',
             background: puedeEnviar ? 'linear-gradient(180deg,#E4671F 0%,#C85417 100%)' : C.cream2,
             color: puedeEnviar ? '#fff' : C.stone2,
             fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
@@ -300,6 +369,12 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
   )
 }
 
+const btnRed = {
+  flex: 1, textAlign: 'center', padding: '9px 0', borderRadius: 9,
+  background: '#fff', border: `1px solid ${C.burnt}`, color: C.burntText,
+  fontSize: 12.5, fontWeight: 800, textDecoration: 'none',
+}
+
 // Los códigos PDxxx del servidor, en cristiano.
 function traducir(msg = '') {
   if (msg.includes('PD148') || msg.includes('con este pedido')) return 'Ya has registrado un vídeo con este pedido.'
@@ -310,5 +385,6 @@ function traducir(msg = '') {
   if (msg.includes('PD144') || msg.includes('no es tuyo')) return 'Ese pedido no es tuyo.'
   if (msg.includes('PD143')) return 'Ese enlace no vale. Tiene que ser de TikTok o Instagram.'
   if (msg.includes('PD142')) return 'Inicia sesión para participar.'
+  if (msg.includes('PD157')) return 'Tienes que aceptar las condiciones.'
   return msg || 'No se ha podido registrar. Inténtalo de nuevo.'
 }
