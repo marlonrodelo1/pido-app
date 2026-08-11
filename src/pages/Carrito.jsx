@@ -356,7 +356,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     if (open && carrito.length > 0 && modoEntrega === 'delivery') {
       const lat = perfil?.latitud, lng = perfil?.longitud
       const hayDir = !!(lat && lng && perfil?.direccion)
-      setSinDireccion(!hayDir); setFueraDeRadio(false)
+      // `sinDireccion` es un concepto de usuario CON CUENTA: mira la dirección
+      // guardada en su perfil. Sin cuenta no hay perfil que mirar, así que esto
+      // daba `true` siempre y dejaba al invitado en un callejón sin salida: el
+      // botón de pedir muerto ("Añade tu dirección para pedir") y, debajo, el
+      // bloque rojo de dirección del usuario registrado — cuyos dos caminos
+      // (GPS y buscador) llaman a updatePerfil, que sin sesión lanza y no
+      // guarda nada. El invitado tiene su propio campo de dirección arriba y su
+      // propia validación en guestValido(); ese es el que manda.
+      setSinDireccion(user ? !hayDir : false); setFueraDeRadio(false)
       // Si es tienda pública y hay tarifa fija, saltar calcularEnvio
       if (tarifaEnvioFija != null) {
         if (typeof setEnvio === 'function') setEnvio(tarifaEnvioFija)
@@ -501,6 +509,28 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       }))
     } catch (_) {}
   }, [guestPermitido, guestNombre, guestTelefono, guestEmail, guestDireccion, guestLat, guestLng])
+
+  // ── Envío del INVITADO ───────────────────────────────────────────────────
+  // El cálculo del envío colgaba solo de perfil.latitud/longitud, que sin cuenta
+  // no existen: el invitado veía "Envío 0,00 €" y el restaurante regalaba el
+  // reparto. Además nadie comprobaba el radio hasta que el pedido ya estaba en
+  // el servidor. La dirección del invitado vive en guestLat/guestLng, así que se
+  // recalcula en cuanto la fija desde las sugerencias.
+  // (Va DESPUÉS de declarar guestLat/guestLng a propósito: citarlas en el efecto
+  // de más arriba las leería antes de su inicialización y tumbaría el carrito.)
+  useEffect(() => {
+    if (!open || carrito.length === 0) return
+    if (modoEntrega !== 'delivery') return
+    if (user || !guestPermitido) return
+    if (guestLat == null || guestLng == null) return
+    if (tarifaEnvioFija != null) {
+      if (typeof setEnvio === 'function') setEnvio(tarifaEnvioFija)
+      return
+    }
+    setFueraDeRadio(false)
+    calcularEnvio(guestLat, guestLng).catch(err => { if (err?.fuera_de_radio) setFueraDeRadio(true) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, carrito.length, modoEntrega, user, guestPermitido, guestLat, guestLng, tarifaEnvioFija])
 
   // Cupones de Pidoo Creadores que valen en este carrito. El importe del
   // descuento lo calcula el SERVIDOR con la misma función que usa el trigger al
@@ -1457,8 +1487,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 )}
 
-                {/* Sin dirección */}
-                {sinDireccion && modoEntrega === 'delivery' && !fueraDeRadio && (
+                {/* Sin dirección — SOLO con cuenta: es la dirección del perfil.
+                    Sin cuenta, la dirección se pide arriba en "tus datos", y este
+                    bloque salía además del otro (dos sitios para lo mismo) sin
+                    poder guardar nada. */}
+                {user && sinDireccion && modoEntrega === 'delivery' && !fueraDeRadio && (
                   <div style={{ marginBottom: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: mostrarAddDir ? 12 : 0 }}>
                       <span style={{ fontSize: 22 }}>📍</span>
@@ -1479,8 +1512,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       <div>
                         <button onClick={async () => {
                           setGeoLoading(true); setDirMsg(null)
+                          let pos = null
                           try {
-                            const pos = await getCurrentPosition()
+                            pos = await getCurrentPosition()
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json&addressdetails=1`)
                             const data = await res.json()
                             const addr = data.display_name || `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`
@@ -1494,7 +1528,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                             }
                             setSinDireccion(false); setMostrarAddDir(false); setDirMsg(null)
                             if (modoEntrega === 'delivery') calcularEnvio(pos.lat, pos.lng, null).catch(() => {})
-                          } catch { setDirMsg('No se pudo obtener la ubicación') }
+                          } catch (e) {
+                            // Distinguir "no me das el GPS" de "no pude guardarla": antes
+                            // ambos decían lo mismo y mandaban al cliente a pelearse con
+                            // los permisos del móvil cuando el fallo era al guardar.
+                            console.error('[Carrito] ubicación actual', e)
+                            setDirMsg(pos ? 'No se pudo guardar la dirección. Inténtalo de nuevo.' : 'No se pudo obtener la ubicación')
+                          }
                           finally { setGeoLoading(false) }
                         }} disabled={geoLoading} style={{
                           width: '100%', padding: '12px', borderRadius: 10, marginBottom: 8,
@@ -1514,7 +1554,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                             onSelect={async (place) => {
                               if (place.lat && place.lng) {
                                 setDirMsg(null)
-                                await updatePerfil({ direccion: place.direccion, latitud: place.lat, longitud: place.lng })
+                                // Si guardar falla, esto reventaba en silencio: el cliente
+                                // pulsaba la sugerencia y no pasaba absolutamente nada.
+                                try {
+                                  await updatePerfil({ direccion: place.direccion, latitud: place.lat, longitud: place.lng })
+                                } catch (e) {
+                                  console.error('[Carrito] no se pudo guardar la dirección', e)
+                                  setDirMsg('No se pudo guardar la dirección. Inténtalo de nuevo.')
+                                  return
+                                }
                                 if (user?.id) {
                                   const { data: existing } = await supabase.from('direcciones_usuario').select('id').eq('usuario_id', user.id)
                                   await supabase.from('direcciones_usuario').insert({
@@ -1595,6 +1643,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     : bajoMinimo ? `Te faltan ${fmt(faltaMinimo)} para el mínimo`
                     : (fueraDeRadio && modoEntrega === 'delivery') ? 'Fuera de zona — prueba recogida'
                     : (sinDireccion && modoEntrega === 'delivery') ? 'Añade tu dirección para pedir'
+                    : (!user && guestPermitido && !guestValido())
+                      ? (modoEntrega === 'delivery' ? 'Completa tus datos y la dirección' : 'Completa tu nombre y teléfono')
                     : loading ? 'Procesando...'
                     : (
                       <>
