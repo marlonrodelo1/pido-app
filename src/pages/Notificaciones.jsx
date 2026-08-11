@@ -26,6 +26,23 @@ export default function Notificaciones() {
       .from('notificaciones').select('*').eq('usuario_id', user.id)
       .gte('created_at', hace7d).order('created_at', { ascending: false }).limit(30)
     setNotifs(data || []); setLoading(false)
+
+    // Abrir la bandeja las marca TODAS como leídas, no solo las que se ven.
+    //
+    // Antes había que tocarlas una a una, y encima esta lista solo trae los
+    // últimos 7 días mientras el contador cuenta todas: quien tuviera avisos más
+    // viejos no podía bajarlos NUNCA desde la app. Se leían, se cerraba, y la
+    // campana seguía con el mismo número. Por eso se marca por usuario y sin
+    // filtro de fecha.
+    //
+    // El resaltado de "nueva" se conserva en pantalla durante esta visita (el
+    // estado local no se toca), para que el cliente vea cuáles eran nuevas
+    // aunque ya estén marcadas en la base de datos. El badge de la campana se
+    // entera solo: escucha los cambios de la tabla y vuelve a contar.
+    await supabase.from('notificaciones')
+      .update({ leida: true })
+      .eq('usuario_id', user.id)
+      .eq('leida', false)
   }
 
   async function marcarLeida(id) {
@@ -43,7 +60,7 @@ export default function Notificaciones() {
   }
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+    <div className="shell-lista" style={{ animation: 'fadeIn 0.3s ease' }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: '0 0 16px', letterSpacing: '-0.02em' }}>Notificaciones</h2>
       {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>Cargando...</div>}
       {!loading && notifs.length === 0 && (

@@ -73,16 +73,29 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
     if (user && loginOpen) setLoginOpen(false)
   }, [user, loginOpen])
 
+  // Badge de notificaciones sin leer.
+  //
+  // Antes esto solo escuchaba INSERT y hacía `prev + 1`: sabía SUMAR pero no
+  // restar. Al marcar una leída el contador se quedaba clavado hasta recargar la
+  // app entera, así que el cliente leía sus notificaciones y seguía viendo el
+  // mismo número encima de la campana. Ahora escucha cualquier cambio (`*`) y
+  // vuelve a CONTAR contra la base de datos en vez de llevar la cuenta a mano:
+  // así el número no puede desviarse de la realidad, venga el cambio de donde
+  // venga (otra pestaña, otro dispositivo, o la propia pantalla de avisos).
   useEffect(() => {
     if (!user) { setNotifsNoLeidas(0); return }
-    supabase.from('notificaciones').select('id', { count: 'exact', head: true })
+    let vivo = true
+    const contar = () => supabase
+      .from('notificaciones').select('id', { count: 'exact', head: true })
       .eq('usuario_id', user.id).eq('leida', false)
-      .then(({ count }) => setNotifsNoLeidas(count || 0))
+      .then(({ count }) => { if (vivo) setNotifsNoLeidas(count || 0) })
+    contar()
     const ch = supabase.channel('notifs-badge-' + user.id)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: `usuario_id=eq.${user.id}` },
-        () => setNotifsNoLeidas(prev => prev + 1))
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'notificaciones', filter: `usuario_id=eq.${user.id}` },
+        contar)
       .subscribe()
-    return () => supabase.removeChannel(ch)
+    return () => { vivo = false; supabase.removeChannel(ch) }
   }, [user?.id])
 
   // ── Deep link /app/r/<slug> → abrir ESE restaurante dentro del shell ────
@@ -184,13 +197,19 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
     <div style={{ ...shellStyle, minHeight: '100vh', position: 'relative', paddingBottom: 'calc(64px + 20px + env(safe-area-inset-bottom, 0px))' }}>
       <style>{globalCss}</style>
 
+      {/* El fondo del header cruza toda la pantalla (es una barra), pero su
+          contenido se centra con .shell-max: sin esto, en escritorio el botón
+          de categoría y los iconos de la derecha quedan pegados a las esquinas
+          con 1800px de vacío en medio. */}
       <div style={{
-        padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         background: 'rgba(250,250,247,0.85)',
         backdropFilter: 'blur(16px) saturate(180%)',
         WebkitBackdropFilter: 'blur(16px) saturate(180%)',
         borderBottom: '1px solid var(--c-border)',
         position: 'sticky', top: 0, zIndex: 50,
+      }}>
+      <div className="shell-max shell-head" style={{
+        padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {socioData && (
@@ -274,8 +293,9 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           </button>
         </div>
       </div>
+      </div>
 
-      <div className="tablet-pad" style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
+      <div className="tablet-pad shell-max" style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
         <Suspense fallback={SuspenseFallback}>
           {seccion === 'tracking' && pedidoActivo
             ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
@@ -337,6 +357,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           background: 'rgba(15,15,15,0.55)', backdropFilter: 'blur(6px)',
           overflowY: 'auto', animation: 'fadeIn 0.25s ease',
         }}>
+          <div className="login-shell">
           <button
             onClick={() => setLoginOpen(false)}
             aria-label="Cerrar"
@@ -353,6 +374,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
             <X size={18} strokeWidth={2.2} />
           </button>
           <Login dark nextPath={socioData?.slug ? `/s/${socioData.slug}` : null} />
+          </div>
         </div>
       )}
     </div>
@@ -406,14 +428,71 @@ input::-webkit-input-placeholder,textarea::-webkit-input-placeholder{color:rgba(
   .modal-sheet{max-width:560px!important}
   .login-form{max-width:400px!important}
   .legal-content{max-width:700px!important}
+  /* Tope de ancho del shell. shellStyle ya traía margin:'0 auto', pero sin
+     max-width centrar es un no-op: el contenido se estiraba hasta la ventana
+     (a 1920px el buscador medía 1730px). 1380 = el mismo ancho que usa
+     TiendaDesktop.jsx:856 para la tienda pública, para que escritorio hable
+     un solo idioma. Vive DENTRO de la media query: por debajo de 768px —la
+     app de las stores— no existe y el render es idéntico al de siempre. */
+  .shell-max{max-width:1380px;margin-left:auto;margin-right:auto}
+  /* Los bloques de una sola línea (dirección, buscador) no deben estirarse a
+     1380: un input de 1380px no se lee, se sufre. */
+  .shell-narrow{max-width:640px}
+  /* El header sticky va a sangre (su fondo cruza toda la pantalla) pero su
+     CONTENIDO se alinea con el del .tablet-pad, o el botón de categoría queda
+     desalineado con el contenido de abajo. */
+  .shell-head{padding-left:32px!important;padding-right:32px!important}
+  /* Carruseles horizontales (Destacados, Ofertas): en móvil se arrastran con
+     el dedo y funcionan; en escritorio no hay dedo ni flechas, así que las
+     tarjetas de la derecha quedaban cortadas y sin forma de llegar a ellas.
+     A partir de 768px pasan a rejilla. auto-FILL (no auto-fit) a propósito:
+     con 5 destacados y sitio para 4, el quinto ocupa UNA columna en la fila
+     siguiente en vez de estirarse a todo el ancho. */
+  .shell-carrusel{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;gap:20px!important;overflow-x:visible!important}
+  .shell-carrusel>*{min-width:0!important}
+  /* Fila de categorías: mismo problema, pero aquí basta con que baje de línea. */
+  .shell-wrap{flex-wrap:wrap!important;overflow-x:visible!important}
+  /* Contenido de lectura y gestión (notificaciones, pedidos, perfil): NO se
+     reparte en columnas, se limita a un ancho legible. Una fila de 1380px con
+     el título a la izquierda y el dato a la derecha no se lee de un vistazo. */
+  .shell-lista{max-width:760px}
+  /* La carta del restaurante: filas foto+nombre+precio. Se reparten en columnas
+     de mínimo 380px para que la descripción siga cabiendo (con .tablet-grid a
+     4 columnas quedarían en 310px y el texto se rompería). */
+  .shell-carta{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(380px,1fr))!important;gap:12px!important}
+  .shell-carta>*{margin-bottom:0!important}
+  /* Modales. En móvil son bottom-sheets: suben desde abajo, esquinas de arriba
+     redondeadas, pegados al filo inferior — el gesto que espera un pulgar. En
+     escritorio no hay pulgar: una tira soldada al borde de abajo con 750px de
+     oscuridad a cada lado es un accidente, no un diseño. A partir de 768px se
+     centran y se cierran por los cuatro lados. El override de la animación es
+     obligatorio: el slideUp inline entra desde abajo y descuadra un modal ya
+     centrado. Cubre el carrito, el modal de extras y el de borrar cuenta. */
+  .modal-overlay{align-items:center!important}
+  .modal-sheet{border-radius:20px!important;max-height:86vh!important;animation:fadeIn .2s ease!important}
+  /* El mapa: su calc(100vh - 160px) descuenta 160px de cromo cuando en
+     escritorio hay 236. Sobraba pantalla en blanco y la barra flotante tapaba
+     el borde de abajo del lienzo. El valor de móvil está calibrado a mano
+     contra el WebView y no se toca. */
+  .mapa-canvas{height:calc(100vh - 236px)!important}
 }
 @media(min-width:1024px){
   .tablet-grid{grid-template-columns:repeat(3,1fr)!important}
   .tablet-pad{padding:28px 48px!important}
+  .shell-head{padding-left:48px!important;padding-right:48px!important}
   .bottom-nav-wrap{max-width:650px!important}
   .modal-sheet{max-width:650px!important}
   .login-form{max-width:440px!important}
   .legal-content{max-width:900px!important}
+  .mapa-canvas{height:calc(100vh - 244px)!important}
+  /* Login: el formulario mide 340px y la X estaba fija contra la esquina de la
+     PANTALLA, o sea a ~790px del cuadro que cierra. Deja de leerse como parte
+     del diálogo. Aquí se ancla al propio formulario. */
+  .login-shell{max-width:460px;margin:0 auto;min-height:100vh;display:flex;align-items:center;position:relative}
+  .login-shell>button{position:absolute!important;top:24px!important;right:0!important}
+}
+@media(min-width:1500px){
+  .tablet-grid{grid-template-columns:repeat(4,1fr)!important}
 }
 @media(max-width:359px){
   .small-text{font-size:11px!important}
