@@ -70,8 +70,10 @@
 	<string>Pidoo usa tu ubicación para mostrar restaurantes cercanos y calcular el envío.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Pidoo usa tu ubicación para mostrar restaurantes cercanos y calcular el envío.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pidoo usa el micrófono cuando grabas un vídeo de tu pedido para el programa Pidoo Creadores.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Pidoo necesita la cámara para tomar tu foto de perfil.</string>
+	<string>Pidoo usa la cámara para tu foto de perfil y para grabar vídeos de tus pedidos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pidoo accede a tus fotos para establecer tu avatar.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
