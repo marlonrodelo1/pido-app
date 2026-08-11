@@ -97,15 +97,21 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
   )
 }
 
+// Versión del texto de condiciones que el cliente acepta. Se guarda con la
+// participación: si el texto cambia, hay que subir esto, o dentro de un año no
+// se podrá saber qué aceptó exactamente cada uno.
+export const CONDICIONES_VERSION = 'creadores-2026-08-11'
+
 function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHecho }) {
   const [url, setUrl] = useState('')
   const [aceptaPubli, setAceptaPubli] = useState(false)
+  const [aceptaCond, setAceptaCond] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const [copiado, setCopiado] = useState(false)
 
   const analisis = url.trim() ? analizarUrlVideo(url) : null
-  const puedeEnviar = analisis?.ok && aceptaPubli && !enviando
+  const puedeEnviar = analisis?.ok && aceptaPubli && aceptaCond && !enviando
   const textoPubli = `#publi · en colaboración con ${establecimientoNombre || 'este restaurante'}`
 
   async function enviar() {
@@ -117,6 +123,7 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
       p_red: analisis.red,
       p_video_id: analisis.videoId,
       p_usuario_red: analisis.usuario,
+      p_condiciones_version: CONDICIONES_VERSION,
     })
     setEnviando(false)
     if (err) { setError(traducir(err.message)); return }
@@ -228,6 +235,42 @@ function ModalRegistrar({ pedido, establecimientoNombre, escalera, onClose, onHe
           <div style={{ fontSize: 11, color: C.stone2, marginTop: 7, lineHeight: 1.4 }}>
             Pégalo en la descripción, o usa la etiqueta de colaboración pagada de la propia red.
           </div>
+        </div>
+
+        {/* Segunda casilla: lo que el cliente DECLARA y AUTORIZA. Separada de la
+            anterior a propósito: son dos actos distintos —una obligación legal
+            suya y una autorización a Pidoo— y mezclarlas en una sola casilla
+            debilita las dos. Ambas quedan registradas con fecha y versión. */}
+        <div style={{
+          marginTop: 10, padding: 12, borderRadius: 12,
+          background: '#fff', border: `1px solid ${C.border}`,
+        }}>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+            <input
+              type="checkbox" checked={aceptaCond}
+              onChange={e => setAceptaCond(e.target.checked)}
+              style={{ width: 18, height: 18, marginTop: 1, accentColor: C.burnt, flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.45 }}>
+              Declaro que el vídeo es <strong>mío</strong> y acepto las condiciones del programa.
+            </span>
+          </label>
+
+          <ul style={{
+            margin: '9px 0 0 28px', padding: 0, listStyle: 'disc',
+            fontSize: 11.5, color: C.stone, lineHeight: 1.55,
+          }}>
+            <li>Lo he grabado y publicado yo, y sale mi pedido de {establecimientoNombre || 'este restaurante'}.</li>
+            <li>Autorizo a Pidoo y al restaurante a <strong>ver el vídeo y su número de visualizaciones</strong> para comprobar el premio.</li>
+            <li>Autorizo a que <strong>lo compartan en sus redes</strong> citando mi cuenta, mientras el vídeo esté público.</li>
+            <li>Tengo <strong>14 años o más</strong>.</li>
+            <li>
+              Acepto los{' '}
+              <a href="/terminos" target="_blank" rel="noopener noreferrer" style={{ color: C.terracotta, fontWeight: 700 }}>términos</a>
+              {' '}y la{' '}
+              <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: C.terracotta, fontWeight: 700 }}>política de privacidad</a>.
+            </li>
+          </ul>
         </div>
 
         {error && (
