@@ -10,26 +10,38 @@ import { supabase } from '../lib/supabase'
 // programa existe. Esto es lo único que lo cuenta antes.
 //
 // TRES REGLAS PARA QUE NO SEA RUIDO:
-//  1. Solo si hay ALGÚN restaurante con el programa abierto y con escalera. Sin
-//     esto se le prometerían premios a alguien que no puede conseguir ninguno:
-//     toca, no pasa nada, y la próxima vez ya no mira.
+//  1. Solo si el programa lo tiene abierto ALGUNO DE LOS RESTAURANTES QUE ESE
+//     CLIENTE ESTÁ VIENDO. No basta con que exista alguno en toda la
+//     plataforma: en el marketplace de un socio solo se ven los restaurantes de
+//     ese socio, y filtrando por Farmacia o Marketplace no sale ni uno de
+//     comida. Prometer premios que no se pueden conseguir se paga caro: se
+//     toca, no pasa nada, y la próxima vez ya no se mira.
 //  2. Desaparece solo en cuanto el cliente registra su primer vídeo: ya se enteró.
 //  3. Se puede cerrar, y se queda cerrado. Un banner que no se puede quitar es un
 //     banner que la gente aprende a ignorar.
 
 const CERRADO_KEY = 'pidoo_creadores_banner_cerrado'
 
-export default function CreadoresBanner({ onAbrir }) {
+export default function CreadoresBanner({ onAbrir, establecimientos = null }) {
   const { user } = useAuth()
   const [mostrar, setMostrar] = useState(false)
+
+  // Los ids que el cliente tiene delante. Se calcula aparte para que el efecto
+  // no se dispare en cada render por recibir un array nuevo con el mismo
+  // contenido (la Home los remapea al refrescar por realtime).
+  const idsVisibles = (establecimientos || []).map(e => e?.id).filter(Boolean).sort().join(',')
 
   useEffect(() => {
     let vivo = true
     async function mirar() {
+      setMostrar(false)
       try { if (localStorage.getItem(CERRADO_KEY) === '1') return } catch (_) {}
+      if (!idsVisibles) return
 
-      const { data: hay } = await supabase.rpc('creadores_hay_programa_activo')
-      if (!vivo || hay !== true) return
+      const { data } = await supabase.rpc('creadores_programas_abiertos')
+      if (!vivo) return
+      const conPremios = new Set((Array.isArray(data) ? data : []).map(r => r.establecimiento_id))
+      if (!idsVisibles.split(',').some(id => conPremios.has(id))) return
 
       // Si ya participa, no hay nada que descubrirle.
       if (user) {
@@ -42,7 +54,7 @@ export default function CreadoresBanner({ onAbrir }) {
     }
     mirar()
     return () => { vivo = false }
-  }, [user])
+  }, [user, idsVisibles])
 
   if (!mostrar) return null
 

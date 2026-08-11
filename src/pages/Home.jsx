@@ -634,8 +634,11 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       </div>
 
       {/* ── Pidoo Creadores: lo único que cuenta el programa ANTES de pedir.
-             Se pinta solo si hay algún restaurante con el programa abierto. ── */}
-      <CreadoresBanner onAbrir={onOpenCreadores} />
+             Se le pasan los restaurantes que ESTE cliente está viendo: el banner
+             solo sale si alguno de ellos tiene el programa abierto. En el
+             marketplace de un socio, o filtrando por Farmacia, puede no haber
+             ninguno aunque en la plataforma exista. ── */}
+      <CreadoresBanner onAbrir={onOpenCreadores} establecimientos={establecimientos} />
 
       {/* ── Destacados (280px cards, 176px image, 22px radius, glass) ── */}
       {!busqueda && !catActiva && destacados.length > 0 && (
