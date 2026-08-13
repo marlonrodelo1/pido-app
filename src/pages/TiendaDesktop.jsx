@@ -1,13 +1,25 @@
 // TiendaDesktop.jsx
 // Vista desktop (≥1024px) de la tienda pública del restaurante (pidoo.es/<slug>).
-// Layout de 3 columnas: sidebar categorías · grid productos · carrito sticky.
+//
+// Estructura (referencia: Uber Eats / Glovo en escritorio):
+//   fila superior → panel de identidad (izq, 300px) + banner dentro de la caja (dcha)
+//   fila inferior → navegación de categorías (izq, sticky) · carta · carrito (dcha, sticky)
+//
+// Decisiones que NO son estéticas:
+//  · Las categorías NAVEGAN (anclas + scroll-spy), no filtran. Filtrar escondía
+//    el resto de la carta, que es justo lo que el cliente viene a ver.
+//  · Un producto SIN foto no pinta ilustración de relleno: con 24 fotos de 86
+//    productos (Mamma Mia) o 0 de 53 (Octava Isla), el relleno convertía la
+//    carta en un muro de iconos idénticos. Sin foto, el texto ocupa la tarjeta.
+//  · El selector Entrega/Recogida vive ARRIBA y siempre visible. Antes estaba
+//    dentro del carrito y solo aparecía con productos ya añadidos.
 //
 // IMPORTANTE: reutiliza CartContext + AuthContext + queries de Supabase.
 // La lógica de checkout (Stripe, validación de dirección, etc.) sigue viviendo
 // en Carrito.jsx — al pulsar "Pagar" abrimos el modal de Carrito existente.
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Star, MapPin, Clock, Phone, Mail, ShoppingCart, Plus, Minus, Trash2, Lock, UtensilsCrossed, Bike, ShoppingBag } from 'lucide-react'
+import { Star, MapPin, Clock, Phone, Mail, ShoppingCart, Plus, Minus, Trash2, Lock, UtensilsCrossed, Bike, ShoppingBag, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
@@ -45,6 +57,21 @@ const SH = {
 }
 
 const fmt = (n) => `${(n || 0).toFixed(2).replace('.', ',')} €`
+
+// Quita tildes y baja a minúsculas para que "jamon" encuentre "jamón".
+const norm = (s) => (s || '')
+  .toString()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+
+const TIPO_LABEL = {
+  restaurante: 'Restaurante',
+  pizzeria: 'Pizzería',
+  minimarket: 'Minimarket',
+  farmacia: 'Farmacia',
+  cafeteria: 'Cafetería',
+}
 
 /* ─── Modal de producto con tamaños y extras ───────────────── */
 function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
@@ -280,11 +307,17 @@ function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
   )
 }
 
-/* ─── ProductCardDesktop ──────────────────────────────────── */
-function ProductCardDesktop({ p, est, onAddSimple, onOpenModal, carrito, updateCantidad, hasConfig, cerrado, getPrecio }) {
+/* ─── ProductRow ───────────────────────────────────────────────
+   Tarjeta horizontal: texto a la izquierda, foto pequeña a la derecha.
+   Sin foto NO se pinta hueco — el texto ocupa toda la tarjeta. */
+function ProductRow({ p, onAddSimple, onOpenModal, carrito, updateCantidad, hasConfig, cerrado, getPrecio }) {
   const enCarritoIdx = carrito.findIndex(i => i.producto_id === p.id)
   const enCarrito = enCarritoIdx >= 0 ? carrito[enCarritoIdx] : null
   const precio = getPrecio ? getPrecio(p) : p.precio
+  // Una URL de foto rota dejaría un cuadrado gris vacío, que se ve peor que no
+  // tener foto. Si falla la carga, la tarjeta pasa a texto a todo el ancho.
+  const [fotoRota, setFotoRota] = useState(false)
+  const tieneFoto = !!p.imagen_url && !fotoRota
 
   function handleAdd(e) {
     e.stopPropagation()
@@ -306,303 +339,270 @@ function ProductCardDesktop({ p, est, onAddSimple, onOpenModal, carrito, updateC
 
   return (
     <div
-      onClick={hasConfig ? () => onOpenModal(p) : undefined}
+      className="td-card"
+      onClick={cerrado ? undefined : () => onOpenModal(p)}
       style={{
-        background: C.paper, borderRadius: 14, padding: 14,
+        background: C.paper, borderRadius: 14,
         border: `1px solid ${C.border}`,
-        display: 'flex', flexDirection: 'column',
-        cursor: cerrado ? 'default' : (hasConfig ? 'pointer' : 'default'),
-        opacity: cerrado ? 0.65 : 1,
-        transition: 'transform .15s, box-shadow .15s',
-        position: 'relative', minHeight: 220,
+        padding: 14, minHeight: 124,
+        display: 'flex', gap: 14, alignItems: 'flex-start',
+        position: 'relative',
+        cursor: cerrado ? 'default' : 'pointer',
+        opacity: cerrado ? 0.6 : 1,
+        transition: 'box-shadow .15s, border-color .15s',
       }}
-      onMouseEnter={e => { if (!cerrado) e.currentTarget.style.boxShadow = SH.md }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
     >
       <div style={{
-        width: '100%', aspectRatio: '1.4', borderRadius: 10,
-        background: C.cream2, marginBottom: 12,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
+        flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+        // hueco para que el botón + / el contador no pisen el precio
+        paddingRight: tieneFoto ? 0 : 52,
       }}>
-        {p.imagen_url
-          ? <img src={p.imagen_url} alt={p.nombre} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-          : <div style={{ transform: 'scale(1.2)' }}><FoodIcon kw={p.nombre} size={86}/></div>
-        }
-      </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{p.nombre}</div>
-      {p.descripcion && (
         <div style={{
-          fontSize: 12, color: C.stone, marginTop: 4, lineHeight: 1.45, flex: 1,
+          fontSize: 15, fontWeight: 700, color: C.ink, lineHeight: 1.3,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-        }}>{p.descripcion}</div>
+        }}>{p.nombre}</div>
+        {p.descripcion && (
+          <div style={{
+            fontSize: 12.5, color: C.stone, marginTop: 5, lineHeight: 1.45,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>{p.descripcion}</div>
+        )}
+        <div style={{ flex: 1, minHeight: 8 }}/>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ fontSize: 16, color: C.ink, fontWeight: 800 }}>{fmt(precio)}</span>
+          {hasConfig && (
+            <span style={{ fontSize: 11, color: C.stone2, fontWeight: 600 }}>· opciones</span>
+          )}
+        </div>
+      </div>
+
+      {tieneFoto && (
+        <div style={{
+          width: 104, height: 104, borderRadius: 12, flexShrink: 0,
+          background: C.cream2, overflow: 'hidden',
+        }}>
+          <img
+            src={p.imagen_url} alt={p.nombre} loading="lazy"
+            onError={() => setFotoRota(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
-        <span style={{ fontSize: 18, color: C.terracotta, fontWeight: 800 }}>{fmt(precio)}</span>
+
+      {/* Acción: + o contador. Superpuesto abajo a la derecha (como Uber). */}
+      <div style={{ position: 'absolute', right: 10, bottom: 10 }}>
         {enCarrito && !hasConfig ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={handleMinus} style={{
-              width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`,
-              background: C.cream, color: C.ink, cursor: 'pointer',
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: C.paper, borderRadius: 999, padding: 3,
+            border: `1px solid ${C.border}`, boxShadow: SH.sm,
+          }}>
+            <button onClick={handleMinus} aria-label="Quitar uno" style={{
+              width: 28, height: 28, borderRadius: '50%', border: 'none',
+              background: C.cream2, color: C.ink, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'inherit',
-            }}><Minus size={14}/></button>
-            <span style={{ minWidth: 22, textAlign: 'center', fontWeight: 800, fontSize: 14, color: C.ink }}>{enCarrito.cantidad}</span>
-            <button onClick={handleAdd} style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none',
+            }}><Minus size={13}/></button>
+            <span style={{ minWidth: 18, textAlign: 'center', fontWeight: 800, fontSize: 13, color: C.ink }}>{enCarrito.cantidad}</span>
+            <button onClick={handleAdd} aria-label="Añadir uno" style={{
+              width: 28, height: 28, borderRadius: '50%', border: 'none',
               background: C.terracotta, color: '#fff', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'inherit',
-            }}><Plus size={14}/></button>
+            }}><Plus size={13}/></button>
           </div>
         ) : (
           <button
             onClick={handleAdd}
             disabled={cerrado}
+            aria-label={`Añadir ${p.nombre}`}
             style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: cerrado ? C.cream2 : `linear-gradient(180deg, ${C.ink2}, ${C.ink})`,
-              color: cerrado ? C.stone2 : '#fff',
-              border: 'none', cursor: cerrado ? 'not-allowed' : 'pointer',
-              boxShadow: cerrado ? 'none' : SH.glossy,
+              width: 34, height: 34, borderRadius: '50%',
+              background: cerrado ? C.cream2 : '#fff',
+              color: cerrado ? C.stone2 : C.ink,
+              border: `1px solid ${cerrado ? C.border : 'rgba(26,24,21,0.12)'}`,
+              cursor: cerrado ? 'not-allowed' : 'pointer',
+              boxShadow: cerrado ? 'none' : '0 2px 8px rgba(26,24,21,0.16)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
-          ><Plus size={16}/></button>
+          ><Plus size={17} strokeWidth={2.4}/></button>
         )}
       </div>
     </div>
   )
 }
 
-/* ─── CategoriaSidebar ────────────────────────────────────── */
-function CategoriaSidebar({ categorias, productos, activeId, onChange }) {
+/* ─── CategoriaNav (anclas + scroll-spy) ──────────────────── */
+function CategoriaNav({ secciones, activa, onIr }) {
+  if (secciones.length === 0) return null
   return (
-    <aside style={{ position: 'sticky', top: 20, width: 196, flexShrink: 0, alignSelf: 'flex-start' }}>
+    <nav>
       <div style={{
         fontSize: 11, fontWeight: 700, color: C.stone, textTransform: 'uppercase',
         letterSpacing: '0.06em', marginBottom: 10, padding: '0 12px',
-      }}>Categorías</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div
-          onClick={() => onChange(null)}
-          style={{
-            padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-            background: !activeId ? C.cream2 : 'transparent',
-            color: !activeId ? C.ink : C.stone,
-            fontWeight: !activeId ? 600 : 500, fontSize: 14,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderLeft: !activeId ? `3px solid ${C.terracotta}` : '3px solid transparent',
-            transition: 'all .15s',
-          }}
-        >
-          <span>Todos</span>
-          <span style={{ fontSize: 11, color: C.stone2, fontWeight: 600 }}>{productos.length}</span>
-        </div>
-        {categorias.map(cat => {
-          const n = productos.filter(p => p.categoria_id === cat.id).length
-          if (n === 0) return null
-          const isActive = cat.id === activeId
+      }}>Carta</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 'calc(100vh - 130px)', overflowY: 'auto' }}>
+        {secciones.map(s => {
+          const isActive = s.key === activa
           return (
-            <div
-              key={cat.id}
-              onClick={() => onChange(cat.id)}
+            <button
+              key={s.key}
+              onClick={() => onIr(s.key)}
               style={{
-                padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
                 background: isActive ? C.cream2 : 'transparent',
                 color: isActive ? C.ink : C.stone,
-                fontWeight: isActive ? 600 : 500, fontSize: 14,
+                fontWeight: isActive ? 700 : 500, fontSize: 14,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                borderLeft: isActive ? `3px solid ${C.terracotta}` : '3px solid transparent',
-                transition: 'all .15s',
+                border: 'none',
+                borderLeft: `3px solid ${isActive ? C.terracotta : 'transparent'}`,
+                transition: 'all .15s', textAlign: 'left', width: '100%',
+                fontFamily: 'inherit',
               }}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.nombre}</span>
-              <span style={{ fontSize: 11, color: C.stone2, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>{n}</span>
-            </div>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nombre}</span>
+              <span style={{ fontSize: 11, color: C.stone2, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>{s.n}</span>
+            </button>
           )
         })}
       </div>
-    </aside>
+    </nav>
   )
 }
 
 /* ─── CartSticky (carrito persistente columna derecha) ─────── */
-function CartSticky({ est, deliveryDisponible, cerrado, onCheckout }) {
+function CartSticky({ est, cerrado, onCheckout }) {
   const {
-    carrito, removeItem, updateCantidad, totalItems,
-    subtotal, envio, total, propina,
-    modoEntrega, setModoEntrega, elegirEntrega,
+    carrito, removeItem, updateCantidad,
+    envio, total, propina, modoEntrega,
   } = useCart()
   const itemsDeEsteResto = carrito.filter(i => i.establecimiento_id === est.id)
   const cantDeEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.cantidad, 0)
   const subtotalEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.precio_unitario * i.cantidad, 0)
   const vacio = cantDeEsteResto === 0
 
-  // Si no hay reparto disponible, forzar recogida (evita un carrito en modo
-  // delivery cuando solo se puede recoger).
-  useEffect(() => {
-    if (!deliveryDisponible && modoEntrega === 'delivery') elegirEntrega('recogida')
-  }, [deliveryDisponible, modoEntrega])
-
   return (
-    <aside style={{ position: 'sticky', top: 20, width: 336, flexShrink: 0, alignSelf: 'flex-start' }}>
+    <div style={{
+      background: C.paper, borderRadius: 16, overflow: 'hidden',
+      boxShadow: SH.md, border: `1px solid ${C.border}`,
+    }}>
       <div style={{
-        background: C.paper, borderRadius: 16, overflow: 'hidden',
-        boxShadow: SH.md, border: `1px solid ${C.border}`,
+        padding: '14px 18px', borderBottom: `1px solid ${C.cream2}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{
-          padding: '14px 18px', borderBottom: `1px solid ${C.cream2}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: C.ink }}>Tu pedido</div>
-          {!vacio && (
-            <div style={{
-              fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
-              background: C.terracottaSoft, color: C.terracotta2,
-            }}>{cantDeEsteResto}</div>
-          )}
-        </div>
-
-        {vacio ? (
-          <div style={{ padding: '50px 24px', textAlign: 'center', color: C.stone2 }}>
-            <ShoppingCart size={42} strokeWidth={1.5}/>
-            <div style={{ fontSize: 14, marginTop: 14, fontWeight: 700, color: C.stone }}>Tu carrito está vacío</div>
-            <div style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
-              Añade productos del catálogo para empezar.
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Selector entrega */}
-            <div style={{ padding: 12, display: 'flex', gap: 6, background: C.cream }}>
-              {deliveryDisponible ? (
-                <>
-                  <button
-                    onClick={() => elegirEntrega('delivery')}
-                    style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10,
-                      border: modoEntrega === 'delivery' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
-                      background: modoEntrega === 'delivery' ? C.terracottaSoft : C.paper,
-                      color: modoEntrega === 'delivery' ? C.terracotta2 : C.ink,
-                      fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
-                  ><Bike size={13}/> Delivery</button>
-                  <button
-                    onClick={() => elegirEntrega('recogida')}
-                    style={{
-                      flex: 1, padding: '10px 0', borderRadius: 10,
-                      border: modoEntrega === 'recogida' ? `1.5px solid ${C.terracotta}` : `1px solid ${C.border}`,
-                      background: modoEntrega === 'recogida' ? C.terracottaSoft : C.paper,
-                      color: modoEntrega === 'recogida' ? C.terracotta2 : C.ink,
-                      fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
-                  ><ShoppingBag size={13}/> Recogida</button>
-                </>
-              ) : (
-                <div style={{
-                  flex: 1, padding: '10px 0', borderRadius: 10,
-                  border: `1.5px solid ${C.terracotta}`, background: C.terracottaSoft,
-                  color: C.terracotta2, fontSize: 12, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}><ShoppingBag size={13}/> Solo recogida</div>
-              )}
-            </div>
-
-            {/* Items */}
-            <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto' }}>
-              {itemsDeEsteResto.map((it) => {
-                const idx = carrito.indexOf(it)
-                const extrasTxt = (() => {
-                  if (!it.extras || it.extras.length === 0) return null
-                  if (typeof it.extras[0] === 'object' && it.extras[0] !== null && 'opciones' in it.extras[0]) {
-                    return it.extras.flatMap(g => (g.opciones || []).map(o => o.nombre)).join(' · ')
-                  }
-                  return it.extras.join(' · ')
-                })()
-                return (
-                  <div key={`${it.producto_id}-${idx}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 10, background: C.cream2,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      overflow: 'hidden',
-                    }}>
-                      <div style={{ transform: 'scale(0.5)', transformOrigin: 'center', display: 'flex' }}>
-                        <FoodIcon kw={it.nombre} size={86}/>
-                      </div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {it.nombre}{it.tamano ? ` · ${it.tamano}` : ''}
-                      </div>
-                      {extrasTxt && (
-                        <div style={{ fontSize: 10, color: C.stone, marginTop: 2, lineHeight: 1.3,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {extrasTxt}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <button onClick={() => updateCantidad(idx, it.cantidad - 1)} style={{
-                          width: 22, height: 22, borderRadius: '50%', border: `1px solid ${C.border}`,
-                          background: C.paper, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.ink,
-                        }}><Minus size={10}/></button>
-                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 16, textAlign: 'center', color: C.ink }}>{it.cantidad}</span>
-                        <button onClick={() => updateCantidad(idx, it.cantidad + 1)} style={{
-                          width: 22, height: 22, borderRadius: '50%', border: 'none',
-                          background: C.terracotta, color: '#fff', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}><Plus size={10}/></button>
-                        <button
-                          onClick={() => removeItem(idx)}
-                          title="Eliminar"
-                          style={{
-                            width: 22, height: 22, borderRadius: '50%', border: 'none',
-                            background: 'transparent', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: C.stone2, marginLeft: 'auto',
-                          }}
-                        ><Trash2 size={12}/></button>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 13, color: C.terracotta, fontWeight: 800, minWidth: 56, textAlign: 'right' }}>
-                      {fmt(it.precio_unitario * it.cantidad)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Totales */}
-            <div style={{ padding: 16, borderTop: `1px solid ${C.cream2}`, background: C.cream }}>
-              <ResLine label="Subtotal" value={fmt(subtotalEsteResto)}/>
-              {modoEntrega === 'delivery' && envio > 0 && <ResLine label="Envío" value={fmt(envio)}/>}
-              {propina > 0 && <ResLine label="Propina" value={fmt(propina)}/>}
-              <div style={{ height: 1, background: C.border, margin: '10px 0' }}/>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontWeight: 700, color: C.ink, fontSize: 14 }}>Total</span>
-                <span style={{ fontSize: 22, color: C.ink, fontWeight: 800 }}>{fmt(total)}</span>
-              </div>
-              <button
-                onClick={cerrado ? undefined : onCheckout}
-                disabled={cerrado}
-                style={{
-                  width: '100%', marginTop: 14, padding: '14px 0', borderRadius: 12,
-                  border: 'none', background: cerrado ? C.cream2 : C.terracotta,
-                  color: cerrado ? C.stone : '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
-                  cursor: cerrado ? 'not-allowed' : 'pointer', boxShadow: cerrado ? 'none' : SH.glossy,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  letterSpacing: '0.01em',
-                }}
-              >
-                <Lock size={14}/> {cerrado ? 'Restaurante cerrado' : `Pagar ${fmt(total)}`}
-              </button>
-            </div>
-          </>
+        <div style={{ fontSize: 16, fontWeight: 800, color: C.ink }}>Tu pedido</div>
+        {!vacio && (
+          <div style={{
+            fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
+            background: C.terracottaSoft, color: C.terracotta2,
+          }}>{cantDeEsteResto}</div>
         )}
       </div>
-    </aside>
+
+      {vacio ? (
+        <div style={{ padding: '38px 24px', textAlign: 'center', color: C.stone2 }}>
+          <ShoppingCart size={38} strokeWidth={1.5}/>
+          <div style={{ fontSize: 14, marginTop: 12, fontWeight: 700, color: C.stone }}>Tu carrito está vacío</div>
+          <div style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+            Añade productos de la carta para empezar.
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Items */}
+          <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto' }}>
+            {itemsDeEsteResto.map((it) => {
+              const idx = carrito.indexOf(it)
+              const extrasTxt = (() => {
+                if (!it.extras || it.extras.length === 0) return null
+                if (typeof it.extras[0] === 'object' && it.extras[0] !== null && 'opciones' in it.extras[0]) {
+                  return it.extras.flatMap(g => (g.opciones || []).map(o => o.nombre)).join(' · ')
+                }
+                return it.extras.join(' · ')
+              })()
+              return (
+                <div key={`${it.producto_id}-${idx}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 10, background: C.cream2,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    overflow: 'hidden',
+                  }}>
+                    {it.imagen_url
+                      ? <img src={it.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                      : (
+                        <div style={{ transform: 'scale(0.5)', transformOrigin: 'center', display: 'flex' }}>
+                          <FoodIcon kw={it.nombre} size={86}/>
+                        </div>
+                      )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {it.nombre}{it.tamano ? ` · ${it.tamano}` : ''}
+                    </div>
+                    {extrasTxt && (
+                      <div style={{ fontSize: 10, color: C.stone, marginTop: 2, lineHeight: 1.3,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {extrasTxt}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                      <button onClick={() => updateCantidad(idx, it.cantidad - 1)} style={{
+                        width: 22, height: 22, borderRadius: '50%', border: `1px solid ${C.border}`,
+                        background: C.paper, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.ink,
+                      }}><Minus size={10}/></button>
+                      <span style={{ fontSize: 12, fontWeight: 700, minWidth: 16, textAlign: 'center', color: C.ink }}>{it.cantidad}</span>
+                      <button onClick={() => updateCantidad(idx, it.cantidad + 1)} style={{
+                        width: 22, height: 22, borderRadius: '50%', border: 'none',
+                        background: C.terracotta, color: '#fff', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}><Plus size={10}/></button>
+                      <button
+                        onClick={() => removeItem(idx)}
+                        title="Eliminar"
+                        style={{
+                          width: 22, height: 22, borderRadius: '50%', border: 'none',
+                          background: 'transparent', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: C.stone2, marginLeft: 'auto',
+                        }}
+                      ><Trash2 size={12}/></button>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 13, color: C.ink, fontWeight: 800, minWidth: 56, textAlign: 'right' }}>
+                    {fmt(it.precio_unitario * it.cantidad)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Totales */}
+          <div style={{ padding: 16, borderTop: `1px solid ${C.cream2}`, background: C.cream }}>
+            <ResLine label="Subtotal" value={fmt(subtotalEsteResto)}/>
+            {modoEntrega === 'delivery' && envio > 0 && <ResLine label="Envío" value={fmt(envio)}/>}
+            {propina > 0 && <ResLine label="Propina" value={fmt(propina)}/>}
+            <div style={{ height: 1, background: C.border, margin: '10px 0' }}/>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontWeight: 700, color: C.ink, fontSize: 14 }}>Total</span>
+              <span style={{ fontSize: 22, color: C.ink, fontWeight: 800 }}>{fmt(total)}</span>
+            </div>
+            <button
+              onClick={cerrado ? undefined : onCheckout}
+              disabled={cerrado}
+              style={{
+                width: '100%', marginTop: 14, padding: '14px 0', borderRadius: 12,
+                border: 'none', background: cerrado ? C.cream2 : C.terracotta,
+                color: cerrado ? C.stone : '#fff', fontSize: 15, fontWeight: 800, fontFamily: 'inherit',
+                cursor: cerrado ? 'not-allowed' : 'pointer', boxShadow: cerrado ? 'none' : SH.glossy,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                letterSpacing: '0.01em',
+              }}
+            >
+              <Lock size={14}/> {cerrado ? 'Restaurante cerrado' : `Pagar ${fmt(total)}`}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -615,11 +615,16 @@ function ResLine({ label, value, tone }) {
   )
 }
 
-/* ─── HeroBannerWide ──────────────────────────────────────── */
-function HeroBannerWide({ est }) {
-  const tagline = [est.tipo, est.direccion?.split(',').slice(-2, -1)?.[0]?.trim()].filter(Boolean).join(' · ')
+/* ─── HeroCard ─────────────────────────────────────────────────
+   El banner va DENTRO de la caja de contenido, no a sangre: pegado a los
+   bordes de la ventana quedaba desconectado del resto y se comía 240px de
+   alto en cuanto la pantalla era ancha. */
+function HeroCard({ est }) {
   return (
-    <div style={{ position: 'relative', height: 'clamp(170px, 20vw, 240px)', overflow: 'hidden' }}>
+    <div style={{
+      position: 'relative', borderRadius: 18, overflow: 'hidden',
+      minHeight: 260, border: `1px solid ${C.border}`, background: C.cream2,
+    }}>
       {est.banner_url ? (
         <>
           <div style={{
@@ -628,7 +633,7 @@ function HeroBannerWide({ est }) {
           }}/>
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'linear-gradient(180deg, rgba(26,24,21,0.0) 0%, rgba(26,24,21,0.35) 100%)',
+            background: 'linear-gradient(180deg, rgba(26,24,21,0.0) 55%, rgba(26,24,21,0.18) 100%)',
           }}/>
         </>
       ) : (
@@ -645,18 +650,116 @@ function HeroBannerWide({ est }) {
           </svg>
         </>
       )}
-      {tagline && (
+    </div>
+  )
+}
+
+/* ─── InfoPanel (identidad del restaurante, columna izquierda) ─ */
+function InfoPanel({ est, estadoAbierto, cerrado, deliveryDisponible }) {
+  const [verHorarios, setVerHorarios] = useState(false)
+  const tipo = TIPO_LABEL[est.tipo] || (est.tipo ? est.tipo[0].toUpperCase() + est.tipo.slice(1) : null)
+
+  return (
+    <div style={{
+      background: C.paper, border: `1px solid ${C.border}`, borderRadius: 18,
+      padding: 22, display: 'flex', flexDirection: 'column', gap: 14,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
         <div style={{
-          position: 'absolute', inset: 0, padding: 28,
-          color: '#fff', display: 'flex', alignItems: 'flex-end',
+          width: 58, height: 58, borderRadius: '50%', flexShrink: 0,
+          background: '#fff', border: `1px solid ${C.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden', boxShadow: SH.sm,
         }}>
-          <div style={{
-            fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
-            textTransform: 'uppercase', opacity: 0.92,
-            textShadow: '0 1px 2px rgba(0,0,0,0.25)',
-          }}>{tagline}</div>
+          {est.logo_url
+            ? <img src={est.logo_url} alt={est.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }}/>
+            : <div style={{ transform: 'scale(0.55)' }}><FoodIcon kw={est.tipo || ''} size={70}/></div>
+          }
+        </div>
+        <h1 style={{
+          fontSize: 'clamp(20px, 1.7vw, 25px)', fontWeight: 800, color: C.ink, margin: 0,
+          letterSpacing: '-0.02em', lineHeight: 1.15, minWidth: 0,
+        }}>{est.nombre}</h1>
+      </div>
+
+      {/* Valoración y tipo — una sola línea, como en los marketplaces */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13, color: C.stone }}>
+        {est.rating > 0 && (
+          <>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: C.ink, fontWeight: 700 }}>
+              <Star size={13} fill={C.warning} color={C.warning}/>
+              {est.rating.toFixed(1)}
+            </span>
+            {est.total_resenas > 0 && <span>({est.total_resenas})</span>}
+            {tipo && <span>·</span>}
+          </>
+        )}
+        {tipo && <span style={{ fontWeight: 600 }}>{tipo}</span>}
+      </div>
+
+      {est.descripcion && (
+        <div style={{
+          fontSize: 12.5, color: C.stone, lineHeight: 1.5,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>{est.descripcion}</div>
+      )}
+
+      <div style={{ height: 1, background: C.cream2 }}/>
+
+      {/* Estado + horario de hoy. La dirección solo aparece AQUÍ (antes salía
+          también flotando sobre el banner: el mismo dato dos veces). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 5,
+            background: cerrado ? C.danger : C.sage,
+          }}/>
+          <span style={{ color: cerrado ? C.danger : C.sage2, fontWeight: 700 }}>
+            {cerrado
+              ? (estadoAbierto.proximaApertura || 'Cerrado ahora')
+              : `Abierto${estadoAbierto.turnoActual?.abre ? ` · ${estadoAbierto.turnoActual.abre}–${estadoAbierto.turnoActual.cierra}` : ''}`}
+          </span>
+        </div>
+        {est.direccion && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: C.stone }}>
+            <MapPin size={14} style={{ flexShrink: 0, marginTop: 2 }}/>
+            <span style={{ lineHeight: 1.4 }}>{est.direccion}</span>
+          </div>
+        )}
+        {est.telefono && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.stone }}>
+            <Phone size={14} style={{ flexShrink: 0 }}/>
+            <a href={`tel:${est.telefono}`} style={{ color: C.stone, textDecoration: 'none' }}>{est.telefono}</a>
+          </div>
+        )}
+      </div>
+
+      {est.horario && (
+        <div>
+          <button
+            onClick={() => setVerHorarios(v => !v)}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, color: C.terracotta2,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <Clock size={13}/> {verHorarios ? 'Ocultar horarios' : 'Ver horarios'}
+          </button>
+          {verHorarios && (
+            <div style={{ marginTop: 8 }}>
+              <HorariosRender horario={est.horario}/>
+            </div>
+          )}
         </div>
       )}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {deliveryDisponible && <Chip tone="paper"><Bike size={11} style={{ marginRight: 4 }}/> Envío a domicilio</Chip>}
+        <Chip tone={deliveryDisponible ? 'paper' : 'warning'}>
+          <ShoppingBag size={11} style={{ marginRight: 4 }}/> {deliveryDisponible ? 'Recogida' : 'Solo recogida'}
+        </Chip>
+      </div>
     </div>
   )
 }
@@ -664,12 +767,13 @@ function HeroBannerWide({ est }) {
 /* ─── TiendaDesktop ───────────────────────────────────────── */
 export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLogin }) {
   const { user } = useAuth()
-  const { addItem, carrito, updateCantidad } = useCart()
+  const { addItem, carrito, updateCantidad, modoEntrega, elegirEntrega } = useCart()
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])
   const [promociones, setPromociones] = useState([])
   const [loading, setLoading] = useState(true)
-  const [catFiltro, setCatFiltro] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [catActiva, setCatActiva] = useState(null)
   const [prodTamanosMap, setProdTamanosMap] = useState({})
   const [prodExtrasSet, setProdExtrasSet] = useState(new Set())
   const [modalProd, setModalProd] = useState(null)
@@ -782,6 +886,14 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
     return () => { cancel = true }
   }, [est.id])
 
+  const deliveryDisponible = tieneDeliveryLive
+
+  // Sin reparto, el carrito no puede quedarse en modo delivery. Vive aquí y no
+  // en el carrito porque el selector es visible desde el primer momento.
+  useEffect(() => {
+    if (!deliveryDisponible && modoEntrega === 'delivery') elegirEntrega('recogida')
+  }, [deliveryDisponible, modoEntrega])
+
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 2500)
@@ -810,24 +922,98 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
     showToast('Producto añadido al carrito')
   }
 
-  // Productos visibles según filtro
+  // Búsqueda dentro de la carta (nombre + descripción, sin tildes)
+  const buscando = busqueda.trim().length > 0
   const productosVisibles = useMemo(() => {
-    if (catFiltro) return productos.filter(p => p.categoria_id === catFiltro)
-    return productos
-  }, [productos, catFiltro])
+    if (!buscando) return productos
+    const q = norm(busqueda.trim())
+    // También por nombre de categoría: buscar "ensalada" en una carta cuyos
+    // platos se llaman "César" o "Caprese" devolvía cero resultados.
+    const nombreCat = new Map(categorias.map(c => [c.id, norm(c.nombre)]))
+    return productos.filter(p =>
+      norm(p.nombre).includes(q) ||
+      norm(p.descripcion).includes(q) ||
+      (nombreCat.get(p.categoria_id) || '').includes(q)
+    )
+  }, [productos, categorias, busqueda, buscando])
 
-  const productosPorCategoria = useMemo(() => {
-    const map = new Map()
+  // Secciones de la carta (y lo que alimenta la navegación lateral).
+  // Se calculan SIEMPRE, también mientras se busca: si no, la columna izquierda
+  // se quedaba en blanco al escribir y el ancho de la página daba un salto.
+  const secciones = useMemo(() => {
+    const out = []
     for (const cat of categorias) {
-      const arr = productosVisibles.filter(p => p.categoria_id === cat.id)
-      if (arr.length > 0) map.set(cat, arr)
+      const prods = productos.filter(p => p.categoria_id === cat.id)
+      if (prods.length > 0) out.push({ key: String(cat.id), nombre: cat.nombre, n: prods.length, prods })
     }
-    const sinCat = productosVisibles.filter(p => !p.categoria_id)
-    if (sinCat.length > 0) map.set({ id: null, nombre: 'Otros' }, sinCat)
-    return map
-  }, [productosVisibles, categorias])
+    const sinCat = productos.filter(p => !p.categoria_id)
+    if (sinCat.length > 0) out.push({ key: 'otros', nombre: 'Otros', n: sinCat.length, prods: sinCat })
+    return out
+  }, [productos, categorias])
 
-  const deliveryDisponible = tieneDeliveryLive
+  // Arriba del todo aún no hay ninguna sección dentro de la banda del
+  // observador, así que sin esto la lateral empieza sin nada marcado.
+  useEffect(() => {
+    if (secciones.length > 0 && catActiva === null) setCatActiva(secciones[0].key)
+  }, [secciones, catActiva])
+
+  // Scroll-spy: marca en la lateral la sección por la que va el cliente.
+  useEffect(() => {
+    if (buscando || secciones.length === 0) return
+    const els = secciones
+      .map(s => document.getElementById(`td-sec-${s.key}`))
+      .filter(Boolean)
+    if (els.length === 0) return
+    const estado = new Map()
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) estado.set(e.target.id, e.isIntersecting)
+      const primera = els.find(el => estado.get(el.id))
+      if (primera) setCatActiva(primera.id.replace('td-sec-', ''))
+    }, { rootMargin: '-90px 0px -68% 0px', threshold: 0 })
+    els.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  }, [secciones, buscando])
+
+  // Salto pendiente: al pulsar una categoría con una búsqueda escrita, las
+  // secciones aún no existen en el DOM. Se limpia la búsqueda y el salto lo
+  // hace el efecto de abajo, que corre YA con la carta completa pintada
+  // (con requestAnimationFrame el scroll caía en la sección equivocada).
+  const saltoPendiente = useRef(null)
+
+  useEffect(() => {
+    if (buscando || !saltoPendiente.current) return
+    const key = saltoPendiente.current
+    saltoPendiente.current = null
+    const el = document.getElementById(`td-sec-${key}`)
+    if (el) el.scrollIntoView({ block: 'start' })
+    setCatActiva(key)
+  }, [buscando, secciones])
+
+  function irACategoria(key) {
+    if (buscando) {
+      saltoPendiente.current = key
+      setBusqueda('')
+      return
+    }
+    const el = document.getElementById(`td-sec-${key}`)
+    if (!el) return
+    // scrollIntoView y NO window.scrollTo: en esta app quien scrollea es <body>
+    // (index.css deja html en overflow:hidden), así que window.scrollY es
+    // siempre 0 y un scrollTo calculado con él no movería nada.
+    // El hueco superior lo pone `scrollMarginTop` en cada sección.
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setCatActiva(key)
+  }
+
+  const propsCard = {
+    onAddSimple: addItemSimple,
+    onOpenModal: (prod) => setModalProd(prod),
+    carrito,
+    updateCantidad,
+    cerrado,
+    getPrecio: getPrecioMostrado,
+  }
+  const tieneConfig = (p) => (prodTamanosMap[p.id] || []).length > 0 || prodExtrasSet.has(p.id)
 
   return (
     <div style={{
@@ -840,71 +1026,35 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         @keyframes fadeInUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
         @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        .desktop-product-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
-        @media (min-width: 1300px) {
-          .desktop-product-grid { grid-template-columns: repeat(3, 1fr); }
+
+        .td-shell { max-width: 1440px; margin: 0 auto; padding: 0 clamp(16px, 2.4vw, 40px); }
+        .td-top { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 26px; padding-top: 26px; }
+        .td-main { display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; gap: 26px; margin-top: 26px; padding-bottom: 60px; }
+        .td-sticky { position: sticky; top: 20px; }
+        .td-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .td-card:hover { box-shadow: 0 6px 18px rgba(26,24,21,0.09); border-color: #DED5C3 !important; }
+
+        @media (max-width: 1379px) {
+          .td-top  { grid-template-columns: 268px minmax(0, 1fr); gap: 20px }
+          .td-main { grid-template-columns: 268px minmax(0, 1fr) 316px; gap: 20px }
+          .td-cards { grid-template-columns: 1fr }
         }
-        @media (min-width: 1600px) {
-          .desktop-product-grid { grid-template-columns: repeat(4, 1fr); }
+        @media (max-width: 1150px) {
+          .td-top  { grid-template-columns: 238px minmax(0, 1fr); gap: 16px }
+          .td-main { grid-template-columns: 238px minmax(0, 1fr) 300px; gap: 16px }
         }
       `}</style>
 
-      {/* Hero */}
-      <HeroBannerWide est={est}/>
-
-      {/* Contenido */}
-      <div style={{ maxWidth: 1380, margin: '0 auto', padding: '0 clamp(20px, 3vw, 32px)' }}>
-        {/* Identidad restaurante — el logo solapa el banner; nombre y chips quedan
-            debajo, sobre fondo crema, siempre legibles (estilo marketplace). */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'clamp(14px, 2vw, 22px)' }}>
-          <div style={{
-            width: 'clamp(84px, 9vw, 116px)', height: 'clamp(84px, 9vw, 116px)',
-            borderRadius: '50%',
-            background: '#fff', border: `5px solid ${C.cream}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: SH.lg, overflow: 'hidden', flexShrink: 0,
-            marginTop: 'clamp(-58px, -5vw, -42px)',
-          }}>
-            {est.logo_url
-              ? <img src={est.logo_url} alt={est.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }}/>
-              : <div style={{ transform: 'scale(0.9)' }}><FoodIcon kw={est.tipo || ''} size={70}/></div>
-            }
-          </div>
-          <div style={{ flex: 1, minWidth: 0, paddingBottom: 6 }}>
-            <h1 style={{
-              fontSize: 'clamp(23px, 2.6vw, 34px)', fontWeight: 800, color: C.ink, margin: 0,
-              letterSpacing: '-0.02em', lineHeight: 1.12,
-              overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{est.nombre}</h1>
-            {(est.tipo || est.direccion) && (
-              <div style={{
-                fontSize: 12, color: C.stone, marginTop: 5,
-                fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {est.tipo}{est.tipo && est.direccion ? ' · ' : ''}{est.direccion?.split(',')[0]}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Chips de estado — fila propia, siempre debajo del banner y legibles */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-          {/* De qué hora a qué hora, dentro del chip que ya había: informa sin
-              robarle sitio al banner. Cerrado ya dice cuándo vuelve a abrir. */}
-          <Chip tone={cerrado ? 'danger' : 'sage'} dot>
-            {cerrado
-              ? (estadoAbierto.proximaApertura || 'Cerrado')
-              : `Abierto${estadoAbierto.turnoActual?.abre ? ` · ${estadoAbierto.turnoActual.abre}–${estadoAbierto.turnoActual.cierra}` : ''}`}
-          </Chip>
-          {est.rating > 0 && (
-            <Chip tone="paper">
-              <Star size={11} fill={C.warning} color={C.warning} style={{ marginRight: 2 }}/>
-              {est.rating.toFixed(1)}
-            </Chip>
-          )}
-          {deliveryDisponible && <Chip tone="paper"><Bike size={11} style={{ marginRight: 4 }}/> Delivery</Chip>}
-          <Chip tone={deliveryDisponible ? 'paper' : 'warning'}><ShoppingBag size={11} style={{ marginRight: 4 }}/> {deliveryDisponible ? 'Recogida' : 'Solo recogida'}</Chip>
+      <div className="td-shell">
+        {/* Fila superior: identidad + banner */}
+        <div className="td-top">
+          <InfoPanel
+            est={est}
+            estadoAbierto={estadoAbierto}
+            cerrado={cerrado}
+            deliveryDisponible={deliveryDisponible}
+          />
+          <HeroCard est={est}/>
         </div>
 
         {/* Banners de estado */}
@@ -916,13 +1066,11 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
             </div>
           </BannerEstado>
         )}
-        {!cerrado && !deliveryDisponible && (
-          <BannerSoloRecogida />
-        )}
+        {!cerrado && !deliveryDisponible && <BannerSoloRecogida />}
 
         {/* Promociones */}
         {promociones.length > 0 && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 24, overflowX: 'auto', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 20, overflowX: 'auto', paddingBottom: 4 }}>
             {promociones.map(promo => {
               const badge = promo.tipo === 'descuento_porcentaje' ? `${promo.valor}% OFF`
                 : promo.tipo === 'descuento_fijo' ? `-${promo.valor}€`
@@ -948,21 +1096,84 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
           </div>
         )}
 
-        {/* Layout 3 columnas */}
-        <div style={{
-          display: 'flex', gap: 'clamp(18px, 1.8vw, 28px)', marginTop: 28, alignItems: 'flex-start',
-          filter: cerrado ? 'grayscale(0.45)' : 'none',
-          paddingBottom: 48,
-        }}>
-          <CategoriaSidebar
-            categorias={categorias}
-            productos={productos}
-            activeId={catFiltro}
-            onChange={setCatFiltro}
-          />
+        {/* Fila inferior: navegación · carta · carrito */}
+        <div className="td-main" style={{ filter: cerrado ? 'grayscale(0.35)' : 'none' }}>
+          {/* Izquierda: categorías */}
+          <div>
+            <div className="td-sticky">
+              <CategoriaNav secciones={secciones} activa={buscando ? null : catActiva} onIr={irACategoria}/>
+            </div>
+          </div>
 
-          {/* Columna central */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Centro: buscador + selector de entrega + carta */}
+          <div style={{ minWidth: 0 }}>
+            <div style={{
+              display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
+              marginBottom: 22,
+            }}>
+              <div style={{
+                flex: '1 1 220px', minWidth: 0, position: 'relative',
+                display: 'flex', alignItems: 'center',
+              }}>
+                <Search size={15} style={{ position: 'absolute', left: 13, color: C.stone2, pointerEvents: 'none' }}/>
+                <input
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  placeholder={`Buscar en ${est.nombre}`}
+                  style={{
+                    width: '100%', padding: '11px 14px 11px 36px',
+                    borderRadius: 999, border: `1px solid ${C.border}`,
+                    background: C.paper, color: C.ink,
+                    fontSize: 13.5, fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+                {buscando && (
+                  <button
+                    onClick={() => setBusqueda('')}
+                    aria-label="Limpiar búsqueda"
+                    style={{
+                      position: 'absolute', right: 10, width: 22, height: 22, borderRadius: '50%',
+                      border: 'none', background: C.cream2, color: C.stone, cursor: 'pointer',
+                      fontSize: 14, lineHeight: 1, fontFamily: 'inherit',
+                    }}
+                  >×</button>
+                )}
+              </div>
+
+              {/* Entrega / Recogida — siempre visible, no solo con el carrito lleno */}
+              <div style={{
+                display: 'flex', gap: 4, padding: 4, borderRadius: 999,
+                background: C.cream2, flexShrink: 0,
+              }}>
+                <button
+                  onClick={() => deliveryDisponible && elegirEntrega('delivery')}
+                  disabled={!deliveryDisponible}
+                  title={deliveryDisponible ? undefined : 'Este restaurante no tiene reparto ahora mismo'}
+                  style={{
+                    padding: '8px 16px', borderRadius: 999, border: 'none',
+                    background: modoEntrega === 'delivery' ? C.paper : 'transparent',
+                    color: !deliveryDisponible ? C.stone2 : (modoEntrega === 'delivery' ? C.ink : C.stone),
+                    boxShadow: modoEntrega === 'delivery' ? SH.sm : 'none',
+                    fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                    cursor: deliveryDisponible ? 'pointer' : 'not-allowed',
+                    opacity: deliveryDisponible ? 1 : 0.5,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                ><Bike size={14}/> Entrega</button>
+                <button
+                  onClick={() => elegirEntrega('recogida')}
+                  style={{
+                    padding: '8px 16px', borderRadius: 999, border: 'none',
+                    background: modoEntrega === 'recogida' ? C.paper : 'transparent',
+                    color: modoEntrega === 'recogida' ? C.ink : C.stone,
+                    boxShadow: modoEntrega === 'recogida' ? SH.sm : 'none',
+                    fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                ><ShoppingBag size={14}/> Recogida</button>
+              </div>
+            </div>
+
             {loading ? (
               <div style={{ padding: 60, textAlign: 'center', color: C.stone }}>Cargando carta...</div>
             ) : productos.length === 0 ? (
@@ -984,28 +1195,40 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
                   Vuelve más tarde. Estamos preparando todo para que puedas pedir cuanto antes.
                 </div>
               </div>
+            ) : buscando ? (
+              /* Resultados de búsqueda: una sola lista, sin categorías */
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: C.ink, margin: '0 0 14px' }}>
+                  {productosVisibles.length === 0
+                    ? 'Sin resultados'
+                    : `${productosVisibles.length} resultado${productosVisibles.length === 1 ? '' : 's'}`}
+                </h2>
+                {productosVisibles.length === 0 ? (
+                  <div style={{
+                    background: C.paper, borderRadius: 16, padding: 40, textAlign: 'center',
+                    border: `1px solid ${C.border}`, color: C.stone, fontSize: 14,
+                  }}>
+                    No hemos encontrado nada con «{busqueda.trim()}» en la carta de {est.nombre}.
+                  </div>
+                ) : (
+                  <div className="td-cards">
+                    {productosVisibles.map(p => (
+                      <ProductRow key={p.id} p={p} hasConfig={tieneConfig(p)} {...propsCard}/>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <>
-                {Array.from(productosPorCategoria.entries()).map(([cat, prods]) => (
-                  <div key={cat.id || 'otros'} style={{ marginBottom: 32 }} id={`cat-${cat.id || 'otros'}`}>
+                {secciones.map(s => (
+                  <div key={s.key} id={`td-sec-${s.key}`} style={{ marginBottom: 34, scrollMarginTop: 18 }}>
                     <h2 style={{
-                      fontSize: 22, fontWeight: 800, color: C.ink,
+                      fontSize: 21, fontWeight: 800, color: C.ink,
                       margin: '0 0 14px', letterSpacing: '-0.01em',
-                    }}>{cat.nombre}</h2>
-                    <div className="desktop-product-grid">
-                      {prods.map(p => (
-                        <ProductCardDesktop
-                          key={p.id}
-                          p={p}
-                          est={est}
-                          onAddSimple={addItemSimple}
-                          onOpenModal={(prod) => setModalProd(prod)}
-                          carrito={carrito}
-                          updateCantidad={updateCantidad}
-                          hasConfig={(prodTamanosMap[p.id] || []).length > 0 || prodExtrasSet.has(p.id)}
-                          cerrado={cerrado}
-                          getPrecio={getPrecioMostrado}
-                        />
+                    }}>{s.nombre}</h2>
+                    <div className="td-cards">
+                      {s.prods.map(p => (
+                        <ProductRow key={p.id} p={p} hasConfig={tieneConfig(p)} {...propsCard}/>
                       ))}
                     </div>
                   </div>
@@ -1016,7 +1239,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
                   background: C.paper, borderRadius: 16, padding: 24,
                   marginTop: 16, border: `1px solid ${C.border}`,
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 24 }}>
                     {est.direccion && (
                       <div>
                         <SectionLabel><MapPin size={11}/> Dirección</SectionLabel>
@@ -1054,13 +1277,16 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
             )}
           </div>
 
-          {/* Columna derecha: carrito */}
-          <CartSticky
-            est={est}
-            deliveryDisponible={deliveryDisponible}
-            cerrado={cerrado}
-            onCheckout={() => onCheckout?.()}
-          />
+          {/* Derecha: carrito */}
+          <div>
+            <div className="td-sticky">
+              <CartSticky
+                est={est}
+                cerrado={cerrado}
+                onCheckout={() => onCheckout?.()}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1101,7 +1327,7 @@ function Chip({ children, tone, dot }) {
   const styles = {
     sage: { background: C.sageSoft, color: C.sage2 },
     danger: { background: C.dangerSoft, color: C.danger },
-    paper: { background: C.paper, color: C.ink, border: `1px solid ${C.border}` },
+    paper: { background: C.cream, color: C.ink, border: `1px solid ${C.border}` },
     warning: { background: C.warningSoft, color: '#8B6126' },
   }[tone] || { background: C.cream2, color: C.stone }
   const dotColor = tone === 'sage' ? C.sage : tone === 'danger' ? C.danger : C.terracotta
@@ -1131,7 +1357,7 @@ function SectionLabel({ children }) {
 function BannerSoloRecogida() {
   return (
     <div style={{
-      marginTop: 22,
+      marginTop: 20,
       padding: '15px 18px',
       borderRadius: 16,
       background: 'linear-gradient(135deg, rgba(201,149,81,0.20) 0%, rgba(201,149,81,0.07) 55%, rgba(255,255,255,0.35) 100%)',
@@ -1163,7 +1389,7 @@ function BannerEstado({ tono, icon, children }) {
   const fg = tono === 'danger' ? C.danger : '#8B6126'
   return (
     <div style={{
-      marginTop: 22, padding: 16, borderRadius: 14,
+      marginTop: 20, padding: 16, borderRadius: 14,
       background: bg, border: 'none',
       display: 'flex', alignItems: 'center', gap: 12,
     }}>
