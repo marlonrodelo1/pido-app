@@ -516,9 +516,18 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   ]
 
   /* ── Glass style (light) ── */
+  /* Tarjeta blanca de la Home.
+     LLEVABA `backdrop-filter: blur(12px)` Y ESO ERA EL FALLO DE LAS CATEGORÍAS:
+     desenfocar el fondo de un elemento con fondo BLANCO OPACO no se ve —no hay
+     nada visible detrás— pero obliga al navegador a crear una capa de
+     composición por cada tarjeta y a muestrear lo que hay debajo. Con catorce
+     casillas en un carrusel horizontal y un `transition`, el muestreo se
+     desincroniza al desplazar y salían medio pintadas, con bandas salmón
+     cruzando de una a otra.
+     Quitarlo NO cambia nada a la vista (el fondo sigue siendo #FFFFFF) y se
+     lleva por delante las capas de más. */
   const G = {
     background: '#FFFFFF',
-    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
     border: '1px solid #E8E1D3',
     boxShadow: '0 1px 2px rgba(15,15,15,0.04), 0 1px 3px rgba(15,15,15,0.06)',
   }
@@ -617,7 +626,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           <div style={{
             width: 64, height: 64, borderRadius: 16,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s',
+            transition: 'box-shadow 0.2s ease, color 0.2s ease',
             ...(!catActiva
               ? { background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)', color: '#fff' }
               : { ...G, color: '#5A5348' }
@@ -649,7 +658,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
               <div style={{
                 width: 64, height: 64, borderRadius: 16,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24, transition: 'all 0.2s',
+                fontSize: 24, transition: 'box-shadow 0.2s ease',
                 ...(isActive
                   ? { background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)', boxShadow: '0 10px 15px -3px rgba(255,144,102,0.1)' }
                   : { ...G }
