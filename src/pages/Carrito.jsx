@@ -767,94 +767,117 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
   async function iniciarPago() {
     if (isPaying.current) return
-    // Blindaje: nunca crear un pedido a un restaurante cerrado, aunque el botón
-    // se haya quedado habilitado (carrera de carga o carrito persistido en localStorage).
-    if (restCerrado) {
-      setErrorMsg('Este restaurante está cerrado ahora mismo. No se pueden hacer pedidos.')
-      return
-    }
-    // Blindaje pedido mínimo (por si el botón quedó habilitado por una carrera de carga).
-    if (bajoMinimo) {
-      setErrorMsg(`El pedido mínimo de este restaurante es ${fmt(pedidoMinimo)}. Te faltan ${fmt(faltaMinimo)}.`)
-      return
-    }
-    // Sin cuenta solo se sigue si este restaurante lo permite y estamos en su
-    // tienda pública; si no, a iniciar sesión.
-    if (!user && !guestPermitido) {
-      onRequireLogin?.()
-      return
-    }
-    if (!user) {
-      if (!guestValido()) {
-        setErrorMsg(modoEntrega === 'delivery'
-          ? 'Completa tu nombre, tu teléfono y la dirección de entrega.'
-          : 'Completa tu nombre y tu teléfono.')
-        return
-      }
-    } else {
-      // Teléfono de contacto obligatorio: el socio/rider debe poder llamar al cliente.
-      const telContacto = (perfil?.telefono || telefonoInput || '').trim()
-      if (telContacto.replace(/\D/g, '').length < 6) {
-        setErrorMsg('Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
-        return
-      }
-      if (!perfil?.telefono) {
-        try { await updatePerfil({ telefono: telContacto }) } catch (_) {}
-      }
-    }
-    if (user && modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
-      setSinDireccion(true); setMostrarAddDir(true); return
-    }
-    // Revalidar rider del socio antes de iniciar el pago
-    try {
-      const socioIdCheck = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
-      const socioSlugCheck = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_slug') : null
-      if (socioIdCheck && socioSlugCheck && modoEntrega === 'delivery') {
-        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/get-socio-marketplace?slug=${encodeURIComponent(socioSlugCheck)}&live=1`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data?.socio?.rider_online === false) {
-            setErrorMsg('Este repartidor ya no está disponible. El pedido no puede completarse en este momento. Puedes pedir directamente desde Pidoo.')
-            return
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[Carrito] revalidación rider socio falló', e)
-    }
+    // ⚠️ EL PESTILLO SE ECHA AQUÍ, EN LA PRIMERA LÍNEA, Y NO 87 LÍNEAS MÁS ABAJO.
+    //
+    // El 13 ago 2026 una clienta generó CINCO pedidos idénticos en 839 ms. El
+    // pestillo se leía aquí pero no se cerraba hasta después de todas las
+    // comprobaciones de red de abajo — entre ellas `check-socio-availability-now`,
+    // que solo corre en pedidos a domicilio y tarda un par de segundos. Durante
+    // ese rato el botón seguía naranja, pulsable y con el mismo texto. Cualquiera
+    // vuelve a pulsar. Ya había pasado el 22 jun con 4 pedidos en 0,03 s.
+    //
+    // `setLoading(true)` va aquí por lo mismo: es lo que pone el botón en
+    // "Procesando…" y lo deshabilita en el acto. Un pestillo que no se ve se
+    // sigue percibiendo como "no ha hecho nada".
+    //
+    // ⚠️⚠️ Y POR ESO EL `try` EMPIEZA AQUÍ Y NO EN EL PAGO. Debajo hay SIETE
+    // `return` tempranos (cerrado, mínimo, sin sesión, invitado inválido, sin
+    // teléfono, sin dirección, sin repartidores). Si se cierra el pestillo sin
+    // que esas salidas pasen por el `finally`, se queda echado PARA SIEMPRE: el
+    // cliente rellena el teléfono, vuelve a pulsar y ya no puede pedir hasta
+    // recargar la página. Sería peor que el bug original.
+    isPaying.current = true
+    pagoEnviado.current = false
+    setLoading(true)
+    setErrorMsg(null)
 
-    // Verificacion en tiempo real del estado propio del socio: el socio del
-    // establecimiento tiene riders online ahora mismo. Bloquea el pago si no.
-    if (modoEntrega === 'delivery' && carrito[0]?.establecimiento_id) {
-      try {
-        // Contexto MARKETPLACE del socio: si el pedido sale de /s/<slug>, hay que preguntar
-        // por ESE socio y por su fuente 'marketplace' (check v11). Sin esto, la edge evaluaba
-        // acepta_app de TODOS los socios del restaurante: un socio que hubiera pausado este
-        // restaurante o apagado su marketplace dejaba pagar al cliente un pedido que el
-        // dispatcher no podía asignar → no_rider → cancelación + reembolso.
-        const socioIdMkt = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
-        const { data: avail, error: availErr } = await supabase.functions.invoke(
-          'check-socio-availability-now',
-          {
-            body: socioIdMkt
-              ? { establecimiento_id: carrito[0].establecimiento_id, socio_id: socioIdMkt, fuente: 'marketplace' }
-              : { establecimiento_id: carrito[0].establecimiento_id, fuente: 'app' },
-          },
-        )
-        if (!availErr && avail && avail.disponible === false) {
-          setErrorMsg('No hay repartidores disponibles en este momento. Vuelve a intentarlo en unos minutos o elige Recogida.')
+    try {
+      // Blindaje: nunca crear un pedido a un restaurante cerrado, aunque el botón
+      // se haya quedado habilitado (carrera de carga o carrito persistido en localStorage).
+      if (restCerrado) {
+        setErrorMsg('Este restaurante está cerrado ahora mismo. No se pueden hacer pedidos.')
+        return
+      }
+      // Blindaje pedido mínimo (por si el botón quedó habilitado por una carrera de carga).
+      if (bajoMinimo) {
+        setErrorMsg(`El pedido mínimo de este restaurante es ${fmt(pedidoMinimo)}. Te faltan ${fmt(faltaMinimo)}.`)
+        return
+      }
+      // Sin cuenta solo se sigue si este restaurante lo permite y estamos en su
+      // tienda pública; si no, a iniciar sesión.
+      if (!user && !guestPermitido) {
+        onRequireLogin?.()
+        return
+      }
+      if (!user) {
+        if (!guestValido()) {
+          setErrorMsg(modoEntrega === 'delivery'
+            ? 'Completa tu nombre, tu teléfono y la dirección de entrega.'
+            : 'Completa tu nombre y tu teléfono.')
           return
         }
-      } catch (e) {
-        console.warn('[Carrito] check-socio-availability-now falló', e)
-        // Si la edge falla, dejamos que siga (no queremos bloquear pagos por
-        // un fallo transitorio — el dispatcher (create-shipday-order) ya
-        // manejará el caso 'no rider' al aceptar el restaurante).
+      } else {
+        // Teléfono de contacto obligatorio: el socio/rider debe poder llamar al cliente.
+        const telContacto = (perfil?.telefono || telefonoInput || '').trim()
+        if (telContacto.replace(/\D/g, '').length < 6) {
+          setErrorMsg('Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
+          return
+        }
+        if (!perfil?.telefono) {
+          try { await updatePerfil({ telefono: telContacto }) } catch (_) {}
+        }
       }
-    }
-    isPaying.current = true; pagoEnviado.current = false; setLoading(true); setErrorMsg(null)
-    try {
+      if (user && modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
+        setSinDireccion(true); setMostrarAddDir(true); return
+      }
+      // Revalidar rider del socio antes de iniciar el pago
+      try {
+        const socioIdCheck = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
+        const socioSlugCheck = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_slug') : null
+        if (socioIdCheck && socioSlugCheck && modoEntrega === 'delivery') {
+          const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rmrbxrabngdmpgpfmjbo.supabase.co'
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/get-socio-marketplace?slug=${encodeURIComponent(socioSlugCheck)}&live=1`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data?.socio?.rider_online === false) {
+              setErrorMsg('Este repartidor ya no está disponible. El pedido no puede completarse en este momento. Puedes pedir directamente desde Pidoo.')
+              return
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Carrito] revalidación rider socio falló', e)
+      }
+
+      // Verificacion en tiempo real del estado propio del socio: el socio del
+      // establecimiento tiene riders online ahora mismo. Bloquea el pago si no.
+      if (modoEntrega === 'delivery' && carrito[0]?.establecimiento_id) {
+        try {
+          // Contexto MARKETPLACE del socio: si el pedido sale de /s/<slug>, hay que preguntar
+          // por ESE socio y por su fuente 'marketplace' (check v11). Sin esto, la edge evaluaba
+          // acepta_app de TODOS los socios del restaurante: un socio que hubiera pausado este
+          // restaurante o apagado su marketplace dejaba pagar al cliente un pedido que el
+          // dispatcher no podía asignar → no_rider → cancelación + reembolso.
+          const socioIdMkt = typeof window !== 'undefined' ? sessionStorage.getItem('pidoo_socio_id') : null
+          const { data: avail, error: availErr } = await supabase.functions.invoke(
+            'check-socio-availability-now',
+            {
+              body: socioIdMkt
+                ? { establecimiento_id: carrito[0].establecimiento_id, socio_id: socioIdMkt, fuente: 'marketplace' }
+                : { establecimiento_id: carrito[0].establecimiento_id, fuente: 'app' },
+            },
+          )
+          if (!availErr && avail && avail.disponible === false) {
+            setErrorMsg('No hay repartidores disponibles en este momento. Vuelve a intentarlo en unos minutos o elige Recogida.')
+            return
+          }
+        } catch (e) {
+          console.warn('[Carrito] check-socio-availability-now falló', e)
+          // Si la edge falla, dejamos que siga (no queremos bloquear pagos por
+          // un fallo transitorio — el dispatcher (create-shipday-order) ya
+          // manejará el caso 'no rider' al aceptar el restaurante).
+        }
+      }
       const totalConDescuento = Math.max(0, total - descuentoEfectivo)
       if (metodoPago === 'tarjeta') {
         // Generar código sin insertar pedido en BD todavía
@@ -881,7 +904,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         // confirmarse el pago, onSuccess llama a confirmarPago() que pasa
         // el pedido a 'nuevo' + agrega stripe_payment_id.
         const pedidoTmp = await insertarPedidoEnBD('pendiente_pago')
-        if (!pedidoTmp) { setLoading(false); isPaying.current = false; return }
+        // El pestillo y el `loading` los suelta el `finally` de abajo: es el
+        // ÚNICO sitio que los toca, para que no haya dos dueños.
+        if (!pedidoTmp) return
         setPedidoPendiente(pedidoTmp)
         const result = await crearPagoStripe({
           amount: totalConDescuento, pedidoCodigo: pedidoTmp.codigo,
@@ -894,7 +919,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       } else {
         // Efectivo: crear pedido directamente como 'nuevo'
         const pedido = await insertarPedidoEnBD('nuevo')
-        if (!pedido) { setLoading(false); return }
+        // Aquí faltaba `isPaying.current = false` —a diferencia de su gemela de
+        // tarjeta— así que un fallo al crear el pedido en efectivo dejaba el
+        // pestillo echado y el cliente no podía volver a intentarlo. Lo cubre
+        // el `finally`.
+        if (!pedido) return
         finalizarPedido(pedido)
       }
     } catch (err) {
