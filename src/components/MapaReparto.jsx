@@ -8,6 +8,14 @@ import { Phone } from 'lucide-react'
 const MAPS_LIBRARIES = ['places']
 const mapContainerStyle = { width: '100%', height: 320 }
 
+// Se resuelve una vez, en módulo: las opciones del mapa se recrean en cada
+// render y no conviene medir la ventana en cada uno. En el WebView de
+// Capacitor y en cualquier móvil da false, así que el comportamiento nativo
+// que hay hoy en las tiendas queda intacto.
+const esEscritorio = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(min-width:768px)').matches
+
 // Mismo estilo claro tipo Pidoo que el Mapa, para que pegue con la app.
 const lightMapStyles = [
   { elementType: 'geometry', stylers: [{ color: '#F5F2EC' }] },
@@ -112,8 +120,15 @@ export default function MapaReparto({ pedido }) {
           options={{
             styles: lightMapStyles,
             disableDefaultUI: true,
-            zoomControl: false,
-            gestureHandling: 'greedy',
+            // 'greedy' es lo correcto con un dedo, pero en escritorio secuestra
+            // la RUEDA del ratón: al bajar por el seguimiento del pedido, en
+            // cuanto el cursor entraba en el mapa la página dejaba de moverse y
+            // el mapa se alejaba solo — y sin botones +/- no había forma de
+            // recuperar el encuadre. 'cooperative' devuelve la rueda a la
+            // página y exige Ctrl+rueda para el zoom. En el móvil y en el
+            // WebView nativo matchMedia da false y todo queda como estaba.
+            zoomControl: esEscritorio,
+            gestureHandling: esEscritorio ? 'cooperative' : 'greedy',
           }}
         >
           {/* Restaurante */}

@@ -456,7 +456,7 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
     : ['Aceptado', 'Preparando', 'En camino', 'Entregado']
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+    <div className="shell-lista" style={{ animation: 'fadeIn 0.3s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0, letterSpacing: '-0.02em' }}>Tu pedido</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

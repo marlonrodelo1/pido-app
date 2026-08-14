@@ -136,7 +136,7 @@ export default function MisPedidos({ onTrack }) {
   }
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+    <div className="shell-lista" style={{ animation: 'fadeIn 0.3s ease' }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text)', margin: '0 0 16px', letterSpacing: '-0.02em' }}>Mis pedidos</h2>
       {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-muted)' }}>Cargando...</div>}
       {error && (

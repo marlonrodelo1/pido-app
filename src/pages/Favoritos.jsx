@@ -45,6 +45,9 @@ export default function Favoritos({ onOpenRest }) {
           <div style={{ fontSize: 12, marginTop: 4 }}>Toca el corazón en un restaurante</div>
         </div>
       )}
+      {/* La rejilla envuelve SOLO el map: si se pusiera en el div raíz, el h2 y
+          el estado vacío pasarían a ocupar una celda de un tercio de pantalla. */}
+      <div className="tablet-grid">
       {restaurantes.map(r => (
         <div key={r.id} onClick={() => onOpenRest(r)} style={{
           background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: 14, padding: '14px 16px',
@@ -69,6 +72,7 @@ export default function Favoritos({ onOpenRest }) {
           <button onClick={e => { e.stopPropagation(); removeFav(r.id) }} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer' }}>❤️</button>
         </div>
       ))}
+      </div>
     </div>
   )
 }

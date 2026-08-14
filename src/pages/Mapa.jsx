@@ -155,6 +155,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
 
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
+        mapContainerClassName="mapa-canvas"
         center={center}
         zoom={14}
         onLoad={onLoad}
