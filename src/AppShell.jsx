@@ -21,7 +21,6 @@ const Mapa = lazy(() => import('./pages/Mapa'))
 const MisPedidos = lazy(() => import('./pages/MisPedidos'))
 const Notificaciones = lazy(() => import('./pages/Notificaciones'))
 const Perfil = lazy(() => import('./pages/Perfil'))
-const LandingRepartidores = lazy(() => import('./pages/LandingRepartidores'))
 
 const SuspenseFallback = (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
@@ -310,10 +309,8 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
             ? <Tracking pedido={pedidoActivo} onClose={handleTrackingClose} />
             : restOpen && seccion === 'home'
             ? <RestDetalle establecimiento={restOpen} onBack={cerrarRest} onRequireLogin={() => setLoginOpen(true)} onOpenCreadores={abrirCreadores} socioData={socioData} />
-            : seccion === 'repartidores'
-            ? <LandingRepartidores onBack={() => setSeccion('home')} />
             : seccion === 'home'
-            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenRepartidores={() => setSeccion('repartidores')} onOpenDirecciones={() => {
+            ? <Home onOpenRest={abrirRest} categoriaPadre={categoriaPadre} onOpenDirecciones={() => {
                 if (!user) { setLoginOpen(true); return }
                 setPerfilSubInicial('direcciones'); setSeccion('perfil'); setRestOpen(null)
               }} onOpenCreadores={abrirCreadores} socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />

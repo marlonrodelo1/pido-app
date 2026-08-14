@@ -142,7 +142,7 @@ const CTX = {
   marketplace: { placeholder: 'Buscar tienda o producto...',  titulo: 'Tiendas',       emoji: '🛒' },
 }
 
-export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, onOpenDirecciones, onOpenCreadores, socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
+export default function Home({ onOpenRest, categoriaPadre, onOpenDirecciones, onOpenCreadores, socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
   const ctx = CTX[categoriaPadre] || CTX.comida
   const filterIdsKey = Array.isArray(restaurantesFilter) ? restaurantesFilter.join(',') : ''
   const { perfil, updatePerfil, user } = useAuth()
@@ -155,7 +155,6 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   const [geoError, setGeoError] = useState(false)
   const [categoriasGenerales, setCategoriasGenerales] = useState([])
   const [promociones, setPromociones] = useState([])
-  const [landingRiders, setLandingRiders] = useState({ activa: true, config: { titulo: 'Gana dinero repartiendo', subtitulo: 'Crea tu propio negocio', boton: 'APLICAR' } })
   // Radio global de descubrimiento (km). Configurable por superadmin.
   const [radioDescubrimientoKm, setRadioDescubrimientoKm] = useState(15)
   // Anti-parpadeo: evita refetches solapados y colapsa ráfagas al reabrir.
@@ -173,22 +172,6 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
   }, [])
 
   useEffect(() => {
-    // Config landing repartidores (para CTA del Home)
-    supabase.from('landing_repartidores_config')
-      .select('activa, config').eq('id', 'default').maybeSingle()
-      .then(({ data }) => {
-        if (!data) return
-        const homeCfg = data.config?.home_cta || {}
-        setLandingRiders({
-          activa: data.activa !== false,
-          config: {
-            visible: homeCfg.visible !== false,
-            titulo: homeCfg.titulo || 'Gana dinero repartiendo',
-            subtitulo: homeCfg.subtitulo || 'Crea tu propio negocio',
-            boton: homeCfg.boton || 'APLICAR',
-          },
-        })
-      })
     // Cargar categorías generales filtradas por categoria_padre
     supabase.from('categorias_generales').select('*')
       .eq('activa', true)
