@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike, Globe } from 'lucide-react'
+import { MapPin, Search, X, ChevronRight, SlidersHorizontal, Bike, Globe, LayoutGrid } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -541,7 +541,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           (logo + "By Pidoo") va en el topbar de AppShell. Misma estructura que la app. */}
       {/* ── Dirección ── */}
       <div
-        className="home-fade"
+        className="home-fade shell-narrow"
         role="button"
         tabIndex={0}
         onClick={() => onOpenDirecciones?.()}
@@ -569,7 +569,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       )}
 
       {/* ── Buscador (glass card, rounded-2xl, filtro integrado) ── */}
-      <div className="home-fade" style={{
+      <div className="home-fade shell-narrow" style={{
         animationDelay: '0.05s',
         position: 'relative', marginTop: 8, marginBottom: 32,
       }}>
@@ -597,7 +597,43 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       </div>
 
       {/* ── Categorías (64×64, gradient active, glass inactive) ── */}
-      <div className="home-fade" style={{ animationDelay: '0.1s', display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, marginBottom: 40 }}>
+      <div className="home-fade shell-wrap" style={{ animationDelay: '0.1s', display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, marginBottom: 40 }}>
+        {/* "Todos" SIEMPRE el primero.
+            Volver a tocar la categoría elegida ya la quitaba, pero eso no lo
+            adivina nadie: no hay nada que lo insinúe, y con catorce categorías
+            en un carrusel la que elegiste se te queda fuera de pantalla, así que
+            ni siquiera puedes volver a tocarla. Quedabas atrapado en el filtro
+            hasta cambiar de sección. Aquí la salida está siempre en el mismo
+            sitio, la primera. */}
+        <button
+          onClick={() => setCatActiva(null)}
+          aria-pressed={!catActiva}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+            background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            padding: 0, flexShrink: 0, transition: 'opacity 0.2s',
+          }}
+        >
+          <div style={{
+            width: 64, height: 64, borderRadius: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.2s',
+            ...(!catActiva
+              ? { background: 'linear-gradient(135deg, #C5562C 0%, #F76526 100%)', color: '#fff' }
+              : { ...G, color: '#5A5348' }
+            ),
+          }}>
+            <LayoutGrid size={24} strokeWidth={1.9} />
+          </div>
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+            color: !catActiva ? '#C5562C' : '#5A5348',
+          }}>
+            Todos
+          </span>
+        </button>
+
         {categoriasGenerales.map(c => {
           const isActive = catActiva === c.nombre
           return (
@@ -646,7 +682,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '0 4px' }}>
             <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', margin: 0 }}>Destacados</h2>
           </div>
-          <div style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
+          <div className="shell-carrusel" style={{ display: 'flex', gap: 20, overflowX: 'auto', paddingBottom: 24 }}>
             {destacados.map(r => {
               const estDest = estaAbierto(r)
               // 'Solo recogida' = restaurante abierto pero sin reparto activo.
@@ -734,7 +770,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
       {!busqueda && !catActiva && promocionesVisibles.length > 0 && (
         <div className="home-fade" style={{ animationDelay: '0.2s', marginBottom: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', marginBottom: 24, padding: '0 4px' }}>Ofertas Irresistibles</h2>
-          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollSnapType: 'x mandatory' }}>
+          <div className="shell-carrusel" style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, scrollSnapType: 'x mandatory' }}>
             {promocionesVisibles.map((promo, idx) => {
               const est = promo.establecimientos
               if (!est) return null
@@ -772,10 +808,26 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: '#1A1815', margin: 0 }}>
           {busqueda ? 'Resultados' : catActiva ? ctx.titulo : 'Cerca de ti'}
         </h2>
+        {/* La segunda salida del filtro, y la que de verdad se usa: está donde
+            el cliente ya está mirando —los resultados— y no le obliga a subir
+            hasta el carrusel a buscar la categoría que eligió. */}
+        {!busqueda && catActiva && (
+          <button
+            onClick={() => setCatActiva(null)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+              padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+              border: '1px solid #E8E1D3', background: '#fff',
+              fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, color: '#5A5348',
+            }}
+          >
+            <X size={13} strokeWidth={2.4} /> Ver todos
+          </button>
+        )}
       </div>
 
       {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 0 }}>
+        <div className="tablet-grid" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 0 }}>
           {[0, 1, 2].map(i => (
             <div key={i} style={{
               borderRadius: 22, overflow: 'hidden', ...G,
@@ -793,8 +845,11 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
         </div>
       )}
 
-      {/* Vertical list — glass cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 0 }}>
+      {/* Lista de restaurantes. En móvil (<768px) sigue siendo la pila vertical
+          de siempre; .tablet-grid la convierte en rejilla de 2 / 3 / 4 columnas
+          según el ancho. Sin esto, en un escritorio salían 9 tarjetas de 1824px
+          apiladas en 1938px de alto. */}
+      <div className="tablet-grid" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 0 }}>
         {filtrados.flatMap((r, i) => {
           const isFav = favoritos.includes(r.id)
           const estado = estaAbierto(r)
@@ -807,7 +862,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
           // sin nada encima: en ese caso no se pinta (i > 0).
           if (r._cerrado && i > 0 && !prev?._cerrado) {
             items.push(
-              <div key="cerrados-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+              <div key="cerrados-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', gridColumn: '1 / -1' }}>
                 <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#6B6356', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Cerrados ahora</span>
                 <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
@@ -815,7 +870,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenRepartidores, o
             )
           } else if (!r._cerrado && r._fueraDeRadio && !prev?._fueraDeRadio) {
             items.push(
-              <div key="fuera-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+              <div key="fuera-sep" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', gridColumn: '1 / -1' }}>
                 <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#6B6356', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Más restaurantes</span>
                 <div style={{ flex: 1, height: 1, background: '#E8E1D3' }} />

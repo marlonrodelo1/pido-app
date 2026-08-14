@@ -213,3 +213,23 @@ html.cap-ios::before {
 .pac-logo::after {
   display: none !important;
 }
+
+/* ── Pidoo Creadores: la camarita que "graba" ──────────────────────────────
+   Viven aquí y no en un componente porque la misma cámara sale en la ficha del
+   restaurante y en el menú del perfil. Estaban dentro de un <style> de
+   RestDetalle y en el perfil no resolvían: la animación no existía y el icono
+   se quedaba quieto sin dar ningún error.
+   El guiño va a tirones (cada 4,5 s) a propósito: una animación continua se
+   aprende a ignorar en dos días. */
+@keyframes pidooRecPulso {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.2; transform: scale(0.7); }
+}
+@keyframes pidooCamGuino {
+  0%, 86%, 100% { transform: rotate(0deg) scale(1); }
+  90%           { transform: rotate(-9deg) scale(1.12); }
+  95%           { transform: rotate(6deg)  scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pidoo-rec, .pidoo-cam { animation: none !important; }
+}

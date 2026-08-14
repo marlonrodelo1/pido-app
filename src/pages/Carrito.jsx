@@ -175,6 +175,16 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   // gana la promo, el servidor suelta el cupón y NO se consume.
   const [cupones, setCupones] = useState([])
   const [cuponSel, setCuponSel] = useState(null)
+  // El premio se marca SOLO, que es lo que la app le promete al cliente en la
+  // tarjeta del cupón ("Se aplica solo al pagar") y en el aviso que recibe al
+  // ganarlo. Antes había que tocarlo: quien no viera el bloque "Tus premios"
+  // pagaba el precio entero con el cupón sin gastar.
+  //
+  // Esta bandera es "el cliente lo ha quitado a mano". Sin ella, desmarcarlo no
+  // serviría de nada: al cambiar una cantidad el efecto se vuelve a disparar y
+  // lo marcaría otra vez. Va en `useRef` y no en estado para no provocar una
+  // consulta de más al servidor cada vez que lo quita.
+  const cuponRechazado = useRef(false)
   const descuentoCupon = Number(cuponSel?.descuento || 0)
   // Compiten y gana el mayor: EXACTAMENTE lo que hace   // en el servidor. Si aquí y allí no se calculara igual, el cliente vería un
   // precio y pagaría otro.
@@ -545,7 +555,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   useEffect(() => {
     let vivo = true
     const estId = carrito[0]?.establecimiento_id
-    if (!user || !estId || subtotal <= 0) { setCupones([]); setCuponSel(null); return }
+    if (!user || !estId || subtotal <= 0) {
+      setCupones([]); setCuponSel(null); cuponRechazado.current = false; return
+    }
     supabase.rpc('creadores_cupones_para_carrito', {
       p_establecimiento_id: estId,
       p_subtotal: subtotal,
@@ -555,9 +567,22 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       if (!vivo) return
       const lista = data || []
       setCupones(lista)
-      // Si el que estaba elegido ya no vale (cambió el carrito), se actualiza
-      // su importe o se suelta.
-      setCuponSel(prev => prev ? (lista.find(c => c.id === prev.id) || null) : null)
+
+      // El que más descuente en ESTE pedido. A igualdad, el que caduque antes,
+      // para que no se quede ninguno sin usar por el camino.
+      const mejor = lista.slice().sort((a, b) =>
+        Number(b.descuento) - Number(a.descuento) ||
+        String(a.caduca_at || '').localeCompare(String(b.caduca_at || ''))
+      )[0] || null
+
+      setCuponSel(prev => {
+        // El elegido sigue en la lista: se refresca su importe, que cambia con
+        // el carrito.
+        if (prev) return lista.find(c => c.id === prev.id) || mejor
+        // Lo quitó a mano: se respeta y no se vuelve a poner.
+        if (cuponRechazado.current) return null
+        return mejor
+      })
     })
     return () => { vivo = false }
   }, [user, carrito, subtotal, envio, modoEntrega])
@@ -714,6 +739,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   function finalizarPedido(pedido) {
     clearCart(); setOpen(false); setPasoTarjeta(false); setClientSecret(null); setCodigoPedido(null)
     setPedidoPendiente(null); setDescuento(0); setPromoActiva(null); setCuponSel(null); setNotas('')
+    cuponRechazado.current = false
     setSinDireccion(false); setRestCerrado(false); setErrorMsg(null)
     sendPush({
       targetType: 'restaurante', targetId: pedido.establecimiento_id,
@@ -1373,7 +1399,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       return (
                         <button
                           key={c.id}
-                          onClick={() => setCuponSel(activo ? null : c)}
+                          onClick={() => {
+                            cuponRechazado.current = activo
+                            setCuponSel(activo ? null : c)
+                          }}
                           style={{
                             width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
                             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6,

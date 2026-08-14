@@ -16,12 +16,40 @@ import { supabase } from '../lib/supabase'
 
 const C = {
   paper: '#FBF8F2', cream2: '#EFE9DD',
-  ink: '#1A1815', stone: '#6B6356',
+  ink: '#1A1815', stone: '#5A5348',
   burnt: '#E4671F', burntText: '#A85018',
   border: '#E8E1D3',
 }
 
 const fmtNum = (n) => Number(n || 0).toLocaleString('es-ES')
+
+// Tipos de premio cuyo `valor` viene en EUROS. En 'porcentaje' NO: ahí `valor`
+// es el tanto por ciento y depende del pedido, así que no se puede anunciar
+// como una cifra fija.
+const PREMIOS_EN_EUROS = new Set(['descuento_fijo', 'producto_gratis', 'envio_gratis'])
+
+// 15 -> "15" · 2,5 -> "2,50". Sin decimales cuando es redondo: "hasta 15,00 €"
+// se lee a precio de folleto, "hasta 15 €" se lee a premio.
+export const fmtEur = (n) => Number(n) % 1 === 0
+  ? Number(n).toLocaleString('es-ES', { maximumFractionDigits: 0 })
+  : Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// El premio más alto de una escalera, en euros. 0 = ninguno se puede expresar
+// así, y entonces quien llame a esto NO debe enseñar cifra.
+//
+// VIVE AQUÍ, y no en cada pantalla, a propósito: la misma cifra sale en el
+// banner de la Home y en la ficha del restaurante, y dos copias de esta regla
+// acabarían diciendo cosas distintas en dos sitios de la misma app. Ya pasó con
+// el texto y el importe de los premios, que se separaron sin que nadie lo viera.
+export function mejorPremioEuros(escalera = []) {
+  let tope = 0
+  for (const e of (escalera || [])) {
+    if (!PREMIOS_EN_EUROS.has(e?.tipo_premio)) continue
+    const v = Number(e.valor)
+    if (Number.isFinite(v) && v > tope) tope = v
+  }
+  return tope
+}
 
 export default function CreadoresEscalera({ escalera = [], titulo, nota, compacto = false }) {
   if (!escalera.length) return null

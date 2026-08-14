@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft, MapPin, Star, Bike, ShoppingBag, UtensilsCrossed, Plus, Minus, Clock, ChevronDown, Video } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import CreadoresEscalera from '../components/CreadoresEscalera'
+import CreadoresEscalera, { fmtEur, mejorPremioEuros } from '../components/CreadoresEscalera'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { estaAbierto, DIAS_ORDEN, DIAS_LABEL, getDiaActual } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import { permiteInvitado } from '../lib/invitado'
+import { promoBadge, promoEmoji, promoGradiente } from '../lib/promo'
 
 // Paleta directa (alineada con bundle s4-tienda + sx-extras)
 const C = {
@@ -24,6 +25,28 @@ const SH = {
   glossy: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.18)',
 }
 const fmt = (n) => `${(n || 0).toFixed(2).replace('.', ',')} €`
+
+/* ─── Chip de categoría ───────────────────────────────────────
+   Las inactivas eran texto gris SIN cuerpo: sin fondo y sin borde, flotando
+   sobre el mismo crema del fondo. Por eso la barra parecía a medio terminar —
+   la única con forma era la activa, y ese salto tan grande apagaba el resto.
+   Ahora todas son una pastilla; lo que cambia es el relleno.
+
+   Se descartó ponerles un icono: `FoodIcon` solo reconoce nueve palabras y,
+   cuando falla, dibuja UNA PIZZA. De las 77 categorías que hay hoy en la
+   plataforma, 53 saldrían con una pizza — "cervezas", "vinos", "papas",
+   "döner kebab", "carnes", "pescado". Peor el remedio. Si algún día se quieren
+   iconos, hay que guardar cuál en `categorias`, no adivinarlo por el nombre. */
+const chipCategoria = (activo) => ({
+  padding: '8px 14px', borderRadius: 999,
+  border: `1px solid ${activo ? C.ink : C.border}`,
+  background: activo ? C.ink : '#fff',
+  color: activo ? C.cream : C.stone,
+  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+  boxShadow: activo ? 'none' : SH.sm,
+  transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+})
 
 /* ─── Chip ────────────────────────────────────────────────── */
 function Chip({ children, tone, dot }) {
@@ -239,7 +262,7 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
 }
 
 /* ─── RestDetalle ─────────────────────────────────────────── */
-export default function RestDetalle({ establecimiento, onBack, modoTienda = false, onRequireLogin, socioData = null }) {
+export default function RestDetalle({ establecimiento, onBack, modoTienda = false, onRequireLogin, onOpenCreadores = null, socioData = null }) {
   const { addItem, carrito, updateCantidad, totalItems, subtotal } = useCart()
   const { user } = useAuth()
   // Pedir sin cuenta solo en la tienda pública del restaurante: dentro de la app
@@ -250,6 +273,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   const [productos, setProductos] = useState([])
   const [promociones, setPromociones] = useState([])
   const [creadores, setCreadores] = useState(null)   // {admite_altas, escalera, nombre}
+  const [creadoresAbierto, setCreadoresAbierto] = useState(false)
   const [modal, setModal] = useState(null)
   const [tamanos, setTamanos] = useState([])
   const [gruposExtras, setGruposExtras] = useState([])
@@ -638,6 +662,11 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
         </div>
       </div>
 
+      {/* El horario va lo primero, pegado a la foto de cabecera: es el dato que
+          se busca nada más entrar ("¿a qué hora abren?"), y antes quedaba
+          debajo de los chips, la descripción y el cartel de cerrado. */}
+      <HorarioSemana horario={est.horario} />
+
       {/* ── Chips (rating · delivery · recogida) + descripción ── */}
       <div style={{ padding: '14px 0 0' }}>
         <div>
@@ -712,7 +741,6 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
             </div>
           </div>
         )}
-        <HorarioSemana horario={est.horario} />
       </div>
 
       {avisoCerrado && (
@@ -748,34 +776,48 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       {/* ── Promociones ── */}
       {!loading && promociones.length > 0 && (
         <div style={{ padding: '18px 0 0', background: C.cream }}>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, paddingLeft: 18, paddingRight: 18 }}>
-            {promociones.map(promo => {
-              const badge = promo.tipo === 'descuento_porcentaje' ? `${promo.valor}% OFF`
-                : promo.tipo === 'descuento_fijo' ? `-${promo.valor}€`
-                : promo.tipo === '2x1' ? '2×1' : 'GRATIS'
-              return (
-                <div key={promo.id} style={{
-                  minWidth: 220, flexShrink: 0,
-                  padding: 14,
-                  borderRadius: 14,
-                  background: C.paper,
-                  border: `1px solid ${C.border}`,
+          {/* Misma tarjeta que en la Home, y sin sangrado propio: antes esto
+              llevaba 18 px de padding a los lados y quedaba desalineado con el
+              horario y con todo lo demás de la ficha. */}
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8, scrollSnapType: 'x mandatory' }}>
+            {/* Con UNA sola promo la tarjeta se estira hasta el borde: en la
+                Home hay varias y el ancho fijo se justifica porque es un
+                carrusel, pero aquí una de 280 px suelta deja un hueco a la
+                derecha que parece un fallo de maquetación. */}
+            {promociones.map((promo, idx) => (
+              <div key={promo.id} style={{
+                minWidth: 280, scrollSnapAlign: 'center',
+                flex: promociones.length === 1 ? '1 1 auto' : '0 0 auto',
+              }}>
+                {/* Más baja que en la Home (100 px frente a 128). Allí es el
+                    reclamo de la portada y puede permitirse ocupar; aquí el
+                    cliente ya ha elegido restaurante y lo que quiere ver es la
+                    carta, así que la promo informa sin robar pantalla. */}
+                <div style={{
+                  position: 'relative', overflow: 'hidden',
+                  borderRadius: 20, height: 100,
+                  display: 'flex', alignItems: 'center', padding: '16px 20px',
+                  background: promoGradiente(idx),
                 }}>
-                  <div style={{
-                    display: 'inline-block', fontSize: 10, fontWeight: 800,
-                    padding: '3px 8px', borderRadius: 6,
-                    background: C.terracotta, color: '#fff',
-                    letterSpacing: '0.04em', marginBottom: 8,
-                  }}>{badge}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>
-                    {promo.titulo}
+                  <div style={{ position: 'relative', zIndex: 10, width: '70%' }}>
+                    <div style={{ fontSize: 21, fontWeight: 900, color: '#fff', lineHeight: 1.15, textTransform: 'uppercase', fontStyle: 'italic' }}>
+                      {promoBadge(promo)}
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, lineHeight: 1.3, marginTop: 2 }}>
+                      {promo.titulo}
+                    </div>
+                    {promo.minimo_compra > 0 && (
+                      <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11.5, fontWeight: 500, marginTop: 1 }}>
+                        Mínimo {promo.minimo_compra} €
+                      </div>
+                    )}
                   </div>
-                  {promo.minimo_compra > 0 && (
-                    <div style={{ fontSize: 10, color: C.stone, marginTop: 4 }}>Min. {promo.minimo_compra}€</div>
-                  )}
+                  <span style={{ position: 'absolute', right: -14, bottom: -20, opacity: 0.3, fontSize: 96, lineHeight: 1 }}>
+                    {promoEmoji(promo)}
+                  </span>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -788,20 +830,114 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       {creadores?.admite_altas && (creadores.escalera?.length > 0) && (
         <div style={{ padding: '18px 0 0', background: C.cream }}>
           <div style={{
-            background: C.paper, border: `1px solid ${C.border}`, borderRadius: 16, padding: 15,
+            position: 'relative',
+            background: 'linear-gradient(135deg, #FDE8D6 0%, #F7CFB2 100%)',
+            border: '1px solid #E4671F', borderRadius: 16, overflow: 'hidden',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-              <Video size={15} color="#A85018" />
-              <div style={{ fontSize: 14, fontWeight: 800, color: C.ink }}>
-                Graba un vídeo y gana descuentos
+            {/* Mismo aspecto que el banner de la Home: es el mismo programa y
+                tiene que reconocerse de un vistazo. Destaca sin gritar — no
+                compite con la carta, que es a lo que se viene.
+
+                Nace PLEGADO: desplegado ocupa media pantalla y empuja las
+                pizzas fuera de la vista. La cabecera ya lleva el gancho (el
+                premio más alto), así que lo abre quien tiene interés. */}
+            {/* Los @keyframes `pidooCamGuino` y `pidooRecPulso` viven en
+                index.css: la misma cámara sale también en el menú del perfil. */}
+
+            {/* La misma foto de comida que el banner de la Home, y con la misma
+                máscara: entra por el borde derecho y se disuelve antes de llegar
+                al texto. Los 118 px y la opacidad NO son a ojo — con ellos el
+                texto conserva 4,7:1 de contraste; subirlos lo tira por debajo
+                del mínimo legible. Si se tocan, hay que volver a medirlo. */}
+            <div aria-hidden="true" style={{
+              position: 'absolute', top: 0, right: 0, bottom: 0, width: 118,
+              backgroundImage: 'url(/creadores-fondo.webp)',
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              opacity: 0.34, pointerEvents: 'none',
+              WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.10) 62%, #000 100%)',
+              maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.10) 62%, #000 100%)',
+            }} />
+
+            <button
+              onClick={() => setCreadoresAbierto(v => !v)}
+              aria-expanded={creadoresAbierto}
+              style={{
+                position: 'relative', zIndex: 1,
+                width: '100%', display: 'flex', alignItems: 'center', gap: 11,
+                padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: 'inherit', textAlign: 'left',
+              }}>
+              <div style={{
+                position: 'relative', flexShrink: 0,
+                width: 34, height: 34, borderRadius: 10,
+                background: 'rgba(255,255,255,0.7)', display: 'grid', placeItems: 'center',
+              }}>
+                <Video size={17} color="#A85018" className="pidoo-cam"
+                  style={{ animation: 'pidooCamGuino 4.5s ease-in-out infinite' }} />
+                {/* El punto rojo de "grabando". Es lo que hace que se lea como
+                    una cámara en marcha y no como un icono más. */}
+                <span className="pidoo-rec" aria-hidden="true" style={{
+                  position: 'absolute', top: 5, right: 5,
+                  width: 6, height: 6, borderRadius: '50%', background: '#E03B3B',
+                  animation: 'pidooRecPulso 1.6s ease-in-out infinite',
+                }} />
               </div>
-            </div>
-            <p style={{ fontSize: 12.5, color: C.stone, marginTop: 0, marginBottom: 10, lineHeight: 1.5 }}>
-              Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones
-              que consiga, te llevas esto para la próxima:
-            </p>
-            <CreadoresEscalera escalera={creadores.escalera} compacto
-              nota="El descuento se aplica solo al pagar tu siguiente pedido en este restaurante." />
+              {/* Titular CORTO para que quepa en una línea: con dos, el bloque
+                  se comía 100 px de la ficha. La cifra va delante porque es el
+                  gancho, y "de descuento" no se puede quitar — sin eso se lee
+                  como dinero en metálico y sería publicidad engañosa. */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: '#8C420C', lineHeight: 1.2 }}>
+                  {mejorPremioEuros(creadores.escalera) > 0
+                    ? `Hasta ${fmtEur(mejorPremioEuros(creadores.escalera))} € de descuento`
+                    : 'Descuentos por tu vídeo'}
+                </div>
+                {!creadoresAbierto && (
+                  <div style={{ fontSize: 12, color: '#7A4C28', marginTop: 1, lineHeight: 1.3 }}>
+                    por tu vídeo, según sus visualizaciones
+                  </div>
+                )}
+              </div>
+              <ChevronDown size={17} color="#A85018" style={{
+                flexShrink: 0,
+                transform: creadoresAbierto ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.18s',
+              }} />
+            </button>
+
+            {creadoresAbierto && (
+              <div style={{ padding: '0 15px 15px' }}>
+                <div style={{
+                  background: 'rgba(255,255,255,0.55)', borderRadius: 13, padding: 13,
+                }}>
+                  <p style={{ fontSize: 12.5, color: '#7A4C28', marginTop: 0, marginBottom: 10, lineHeight: 1.5 }}>
+                    Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones
+                    que consiga, te llevas esto para la próxima:
+                  </p>
+                  <CreadoresEscalera escalera={creadores.escalera} compacto
+                    nota="El descuento se aplica solo al pagar tu siguiente pedido en este restaurante. Necesitas una cuenta de Pidoo para participar." />
+                </div>
+
+                {/* Aquí no cabe explicar el programa entero (qué hay que
+                    etiquetar, cuánto duran los premios, las condiciones). El
+                    botón lleva a la pantalla que sí lo cuenta, y si no hay
+                    sesión pide login primero: sin cuenta no se puede participar
+                    (el servidor lo rechaza con PD142). */}
+                {onOpenCreadores && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onOpenCreadores() }}
+                    style={{
+                      width: '100%', marginTop: 10, padding: '11px 14px',
+                      borderRadius: 12, border: '1px solid #E4671F',
+                      background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+                      fontSize: 13, fontWeight: 800, color: '#A85018',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    }}>
+                    <Video size={14} /> Cómo funciona y mis premios
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -845,11 +981,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                 <button
                   onClick={() => setCatFiltro(null)}
                   style={{
-                    padding: '8px 14px', borderRadius: 999, border: 'none',
-                    background: !catFiltro ? C.ink : 'transparent',
-                    color: !catFiltro ? C.cream : C.stone,
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+                    ...chipCategoria(!catFiltro),
                   }}
                 >
                   Todos
@@ -859,11 +991,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                     key={cat.id}
                     onClick={() => setCatFiltro(catFiltro === cat.id ? null : cat.id)}
                     style={{
-                      padding: '8px 14px', borderRadius: 999, border: 'none',
-                      background: catFiltro === cat.id ? C.ink : 'transparent',
-                      color: catFiltro === cat.id ? C.cream : C.stone,
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0,
+                      ...chipCategoria(catFiltro === cat.id),
                     }}
                   >
                     {cat.nombre}
@@ -887,6 +1015,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                       }}>
                         {cat.nombre}
                       </h2>
+                      <div className="shell-carta">
                       {prods.map(p => (
                         <ProductoCard
                           key={p.id} p={p}
@@ -901,11 +1030,13 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                           getPrecio={getPrecioMostrado}
                         />
                       ))}
+                      </div>
                     </div>
                   )
                 })}
 
               {/* Productos sin categoría */}
+              <div className="shell-carta">
               {!catFiltro && productos
                 .filter(p => !p.categoria_id)
                 .map(p => (
@@ -922,6 +1053,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                     getPrecio={getPrecioMostrado}
                   />
                 ))}
+              </div>
             </div>
           </>
         )}
@@ -930,6 +1062,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       {/* ── Modal producto (bottom-sheet) ── */}
       {modal && (
         <div
+          className="modal-overlay"
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(26,24,21,0.55)',
@@ -941,6 +1074,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
           onClick={() => setModal(null)}
         >
           <div
+            className="modal-sheet"
             onClick={e => e.stopPropagation()}
             style={{
               background: C.cream,

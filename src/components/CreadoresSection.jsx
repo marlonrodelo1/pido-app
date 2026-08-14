@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Video, Gift, ExternalLink, Check, Clock, Copy, Sparkles } from 'lucide-react'
+import { Video, Gift, ExternalLink, Check, Clock, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { analizarUrlVideo, NOMBRE_RED } from '../lib/videoUrl'
@@ -17,7 +17,7 @@ import { CreadoresComoGanar } from './CreadoresEscalera'
 
 const C = {
   cream: '#F7F3EC', cream2: '#EFE9DD', paper: '#FBF8F2',
-  ink: '#1A1815', stone: '#6B6356', stone2: '#8A8174',
+  ink: '#1A1815', stone: '#5A5348', stone2: '#8A8174',
   terracotta: '#C5562C', terracottaSoft: '#F1D9CC', burnt: '#E4671F', burntText: '#A85018',
   sage: '#8B9D7A', sage2: '#6F8460', sageSoft: '#DDE3D3',
   warning: '#C99551', warningSoft: '#F0E1C8',
@@ -78,27 +78,60 @@ export default function CreadoresSection() {
   }
 
   return (
-    <div>
-      <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 4, color: C.ink }}>Pidoo Creadores</h2>
-      <p style={{ fontSize: 13, color: C.stone, marginTop: 0, marginBottom: 16, lineHeight: 1.5 }}>
-        Graba un vídeo de tu pedido y gana descuentos según las visualizaciones que consiga.
-      </p>
+    <div style={{ position: 'relative' }}>
+      {/* La misma foto del escenario, pero de fondo en TODA la pantalla: muy
+          tenue y apagándose hacia abajo, para que la sección entera respire el
+          mismo sitio y no solo la cabecera.
+          MEDIDO, no estimado: la foto tiene negros puros, y con el gris viejo
+          (#6B6356) el texto secundario caía a 4,38 —por debajo del mínimo— ya
+          al 9 %. Por eso el gris de esta seccion se oscurecio a #5A5348; con él
+          la marca aguanta el 12 % de sobra. Si alguien la sube más, o cambia la
+          foto por una con más negro, hay que volver a medirlo. */}
+      <div aria-hidden="true" style={{
+        position: 'absolute', top: -8, left: -16, right: -16, bottom: 0, zIndex: 0,
+        backgroundImage: 'url(/creadores-escenario.webp)',
+        backgroundSize: 'cover', backgroundPosition: 'top center',
+        opacity: 0.12, pointerEvents: 'none',
+        WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.45) 40%, transparent 88%)',
+        maskImage: 'linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.45) 40%, transparent 88%)',
+      }} />
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+      <div style={{ position: 'relative', zIndex: 1 }}>
+      <Escenario
+        enJuego={enJuego.length}
+        views={parts.reduce((s, p) => s + (p.views_actual || 0), 0)}
+        premios={cupones.length}
+      />
+
+      {/* Icono ARRIBA y texto debajo. En una sola fila no cabían: "Cómo ganar" y
+          "Premios (2)" partían en dos líneas y dejaban las tres pastillas
+          descuadradas. Así cada una ocupa lo mismo y nada se parte. */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {[
-          { id: 'como', label: 'Cómo ganar', Icon: Sparkles },
-          { id: 'videos', label: `Mis vídeos${enJuego.length ? ` (${enJuego.length})` : ''}`, Icon: Video },
-          { id: 'premios', label: `Premios${disponibles.length ? ` (${disponibles.length})` : ''}`, Icon: Gift },
+          { id: 'como', label: 'Cómo ganar', Icon: Sparkles, n: 0 },
+          { id: 'videos', label: 'Mis vídeos', Icon: Video, n: enJuego.length },
+          { id: 'premios', label: 'Premios', Icon: Gift, n: disponibles.length },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: '10px 2px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
+            flex: 1, padding: '8px 4px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
             border: tab === t.id ? `1.5px solid ${C.burnt}` : `1px solid ${C.border}`,
             background: tab === t.id ? 'linear-gradient(180deg,#FDE8D6 0%,#F7CFB2 100%)' : C.paper,
             color: tab === t.id ? C.burntText : C.ink,
-            fontSize: 12, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            fontSize: 11.5, fontWeight: 700, lineHeight: 1.2,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
           }}>
-            <t.Icon size={14} style={{ flexShrink: 0 }} /> {t.label}
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <t.Icon size={15} style={{ flexShrink: 0 }} />
+              {t.n > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -7,
+                  minWidth: 13, height: 13, padding: '0 3px', borderRadius: 999,
+                  background: C.burnt, color: '#fff',
+                  fontSize: 9, fontWeight: 800, lineHeight: '13px', textAlign: 'center',
+                }}>{t.n}</span>
+              )}
+            </span>
+            <span style={{ whiteSpace: 'nowrap' }}>{t.label}</span>
           </button>
         ))}
       </div>
@@ -124,6 +157,78 @@ export default function CreadoresSection() {
             />
           : cupones.map(c => <TarjetaCupon key={c.id} c={c} />)
       )}
+      </div>
+    </div>
+  )
+}
+
+/* ── La cabecera: el escenario ───────────────────────────────────────────────
+   Antes esta pantalla abría con un título negro y un párrafo gris sobre fondo
+   crema. Para la sección que es EL DIFERENCIAL de Pidoo, eso era un folleto.
+
+   La foto (alfombra roja bajo los focos) va recortada a la proporción exacta de
+   esta caja, 4 kB en WebP, para que 'cover' no vuelva a cortarla y se pierdan
+   los focos, que es lo que hace la imagen. Encima lleva un velo cálido de la
+   paleta de Pidoo: sin él parece una foto de banco pegada, y con él parece
+   nuestra. Además es lo que mantiene el texto blanco legible sobre la parte
+   clara de los focos.
+
+   Los tres números no son decoración: son la razón de volver a entrar. Quien ya
+   ha grabado ve subir sus visualizaciones, y quien no ha grabado ve tres ceros,
+   que es la mejor invitación que hay. */
+function Escenario({ enJuego, views, premios }) {
+  return (
+    <div style={{
+      position: 'relative', overflow: 'hidden',
+      borderRadius: 18, marginBottom: 16, padding: '18px 16px 15px',
+      backgroundColor: '#2A1A12',
+      backgroundImage: 'url(/creadores-escenario.webp)',
+      backgroundSize: 'cover', backgroundPosition: 'center',
+    }}>
+      <div aria-hidden="true" style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(150deg, rgba(42,26,18,0.90) 0%, rgba(74,36,18,0.80) 46%, rgba(138,61,18,0.66) 100%)',
+      }} />
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+          <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+            <Video size={20} color="#FFD9A8" className="pidoo-cam"
+              style={{ animation: 'pidooCamGuino 4.5s ease-in-out infinite' }} />
+            <span className="pidoo-rec" aria-hidden="true" style={{
+              position: 'absolute', top: -1, right: -3,
+              width: 6, height: 6, borderRadius: '50%', background: '#FF5A5A',
+              animation: 'pidooRecPulso 1.6s ease-in-out infinite',
+            }} />
+          </span>
+          <h2 style={{ fontSize: 19, fontWeight: 800, margin: 0, color: '#fff', letterSpacing: '-0.01em' }}>
+            Pidoo Creadores
+          </h2>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.82)', margin: '0 0 14px', lineHeight: 1.45 }}>
+          Graba tu pedido, súbelo, y cuantas más visualizaciones consiga, mayor el descuento.
+        </p>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { n: fmtNum(views), t: 'visualizaciones' },
+            // "en juego" y no "vídeos en juego": con la etiqueta larga rompía
+            // en dos líneas y descuadraba las tres cajas.
+            { n: enJuego,       t: 'en juego' },
+            { n: premios,       t: premios === 1 ? 'premio' : 'premios' },
+          ].map((s, i) => (
+            <div key={i} style={{
+              flex: 1, borderRadius: 11, padding: '8px 6px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.13)',
+            }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{s.n}</div>
+              <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.72)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {s.t}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -215,7 +320,6 @@ function TarjetaVideo({ p, escalera }) {
 
 // ── Un cupón ────────────────────────────────────────────────────────────────
 function TarjetaCupon({ c }) {
-  const [copiado, setCopiado] = useState(false)
   const caducado = new Date(c.caduca_at) <= new Date()
   const gastado = !!c.usado_at
   const muerto = caducado || gastado
@@ -235,17 +339,20 @@ function TarjetaCupon({ c }) {
             En {c.establecimientos?.nombre || 'tu restaurante'}
           </div>
         </div>
+        {/* El código se enseña, pero NO se copia: no hay ningún sitio donde
+            pegarlo. El premio se marca solo en el carrito, y un botón de copiar
+            invitaba a buscar una casilla que no existe. Se deja a la vista
+            porque es lo que identifica el cupón cuando alguien escribe a
+            soporte. */}
         {!muerto && (
-          <button
-            onClick={() => { navigator.clipboard?.writeText(c.codigo); setCopiado(true); setTimeout(() => setCopiado(false), 1600) }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, padding: '6px 9px', borderRadius: 9,
-              border: `1px solid ${C.burnt}`, background: 'rgba(255,255,255,0.6)',
-              fontSize: 11.5, fontWeight: 800, color: C.burntText, cursor: 'pointer',
-              fontFamily: 'inherit', letterSpacing: '0.04em', flexShrink: 0,
-            }}>
-            {copiado ? <Check size={12} /> : <Copy size={12} />} {c.codigo}
-          </button>
+          <div style={{
+            padding: '6px 9px', borderRadius: 9,
+            border: `1px solid ${C.burnt}`, background: 'rgba(255,255,255,0.6)',
+            fontSize: 11.5, fontWeight: 800, color: C.burntText,
+            letterSpacing: '0.04em', flexShrink: 0,
+          }}>
+            {c.codigo}
+          </div>
         )}
       </div>
 

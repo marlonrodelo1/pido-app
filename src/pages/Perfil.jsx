@@ -189,11 +189,15 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
     finally { setGeoLoading(false) }
   }
 
+  // Creadores va PRIMERO y con la cámara en naranja: es el diferencial de Pidoo
+  // frente a cualquier otro marketplace, y enterrado entre direcciones y ajustes
+  // no lo encontraba nadie. Es la única entrada destacada de la lista — si se
+  // destacan dos, no destaca ninguna.
   const menuItems = [
+    { icon: Video, label: 'Mis vídeos y premios', action: () => setSubSeccion('creadores'), destacado: true },
     { icon: MapPin, label: 'Mis direcciones', action: () => { setSubSeccion('direcciones'); fetchDirecciones() } },
     { icon: CreditCard, label: 'Método de pago', action: () => setSubSeccion('pagos') },
     { icon: Tag, label: 'Promociones', action: () => setSubSeccion('promos') },
-    { icon: Video, label: 'Mis vídeos y premios', action: () => setSubSeccion('creadores') },
     { icon: Settings, label: 'Configuración del perfil', action: () => { setNombre(perfil?.nombre || ''); setApellido(perfil?.apellido || ''); setTelefono(perfil?.telefono || ''); setSubSeccion('config') } },
     { icon: HelpCircle, label: 'Ayuda', action: () => setSubSeccion('ayuda') },
   ]
@@ -201,7 +205,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   // Sub-secciones
   if (subSeccion) {
     return (
-      <div style={{ animation: 'fadeIn 0.3s ease' }}>
+      <div className="shell-lista" style={{ animation: 'fadeIn 0.3s ease' }}>
         <button onClick={() => { setSubSeccion(null); setMsg(null) }} style={{
           display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
           color: 'var(--c-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
@@ -452,7 +456,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   }
 
   return (
-    <div style={{ animation: 'fadeIn 0.3s ease' }}>
+    <div className="shell-lista" style={{ animation: 'fadeIn 0.3s ease' }}>
       {/* Avatar y datos */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
         <input ref={avatarRef} type="file" accept="image/*" hidden onChange={e => e.target.files[0] && subirAvatar(e.target.files[0])} />
@@ -492,7 +496,21 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
             fontSize: 14, fontWeight: 600, color: 'var(--c-text)', textAlign: 'left',
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <item.icon size={18} strokeWidth={1.8} color="var(--c-muted)" />
+              {item.destacado ? (
+                // Misma cámara con punto de "grabando" que en la ficha del
+                // restaurante: la misma cosa tiene que verse igual en toda la app.
+                <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                  <item.icon size={18} strokeWidth={1.8} color="#E4671F" className="pidoo-cam"
+                    style={{ animation: 'pidooCamGuino 4.5s ease-in-out infinite' }} />
+                  <span className="pidoo-rec" aria-hidden="true" style={{
+                    position: 'absolute', top: -1, right: -2,
+                    width: 5, height: 5, borderRadius: '50%', background: '#E03B3B',
+                    animation: 'pidooRecPulso 1.6s ease-in-out infinite',
+                  }} />
+                </span>
+              ) : (
+                <item.icon size={18} strokeWidth={1.8} color="var(--c-muted)" />
+              )}
               {item.label}
             </span>
             <ChevronRight size={16} strokeWidth={1.8} color="var(--c-muted)" />
@@ -525,7 +543,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
 
       {/* Modal Eliminar Cuenta */}
       {showDeleteModal && (
-        <div style={{
+        <div className="modal-overlay" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.8)', zIndex: 1100,
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
