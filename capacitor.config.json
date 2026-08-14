@@ -4,7 +4,7 @@
   "webDir": "dist",
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2000,
+      "launchShowDuration": 900,
       "backgroundColor": "#FAF3EC",
       "showSpinner": false,
       "androidScaleType": "CENTER_CROP",
@@ -17,7 +17,11 @@
       "overlaysWebView": true
     },
     "PushNotifications": {
-      "presentationOptions": ["badge", "sound", "alert"]
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
     },
     "LocalNotifications": {
       "smallIcon": "ic_stat_icon",
@@ -25,7 +29,10 @@
       "sound": "alarm.wav"
     },
     "GoogleAuth": {
-      "scopes": ["profile", "email"],
+      "scopes": [
+        "profile",
+        "email"
+      ],
       "serverClientId": "205051798222-08khlnuken8job06okkuus0apctmuja6.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }

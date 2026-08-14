@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 12 y superiores dibujan la pantalla de arranque con su propia API
+      (SplashScreen), y ahí NO se usa el drawable de `values/styles.xml`: si no
+      se dice nada, el fondo lo hereda del tema y sale BLANCO, con un destello
+      feo antes del crema de la app.
+
+      Aquí solo se fija el color. El ICONO no se puede quitar: en Android 12+ el
+      sistema pinta obligatoriamente el icono de la app en el centro y no hay
+      atributo para suprimirlo. Por eso en esos móviles se ve el isotipo de
+      Pidoo (la "o"), no el logotipo completo — que es justo lo que evita el
+      efecto de "el logo dos veces": primero el isotipo, después el logotipo
+      dibujándose dentro de la app.
+    -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FAF3EC</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+</resources>

@@ -7,6 +7,7 @@ import { Bell, Share2, CircleUser, X } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CartProvider, useCart } from './context/CartContext'
 import Login from './pages/Login'
+import SplashPidoo from './components/SplashPidoo'
 import BottomNav from './components/BottomNav'
 
 // Lazy-loaded routes (code splitting)
@@ -388,6 +389,11 @@ export default function AppShell({ socioData = null, restaurantesFilter = null, 
   return (
     <AuthProvider>
       <CartProvider>
+        {/* El logo que se dibuja solo. Va SOLO en el shell de la app, no en la
+            landing ni en la tienda pública: ahí el visitante viene de un enlace
+            y meterle una animación de tres segundos por delante es perder la
+            visita. */}
+        <SplashPidoo />
         <AppContent socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />
       </CartProvider>
     </AuthProvider>
