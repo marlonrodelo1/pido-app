@@ -26,6 +26,7 @@ import { useAuth } from '../context/AuthContext'
 import { estaAbierto, DIAS_ORDEN, DIAS_CORTO } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import { permiteInvitado } from '../lib/invitado'
+import CreadoresBloqueRest from '../components/CreadoresBloqueRest'
 
 // Paleta tipo design system (DESIGN.md cream/terracotta/sage)
 const C = {
@@ -1095,6 +1096,13 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
             })}
           </div>
         )}
+
+        {/* Pidoo Creadores. Faltaba SOLO aquí: quien abria el enlace del
+            restaurante desde un ordenador no se enteraba de que el programa
+            existe, porque escritorio usa este componente y no `RestDetalle`.
+            No se le pasa `onOpenCreadores`: en la tienda publica no hay
+            seccion de perfil y el boton llevaria a ninguna parte. */}
+        <CreadoresBloqueRest establecimientoId={est.id} margenSuperior={20} />
 
         {/* Fila inferior: navegación · carta · carrito */}
         <div className="td-main" style={{ filter: cerrado ? 'grayscale(0.35)' : 'none' }}>
