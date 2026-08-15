@@ -6,6 +6,33 @@ import { registerPushNotifications, unregisterPushNotifications } from '../lib/p
 
 const AuthContext = createContext({})
 
+// Reclama los tokens de push que el AppDelegate de iOS guarda SIN user_id antes
+// del login. Se reintenta en escalera porque el token de FCM puede tardar en
+// llegar con red lenta y en frío.
+//
+// ⚠️ EL `.then()` NO ES DECORATIVO (bug real, 15 ago 2026): `supabase.rpc(...)`
+// devuelve un PostgrestFilterBuilder, que es un *thenable* (solo implementa
+// `then`), NO una Promise. `typeof builder.catch` es `undefined`, así que
+// `supabase.rpc(...).catch(...)` —que es lo que había en la rama del usuario
+// recién registrado— lanzaba `TypeError` de forma síncrona. Y como el builder es
+// perezoso (solo dispara la petición cuando alguien llama a `then`), la RPC ni
+// siquiera se enviaba: un cliente que se registraba por primera vez en iPhone se
+// quedaba sin recibir avisos. Encima el error saltaba dentro de un `setTimeout`,
+// donde nadie lo captura.
+//
+// Estaba escrito dos veces, bien abajo y mal arriba; por eso ahora vive aquí.
+function reclamarTokensHuerfanos() {
+  supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).then(() => {}, () => {})
+}
+
+// Escalera hasta 30s (mismo criterio que el fix del socio del 2 jul).
+function programarReclamoTokens() {
+  setTimeout(reclamarTokensHuerfanos, 2000)
+  setTimeout(reclamarTokensHuerfanos, 6000)
+  setTimeout(reclamarTokensHuerfanos, 15000)
+  setTimeout(reclamarTokensHuerfanos, 30000)
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [perfil, setPerfil] = useState(null)
@@ -76,9 +103,7 @@ export function AuthProvider({ children }) {
         registerWebPush('cliente', { user_id: userId })
         registerPushNotifications('cliente', { user_id: userId })
         // Claim de tokens huerfanos iOS (AppDelegate los guarda sin user_id antes del login)
-        setTimeout(() => { supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).catch(() => {}) }, 2000)
-        setTimeout(() => { supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).catch(() => {}) }, 6000)
-        setTimeout(() => { supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).catch(() => {}) }, 15000)
+        programarReclamoTokens()
         return
       }
       setPerfil(null)
@@ -104,16 +129,7 @@ export function AuthProvider({ children }) {
     registerWebPush('cliente', { user_id: userId })
     registerPushNotifications('cliente', { user_id: userId })
     // Reclamar tokens huerfanos creados por AppDelegate iOS antes del login.
-    // Se reintenta varias veces por si el FCM token llega con retraso.
-    const claimTokens = () => {
-      supabase.rpc('claim_orphan_push_tokens', { p_user_type: 'cliente' }).then(() => {}).catch(() => {})
-    }
-    // Escalera hasta 45s (igual que el fix del socio del 2 jul): en iOS el token
-    // del AppDelegate puede tardar >15s en insertarse con red lenta en frío.
-    setTimeout(claimTokens, 2000)
-    setTimeout(claimTokens, 6000)
-    setTimeout(claimTokens, 15000)
-    setTimeout(claimTokens, 30000)
+    programarReclamoTokens()
     setTimeout(claimTokens, 45000)
   }
 
