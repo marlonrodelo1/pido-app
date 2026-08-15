@@ -283,11 +283,18 @@ export default function ModeloSection() {
                 margin: '0 0 10px',
               }}
             >
-              Tu delivery, solo 10% por pedido
+              Tu delivery, con las cuentas claras
             </h3>
+            {/* Aquí ponía "solo 10% por pedido" y era media verdad: el 10 % es
+                el de Pidoo, pero si el reparto lo hace un socio de la red, él
+                factura aparte su envío + otro 10 % del subtotal (comprobado en
+                las facturas 2026/0002, 0004 y 0010 de Mamma Mia, que cuadran al
+                céntimo). El restaurante lo descubría en su primera liquidación,
+                después de pagar 150 € de alta. Se dice entero y en la portada. */}
             <p style={{ fontSize: 15.5, color: 'var(--c-muted)', lineHeight: 1.6, marginBottom: 18 }}>
-              Tu carta online con tu propia URL, sin cuotas mensuales y con la red de socios
-              repartiendo por ti.
+              Tu carta online con tu propia URL y sin cuotas mensuales. Pidoo se lleva el 10 % del
+              pedido; si el reparto lo hace un socio de la red, él cobra aparte su envío más otro
+              10 %. Si repartes tú, ese segundo 10 % no existe.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <SolidBtn href={PANEL_URL}>
@@ -296,7 +303,9 @@ export default function ModeloSection() {
             </div>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 12 }}>
-            <Bullet>Solo 10% por pedido · sin cuota mensual</Bullet>
+            <Bullet>10 % de comisión Pidoo · sin cuota mensual</Bullet>
+            <Bullet>Recogida y reparto propio: solo ese 10 %</Bullet>
+            <Bullet>Con socio de la red: él cobra envío + 10 %</Bullet>
             <Bullet>Alta única de 150 € · sin permanencia</Bullet>
             <Bullet>Pedidos en tiempo real en tu panel</Bullet>
             <Bullet>Red de socios que reparten por ti</Bullet>

@@ -1,20 +1,35 @@
 /* ──────────────────────────────────────────────────────────────────────────
- * LOGO MARQUEE — cinta infinita de logos de restaurantes que ya reparten.
- * Data-driven: añadir un logo = copiar el archivo a public/logos/ y sumar una
- * entrada a LOGOS. Se ve llena aunque haya pocos (la lista se duplica y gira).
+ * LOGO MARQUEE — cinta infinita con los restaurantes que ya están en Pidoo.
+ *
+ * LA LISTA SALE DE `landing_vitrina()`, ya ordenada por pedidos de los últimos
+ * 30 días. Antes eran cinco entradas escritas a mano y, medido el 15 ago 2026,
+ * la prueba social estaba justo del revés: enseñaba a Come y Calla (0 pedidos
+ * en 30 días) y a Octava Isla (0), y NO enseñaba a Mamma Mia (9) ni a Dar Kebab
+ * (8), que son los dos que sostienen el volumen. Un alta nueva ya no exige
+ * tocar este fichero.
+ *
+ * LOGOS_FALLBACK es el respaldo de los ficheros locales: si la consulta falla,
+ * la cinta sigue llena en vez de dejar un hueco en la portada.
  * ────────────────────────────────────────────────────────────────────────── */
 
-const LOGOS = [
-  { src: '/logos/come-y-calla.jpg', name: 'Come y Calla' },
+const LOGOS_FALLBACK = [
   { src: '/logos/maxpizza.webp', name: "Max's Pizza" },
-  { src: '/logos/octava-isla.jpeg', name: 'Guachinche Octava Isla' },
   { src: '/logos/rincon-de-fran.jpg', name: 'Rincón de Fran' },
   { src: '/logos/cafe-bar-australia.png', name: 'Café Bar Australia' },
+  { src: '/logos/octava-isla.jpeg', name: 'Guachinche Octava Isla' },
+  { src: '/logos/come-y-calla.jpg', name: 'Come y Calla' },
 ]
 
-const Chip = ({ logo }) => (
-  <div
+/* Con `slug` el chip es un enlace a la tienda de ese restaurante. No es
+   decoración: la portada no tenía UN SOLO enlace a las 9 tiendas públicas, así
+   que para un buscador esas páginas no colgaban de ningún sitio. */
+const Chip = ({ logo }) => {
+  const Tag = logo.slug ? 'a' : 'div'
+  return (
+  <Tag
+    href={logo.slug ? `/${logo.slug}` : undefined}
     style={{
+      textDecoration: 'none',
       flexShrink: 0,
       height: 84,
       minWidth: 150,
@@ -52,11 +67,15 @@ const Chip = ({ logo }) => (
     >
       {logo.name}
     </span>
-  </div>
-)
+  </Tag>
+  )
+}
 
-export default function LogoMarquee() {
-  const track = [...LOGOS, ...LOGOS]
+export default function LogoMarquee({ restaurantes }) {
+  const logos = Array.isArray(restaurantes) && restaurantes.length
+    ? restaurantes.filter((r) => r?.logo_url).map((r) => ({ src: r.logo_url, name: r.nombre, slug: r.slug }))
+    : LOGOS_FALLBACK
+  const track = [...logos, ...logos]
   return (
     <section
       style={{
@@ -79,7 +98,9 @@ export default function LogoMarquee() {
           padding: '0 20px',
         }}
       >
-        Ya reparten con Pidoo
+        {/* "Están" y no "reparten": Drink2Home tiene `tiene_delivery=false`, y
+            la lista ahora la trae la BD entera, no una selección a mano. */}
+        Ya están en Pidoo
       </div>
 
       <div className="pd-marquee">

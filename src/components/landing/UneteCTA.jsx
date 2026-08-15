@@ -213,8 +213,14 @@ export default function UneteCTA() {
               >
                 Empieza gratis <ArrowRight size={18} strokeWidth={2.6} />
               </a>
+              {/* El precio, en la portada. Decía solo "Sin permanencia" y el
+                  plan cuesta 30 €/mes: no aparecía ni aquí, ni en
+                  socio.pidoo.es, ni en los 4 pasos del alta — el socio se lo
+                  encontraba ya dentro del panel. La cifra es la que cobra
+                  Stripe (`pido-panel-socio/src/pages/MiSuscripcion.jsx:191`);
+                  si cambia allí, hay que cambiarla aquí. */}
               <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#FFF', opacity: 0.9 }}>
-                Sin permanencia
+                7 días gratis, luego 30 €/mes · sin permanencia
               </span>
             </div>
           </div>
@@ -295,7 +301,7 @@ export default function UneteCTA() {
           <MiniCard
             icon={Utensils}
             title="Pon tu restaurante online"
-            desc="Tu carta con tu propia URL, solo 10% por pedido y sin cuota mensual. La red de socios reparte por ti."
+            desc="Tu carta con tu propia URL y sin cuota mensual. 10 % de comisión Pidoo; si reparte un socio de la red, él cobra aparte envío + 10 %."
             cta="Da de alta tu restaurante"
             href={PANEL_URL}
           />

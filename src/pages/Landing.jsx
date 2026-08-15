@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, X, ArrowRight } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { SolidBtn, GhostBtn } from '../components/landing/_ui'
 import HeroGlovo from '../components/landing/HeroGlovo'
 import LogoMarquee from '../components/landing/LogoMarquee'
 import ComoFunciona from '../components/landing/ComoFunciona'
+import CreadoresLanding from '../components/landing/CreadoresLanding'
 import ModeloSection from '../components/landing/ModeloSection'
 import DownloadApps from '../components/landing/DownloadApps'
 import UneteCTA from '../components/landing/UneteCTA'
@@ -19,6 +21,7 @@ const SOCIO_URL = 'https://socio.pidoo.es'
 /* ─────────────── HEADER — pill flotante glass (estilo 21st) ─────────────── */
 const NAV = [
   { label: 'Cómo funciona', href: '#como-funciona' },
+  { label: 'Creadores', href: '#creadores' },
   { label: 'El modelo', href: '#modelo' },
   { label: 'Descargar', href: '#descargas' },
   { label: 'Para socios', href: '#socios' },
@@ -201,6 +204,7 @@ const Footer = () => (
           {
             t: 'Producto',
             l: [
+              { label: 'Pidoo Creadores', href: '#creadores' },
               { label: 'El modelo', href: '#modelo' },
               { label: 'Descargar', href: '#descargas' },
               { label: 'Hazte socio', href: SOCIO_URL },
@@ -268,6 +272,28 @@ const Footer = () => (
 
 /* ─────────────────── LANDING ROOT ─────────────────── */
 export default function Landing() {
+  // Vitrina: cuántos restaurantes hay y cuáles enseñar, ordenados por pedidos
+  // de los últimos 30 días. Se pide UNA vez aquí y se reparte por props: el
+  // hero y el marquee necesitan lo mismo y dos llamadas en la portada serían
+  // dos viajes para el mismo dato.
+  //
+  // Mientras no llega, cada componente pinta su versión sin cifra. Nunca hay un
+  // hueco ni un salto de maquetación: el sitio de la píldora ya está reservado.
+  const [vitrina, setVitrina] = useState(null)
+
+  useEffect(() => {
+    let vivo = true
+    supabase
+      .rpc('landing_vitrina')
+      .then(({ data }) => {
+        if (vivo && data) setVitrina(data)
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [])
+
   return (
     <div
       id="top"
@@ -280,9 +306,13 @@ export default function Landing() {
     >
       <style>{landingCss}</style>
       <Header />
-      <HeroGlovo />
-      <LogoMarquee />
+      <HeroGlovo total={vitrina?.total} />
+      <LogoMarquee restaurantes={vitrina?.restaurantes} />
       <ComoFunciona />
+      {/* El diferencial va ALTO y en color: es lo único que no tienen los
+          portales. Después de "cómo funciona" (ya sabes qué es Pidoo) y antes
+          del modelo (que habla de dinero al restaurante y al socio). */}
+      <CreadoresLanding />
       <ModeloSection />
       <DownloadApps />
       <UneteCTA />
@@ -295,7 +325,7 @@ export default function Landing() {
 const landingCss = `
 html, body { overflow-x: hidden; }
 html { overflow-y: auto !important; scroll-behavior: smooth; }
-#como-funciona, #modelo, #descargas, #socios { scroll-margin-top: 92px; }
+#como-funciona, #creadores, #modelo, #descargas, #socios { scroll-margin-top: 92px; }
 
 @media (max-width: 900px) {
   .pd-socio-card { grid-template-columns: 1fr !important; gap: 28px !important; padding: 26px !important; }

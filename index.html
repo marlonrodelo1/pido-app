@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -7,7 +7,11 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Sin `maximum-scale` ni `user-scalable=no`: bloqueaban el zoom en TODA la
+         app (WCAG 1.4.4). El zoom de iOS al enfocar un campo se evita con
+         font-size >= 16px en los inputs, que ya está en index.css, no
+         prohibiéndole ampliar a quien no ve bien. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Pidoo" />
@@ -15,9 +19,15 @@
          nativo "Pidoo · ABRIR/VER" que lleva a la App Store (id 6759052572). -->
     <meta name="apple-itunes-app" content="app-id=6759052572" />
     <meta name="theme-color" content="#F7F3EC" />
-    <meta name="description" content="Pide comida a domicilio o recógela tú mismo en Tenerife. Más de 100 restaurantes en Pidoo, tu marketplace canario." />
-    <meta property="og:title" content="Pidoo · Tu comida favorita, a un clic" />
-    <meta property="og:description" content="Pide comida a domicilio en Tenerife. Más de 100 restaurantes." />
+    <!-- SIN CIFRA A PROPÓSITO. Aquí ponía "Más de 100 restaurantes" y en la
+         base de datos hay 9: es el texto que pinta Google y el que se despliega
+         al compartir el enlace por WhatsApp, o sea el sitio donde una cifra
+         inflada se comprueba en diez segundos. Cualquier número que se escriba
+         aquí envejece solo, porque este fichero es estático: si algún día hay
+         que dar volumen, que salga de `landing_vitrina()` como el del hero. -->
+    <meta name="description" content="Pide comida a domicilio o recógela tú mismo en Tenerife. Restaurantes de la isla, pago con tarjeta o en efectivo y reparto de socios locales." />
+    <meta property="og:title" content="Pidoo · Comida a domicilio en Tenerife" />
+    <meta property="og:description" content="Pide en los restaurantes de tu zona en Tenerife. Reparto local, y tú eliges si pagas con tarjeta o en efectivo." />
     <!-- og-pidoo.png = nombre NUEVO a propósito: iMessage/WhatsApp cachean la
          preview por URL; si se reutiliza favicon-512.png seguirían enseñando
          el logo viejo aunque el archivo cambie. -->
@@ -34,7 +44,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Fuentes en un solo <link> (antes: @import en index.css + @import runtime en AppShell → render-blocking + FOUT tardío) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" />
-    <title>Pidoo · Tu comida favorita, a un clic</title>
+    <title>Pidoo · Comida a domicilio en Tenerife</title>
   </head>
   <body>
     <div id="root"></div>

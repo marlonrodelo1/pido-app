@@ -3,7 +3,7 @@
  * gigante en tinta oscura, "barra de dirección" que lleva a /app, badges de
  * stores y foto de comida a la derecha. Sustituye al hero de vídeo.
  * ────────────────────────────────────────────────────────────────────────── */
-import { MapPin, ArrowRight, Star, Clock } from 'lucide-react'
+import { MapPin, ArrowRight, Star, Wallet } from 'lucide-react'
 
 const FONT = "'Plus Jakarta Sans', system-ui, sans-serif"
 const ORANGE = '#FF6B2C'
@@ -100,7 +100,7 @@ const FloatCard = ({ style, icon: Icon, top, bottom }) => (
   </div>
 )
 
-export default function HeroGlovo() {
+export default function HeroGlovo({ total }) {
   return (
     <section style={{ background: ORANGE, position: 'relative', overflow: 'hidden' }}>
       <style>{heroCss}</style>
@@ -214,16 +214,26 @@ export default function HeroGlovo() {
             />
           </div>
 
+          {/* Aquí ponía "En 22 min · Entrega media en Tenerife" y era un número
+              inventado: `entregado_at` se marca a mano, y 20 de los 50 repartos
+              entregados figuran hechos en menos de 3 minutos. Publicar un
+              minuto concreto es una promesa de servicio que la propia base de
+              datos no puede defender, así que va fuera. En su sitio, algo que
+              sí es cierto y además es diferencial: 50 de los últimos 59 pedidos
+              se pagaron en efectivo, y en un portal grande eso no se puede. */}
           <FloatCard
-            icon={Clock}
-            top="En 22 min"
-            bottom="Entrega media en Tenerife"
+            icon={Wallet}
+            top="Efectivo o tarjeta"
+            bottom="Tú eliges cómo pagar"
             style={{ top: 22, left: -14 }}
           />
+          {/* La cifra viene de `landing_vitrina()`, no del código: la anterior
+              decía 5 y llevaba meses sin tocarse. Mientras carga, la píldora
+              habla sin número en vez de parpadear con uno falso. */}
           <FloatCard
             icon={Star}
-            top="4,8 · 5 restaurantes"
-            bottom="ya reparten con Pidoo"
+            top={total > 0 ? `${total} restaurantes` : 'Restaurantes locales'}
+            bottom="ya están en Pidoo"
             style={{ bottom: 22, right: -14 }}
           />
         </div>
