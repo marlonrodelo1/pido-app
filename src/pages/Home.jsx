@@ -332,6 +332,11 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenDirecciones, on
         // "Cerrado", y la ficha no deja pedir. Lo que sigue oculto es lo que no está
         // verificado: eso es estado != 'activo', no un restaurante cerrado.
         .eq('estado', 'activo')
+        // Fuera del marketplace: un restaurante de cuota fija (Max's Pizza) tiene su
+        // tienda en pidoo.es/<slug> pero NO se promociona aquí. Va en el listado y en
+        // el mapa, nunca en TiendaPublicaRoute ni en el deep link por slug: su URL
+        // tiene que seguir abriendo.
+        .eq('visible_en_marketplace', true)
 
       if (categoriaPadre) {
         query = query.eq('categoria_padre', categoriaPadre)

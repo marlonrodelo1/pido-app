@@ -83,6 +83,7 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
         .from('establecimientos')
         .select(COLS_MAPA)
         .in('id', restaurantesFilter).eq('estado', 'activo')
+        .eq('visible_en_marketplace', true)
       setEstablecimientos(data || [])
       return
     }
@@ -101,6 +102,11 @@ export default function Mapa({ onOpenRest, restaurantesFilter = null }) {
       .from('establecimientos')
       .select(COLS_MAPA)
       .eq('estado', 'activo')
+      // Fuera del marketplace: un restaurante de cuota fija (Max's Pizza) tiene su
+      // tienda en pidoo.es/<slug> pero NO se promociona aquí. Va en el listado y en
+      // el mapa, nunca en TiendaPublicaRoute ni en el deep link por slug: su URL
+      // tiene que seguir abriendo.
+      .eq('visible_en_marketplace', true)
       .gte('latitud', c.lat - delta).lte('latitud', c.lat + delta)
       .gte('longitud', c.lng - delta).lte('longitud', c.lng + delta)
 
