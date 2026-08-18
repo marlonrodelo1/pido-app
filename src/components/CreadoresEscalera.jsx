@@ -152,8 +152,15 @@ export function CreadoresComoGanar({ programas = null }) {
         marginTop: 12, padding: '10px 12px', borderRadius: 10,
         background: C.cream2, color: C.stone, fontSize: 11.5, lineHeight: 1.5,
       }}>
-        Para registrar un vídeo necesitas un pedido de ese restaurante ya entregado, y
-        tienes 14 días desde que te llegó. Un pedido, un vídeo.
+        {/* Desde el 18 ago hay DOS caminos: el de siempre (con un pedido) y el
+            del QR de la mesa (sin pedido, con el visto bueno del restaurante).
+            Y el premio, venga de donde venga, solo se gasta a domicilio. */}
+        Puedes registrar un vídeo de un pedido ya entregado —tienes 14 días desde que te
+        llegó, un pedido un vídeo— o desde el código QR de la mesa si comes en el local,
+        y en ese caso lo revisa el restaurante.
+        <br /><br />
+        <strong>El descuento que ganes solo se aplica en pedidos a domicilio</strong>, del
+        mismo restaurante que te lo dio. Se te pone solo al pagar, sin códigos.
       </div>
     </div>
   )

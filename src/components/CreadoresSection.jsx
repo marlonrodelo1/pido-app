@@ -361,7 +361,7 @@ function TarjetaCupon({ c }) {
           ? 'Ya lo usaste. ¡Gracias!'
           : caducado
             ? 'Caducado'
-            : <>Se aplica solo al pagar. Caduca en <strong style={{ color: C.ink }}>{diasPara(c.caduca_at)} días</strong>.</>}
+            : <>Se aplica solo al pagar, en pedidos <strong style={{ color: C.ink }}>a domicilio</strong>. Caduca en <strong style={{ color: C.ink }}>{diasPara(c.caduca_at)} días</strong>.</>}
       </div>
     </div>
   )

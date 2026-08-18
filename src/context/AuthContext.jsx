@@ -33,7 +33,19 @@ function programarReclamoTokens() {
   setTimeout(reclamarTokensHuerfanos, 30000)
 }
 
-export function AuthProvider({ children }) {
+// `sinPerfil` — solo la usa la carta del QR de mesa (ParticiparMesa), y por
+// defecto vale false, o sea que el comportamiento de siempre no cambia ni una
+// coma. Con ella se carga la SESIÓN pero no el perfil, y eso importa porque
+// `fetchPerfil` llama a `registerWebPush`, que dispara
+// `Notification.requestPermission()`. Pedirle a alguien permiso de
+// notificaciones por abrir un formulario en la mesa de un bar es el momento
+// equivocado, y una denegación se guarda POR ORIGEN: dejaría a pidoo.es sin
+// push para siempre, también para sus pedidos.
+//
+// La carta no necesita el perfil: <Login/> solo usa login/registro/
+// resetPassword/authError, y el alta del vídeo identifica al cliente en el
+// servidor con auth.uid().
+export function AuthProvider({ children, sinPerfil = false }) {
   const [user, setUser] = useState(null)
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -55,12 +67,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchPerfil(session.user.id)
+      if (session?.user) {
+        if (sinPerfil) setLoading(false)
+        else fetchPerfil(session.user.id)
+      }
       else { setPerfil(null); setLoading(false) }
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [sinPerfil])
 
   async function fetchPerfil(userId, intentos = 0) {
     const { data } = await supabase
@@ -129,8 +144,12 @@ export function AuthProvider({ children }) {
     registerWebPush('cliente', { user_id: userId })
     registerPushNotifications('cliente', { user_id: userId })
     // Reclamar tokens huerfanos creados por AppDelegate iOS antes del login.
+    // (Aquí había un `setTimeout(claimTokens, 45000)`: `claimTokens` no está
+    // declarada ni importada en ningún sitio, así que el identificador se
+    // evaluaba de forma síncrona y lanzaba un ReferenceError DENTRO de
+    // fetchPerfil, que se llama sin await ni catch. Un error no capturado en
+    // cada carga de perfil. El reintento bueno es la escalera de arriba.)
     programarReclamoTokens()
-    setTimeout(claimTokens, 45000)
   }
 
   async function login(email, password) {

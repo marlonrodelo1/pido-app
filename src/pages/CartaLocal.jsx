@@ -9,10 +9,18 @@
  *
  * ES DE SOLO LECTURA A PROPÓSITO, y eso no es una decisión de UI: es la que
  * mantiene el precio de local fuera del dinero. Esta página NO monta
- * CartProvider ni AuthProvider, así que no existe ningún camino por el que un
- * `precio_local` pueda acabar en `pedido_items` — ni por error ni manipulando
- * el navegador. Comisión, liquidación de los lunes, pedido mínimo y promos
- * siguen viendo un único precio, el de siempre (`productos.precio`).
+ * CartProvider —ni aquí ni en ninguno de sus hijos—, así que no existe ningún
+ * camino por el que un `precio_local` pueda acabar en `pedido_items`, ni por
+ * error ni manipulando el navegador. Comisión, liquidación de los lunes, pedido
+ * mínimo y promos siguen viendo un único precio, el de siempre
+ * (`productos.precio`).
+ *
+ * `AuthProvider` tampoco cuelga de esta ruta. Lo monta, dentro de sí mismo y
+ * solo cuando el cliente dice que quiere participar en Pidoo Creadores, el
+ * componente `ParticiparMesa`. Si colgara de aquí, a un cliente con la sesión
+ * iniciada le saltaría el diálogo de permiso de notificaciones del navegador
+ * NADA MÁS ESCANEAR EL QR DE LA MESA. Quien solo mira la carta no paga sesión,
+ * ni consultas, ni permisos.
  *
  * Por eso el aspecto está REPLICADO y no importado de RestDetalle: compartir
  * ese componente traería consigo el carrito y se perdería la garantía.
@@ -21,13 +29,29 @@
  * aquí: habría que tocar enforce_pedido_item_precio(), crear_pedido_invitado,
  * el CHECK de pedidos.origen_pedido y calcular_liquidacion_restaurante.
  * ────────────────────────────────────────────────────────────────────────── */
-import { useEffect, useMemo, useState } from 'react'
-import { useParams, Navigate, Link } from 'react-router-dom'
-import { Search, X, Clock } from 'lucide-react'
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { useParams, useLocation, useNavigate, Navigate, Link } from 'react-router-dom'
+import { Search, X, Clock, Video, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { horarioHoyTexto } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import AppDownloadBanner from '../components/AppDownloadBanner'
+import CreadoresBloqueRest from '../components/CreadoresBloqueRest'
+
+// Perezoso a propósito: arrastra AuthContext -> webPush -> pushNotifications ->
+// @capacitor/*. Quien solo viene a mirar la carta no se descarga nada de eso.
+const ParticiparMesa = lazy(() => import('../components/ParticiparMesa'))
+const CLAVE_VOLVER = 'pidoo_carta_participar'
+
+// Marca en el móvil del cliente de que YA participó en este restaurante. Vive en
+// `localStorage` y no en la base de datos a propósito: saberlo por servidor
+// exigiría sesión en cada carga de la carta, y eso es justo el acoplamiento que
+// esta página evita. Aquí no hay nada sensible: solo una fecha.
+const clavePart = (estId) => 'pidoo_carta_part_' + estId
+
+function leerParticipacion(estId) {
+  try { return localStorage.getItem(clavePart(estId)) } catch { return null }
+}
 
 // Misma paleta que RestDetalle, para que las dos pantallas sean la misma marca.
 const C = {
@@ -65,6 +89,8 @@ const pantalla = (texto) => (
 
 export default function CartaLocal() {
   const { slug } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const slugOk = !!slug && /^[a-z0-9-]+$/i.test(slug)
 
   const [estado, setEstado] = useState(slugOk ? 'loading' : 'notfound')
@@ -75,6 +101,13 @@ export default function CartaLocal() {
   const [extrasPorProducto, setExtrasPorProducto] = useState({})
   const [busqueda, setBusqueda] = useState('')
   const [catFiltro, setCatFiltro] = useState(null)
+  const [plato, setPlato] = useState(null)          // ficha abierta (solo lectura)
+  // `undefined` = todavía no se sabe si hay programa. Son TRES estados, no dos:
+  // pintar algo mientras no se sabe produce el parpadeo de barra que aparece y
+  // desaparece. Con `undefined` no se pinta nada, ni esqueleto.
+  const [programa, setPrograma] = useState(undefined)
+  const [participar, setParticipar] = useState(false)
+  const [yaParticipo, setYaParticipo] = useState(null)   // fecha ISO o null
 
   /* ── 1. Resolver el restaurante por slug ─────────────────────────────── */
   useEffect(() => {
@@ -175,6 +208,45 @@ export default function CartaLocal() {
     return () => { cancelado = true }
   }, [estado, est?.id])
 
+  /* ── 2b. ¿Este restaurante tiene Pidoo Creadores abierto? ────────────── */
+  // Efecto aparte del de la carta: los platos no esperan a esta consulta. La RPC
+  // tiene permiso para `anon`, así que responde sin sesión y sin providers.
+  useEffect(() => {
+    if (estado !== 'ok' || !est?.id) return
+    let cancelado = false
+    supabase.rpc('creadores_programa_publico', { p_establecimiento_id: est.id })
+      .then(({ data }) => { if (!cancelado) setPrograma(data || null) })
+    setYaParticipo(leerParticipacion(est.id))
+    return () => { cancelado = true }
+  }, [estado, est?.id])
+
+  /* ── 2c. Volver del rodeo de Google ──────────────────────────────────── */
+  // Identificarse con Google recarga la página entera (pasa por /auth/callback),
+  // así que el panel de participación se pierde por el camino. Sin esto el
+  // cliente vuelve a la carta ya identificado, sin entender qué ha pasado y
+  // teniendo que empezar otra vez.
+  //
+  // Van dos marcas por si una falla: el `?participar=1` que viaja en el `next`
+  // del OAuth (verificado: ni Login ni AuthCallback tocan el query string) y una
+  // marca en `sessionStorage`, que es por pestaña y sobrevive el salto. Se
+  // limpian las dos y se quita el parámetro de la URL, para que un refresco o un
+  // enlace compartido no reabran el panel.
+  useEffect(() => {
+    if (estado !== 'ok') return
+    const params = new URLSearchParams(location.search)
+    const porUrl = params.get('participar') === '1'
+    const porSesion = sessionStorage.getItem(CLAVE_VOLVER) === slug
+    if (!porUrl && !porSesion) return
+
+    sessionStorage.removeItem(CLAVE_VOLVER)
+    setParticipar(true)
+    if (porUrl) {
+      params.delete('participar')
+      const q = params.toString()
+      navigate({ pathname: location.pathname, search: q ? `?${q}` : '' }, { replace: true })
+    }
+  }, [estado, slug, location.search, location.pathname, navigate])
+
   /* ── 3. Título y meta ────────────────────────────────────────────────── */
   useEffect(() => {
     if (estado !== 'ok' || !est) return
@@ -223,6 +295,20 @@ export default function CartaLocal() {
 
   const horarioHoy = horarioHoyTexto(est.horario)
   const totalVisibles = grupos.reduce((s, g) => s + g.items.length, 0)
+  // Un solo booleano manda sobre la barra Y sobre el hueco que deja al final.
+  // Si fueran dos condiciones distintas acabarían separándose.
+  const barraVisible = programa?.admite_altas === true
+
+  // La marca se pone al ABRIR, no al pulsar "entrar con Google": desde aquí no
+  // se ve ese momento, y el salto a Google recarga la página entera.
+  function abrirParticipar() {
+    try { sessionStorage.setItem(CLAVE_VOLVER, slug) } catch { /* modo privado */ }
+    setParticipar(true)
+  }
+  function cerrarParticipar() {
+    try { sessionStorage.removeItem(CLAVE_VOLVER) } catch { /* modo privado */ }
+    setParticipar(false)
+  }
 
   return (
     <div style={{
@@ -231,16 +317,16 @@ export default function CartaLocal() {
     }}>
       <style>{css}</style>
 
-      <div style={{
-        maxWidth: 720, margin: '0 auto',
-        padding: 'calc(14px + env(safe-area-inset-top, 0px)) 20px 0',
-      }}>
-        {/* ── Banner de la app ────────────────────────────────────────── */}
-        <AppDownloadBanner
-          slug={est.slug}
-          titulo="¿Prefieres que te lo llevemos a casa?"
-          subtitulo="Pide a domicilio con Pidoo. El precio a domicilio es el de la tienda online."
-        />
+      {/* El ancho vive en el CSS (`.cl-wrap`) y NO como `maxWidth` inline: un
+          estilo inline no lo vence ninguna media query, y por eso la regla de
+          escritorio de esta página llevaba desde el primer día sin hacer nada. */}
+      <div className="cl-wrap">
+        {/* El banner de la app NO va aquí arriba, y es deliberado.
+            Los precios de domicilio son otros —en algunos platos, el doble— así
+            que ponerle la app delante nada más escanear es invitarle a comparar
+            justo cuando la comparación juega en contra, y antes de darle ningún
+            motivo. Va al final de la carta, y sobre todo en la pantalla de
+            "vídeo enviado", cuando ya tiene un premio esperándole. */}
 
         {/* ── Hero: banner + logo + nombre, igual que la tienda ───────── */}
         <div style={{ padding: '14px 0 0' }}>
@@ -328,6 +414,38 @@ export default function CartaLocal() {
           </div>
         </div>
 
+        {/* ── Pidoo Creadores ─────────────────────────────────────────── */}
+        {/* El mismo bloque que la ficha del restaurante y la tienda pública: es
+            el mismo programa y tiene que reconocerse de un vistazo. No depende
+            del carrito ni de la sesión, así que se puede montar aquí tal cual.
+            Si el restaurante no lo tiene abierto, no pinta nada. */}
+        {/* Textos propios de la mesa: aquí NO se pide, así que el copy de la
+            tienda ("Pide aquí…") sería mentira, y hay que decir con todas las
+            letras que el premio se gasta a domicilio — es el gancho de todo esto:
+            convierte a quien está comiendo en el bar en cliente de reparto. */}
+        <CreadoresBloqueRest
+          programa={programa || null}
+          margenSuperior={14}
+          intro="Graba lo que estás comiendo en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto:"
+          nota={`El premio se aplica solo en tu próximo pedido A DOMICILIO de ${est.nombre}. Necesitas una cuenta de Pidoo para participar.`} />
+
+        {programa?.admite_altas && (
+          <button
+            onClick={abrirParticipar}
+            style={{
+              width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 13,
+              border: `1px solid ${C.border}`, background: C.paper, cursor: 'pointer',
+              fontFamily: 'inherit', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+            <Video size={16} color="#A85018" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.ink }}>
+              Quiero participar
+            </span>
+            <ChevronRight size={16} color={C.stone} style={{ flexShrink: 0 }} />
+          </button>
+        )}
+
         {/* ── Buscador ────────────────────────────────────────────────── */}
         <div style={{ position: 'relative', marginTop: 14 }}>
           <Search
@@ -369,9 +487,8 @@ export default function CartaLocal() {
           background: C.cream, borderBottom: `1px solid ${C.cream2}`,
           marginTop: 12,
         }}>
-          <div style={{
-            maxWidth: 720, margin: '0 auto', padding: '12px 20px',
-            display: 'flex', gap: 8, overflowX: 'auto',
+          <div className="cl-wrap-plano" style={{
+            padding: '12px 20px', display: 'flex', gap: 8, overflowX: 'auto',
           }}>
             <button onClick={() => setCatFiltro(null)} style={chipStyle(!catFiltro)}>Todos</button>
             {categorias.map(cat => (
@@ -386,7 +503,7 @@ export default function CartaLocal() {
       )}
 
       {/* ── Carta ─────────────────────────────────────────────────────── */}
-      <main style={{ maxWidth: 720, margin: '0 auto', padding: '18px 20px 0' }}>
+      <main className="cl-wrap-plano" style={{ padding: '18px 20px 0' }}>
         {totalVisibles === 0 && (
           <p style={{ fontSize: 13.5, color: C.stone, textAlign: 'center', padding: '32px 0' }}>
             {busqueda ? 'No hay platos que coincidan con la búsqueda.' : 'Esta carta todavía no tiene platos.'}
@@ -399,22 +516,35 @@ export default function CartaLocal() {
               fontSize: 18, fontWeight: 800, color: C.ink,
               margin: '0 0 12px', letterSpacing: '-0.01em',
             }}>{g.nombre}</h2>
-            {g.items.map(p => (
-              <Plato
-                key={p.id}
-                producto={p}
-                tamanos={tamanosPorProducto[p.id] || []}
-                grupos={extrasPorProducto[p.id] || []}
-              />
-            ))}
+            {/* `.cl-lista` es la que reparte los platos en varias columnas a
+                partir de 900px. Antes estaba escrita en el CSS pero no puesta en
+                ningún elemento, así que en un portátil la carta se quedaba en
+                una columna estrecha con medio monitor vacío. */}
+            <div className="cl-lista">
+              {g.items.map(p => (
+                <Plato
+                  key={p.id}
+                  producto={p}
+                  tamanos={tamanosPorProducto[p.id] || []}
+                  grupos={extrasPorProducto[p.id] || []}
+                  onAbrir={() => setPlato({
+                    producto: p,
+                    tamanos: tamanosPorProducto[p.id] || [],
+                    grupos: extrasPorProducto[p.id] || [],
+                  })}
+                />
+              ))}
+            </div>
           </section>
         ))}
       </main>
 
       {/* ── Pie ───────────────────────────────────────────────────────── */}
-      <footer style={{
-        maxWidth: 720, margin: '0 auto',
-        padding: '6px 20px calc(28px + env(safe-area-inset-bottom, 0px))',
+      {/* El hueco de abajo crece cuando hay barra fija, con el MISMO booleano
+          que la pinta: así no puede pasar que aparezca la barra y tape el último
+          plato, ni que quede un hueco muerto sin barra. */}
+      <footer className="cl-wrap-plano" style={{
+        padding: `6px 20px calc(${barraVisible ? 96 : 28}px + env(safe-area-inset-bottom, 0px))`,
       }}>
         <Link
           to={'/' + est.slug}
@@ -425,6 +555,16 @@ export default function CartaLocal() {
         >
           Ver la tienda online y pedir a domicilio
         </Link>
+
+        {/* Aquí sí: al final, después de haber visto la carta, y con el precio de
+            domicilio explicado en la propia línea del banner. */}
+        <div style={{ marginTop: 18 }}>
+          <AppDownloadBanner
+            slug={est.slug}
+            titulo="¿Prefieres que te lo llevemos a casa?"
+            subtitulo="Los precios a domicilio incluyen el reparto, así que no son los de esta carta."
+          />
+        </div>
         <p style={{
           fontSize: 11.5, color: C.stone, textAlign: 'center',
           marginTop: 16, lineHeight: 1.5,
@@ -433,6 +573,78 @@ export default function CartaLocal() {
           Precios para consumo en el local, IGIC incluido.
         </p>
       </footer>
+
+      {/* ── Barra fija de Creadores ───────────────────────────────────── */}
+      {/* Va abajo y fija porque el cliente se pasa la visita bajando por la
+          carta: el bloque de arriba desaparece en cuanto empieza a mirar platos. */}
+      {barraVisible && (
+        <div style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 20,
+          padding: '10px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
+          background: 'rgba(247,243,236,0.92)',
+          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+          borderTop: `1px solid ${C.border}`,
+        }}>
+          {/* Si ya participó, la barra deja de pedirle lo que ya hizo y pasa a
+              llevarle donde está su premio. Es el momento con más sentido para
+              recordárselo: está otra vez comiendo aquí. */}
+          {yaParticipo ? (
+            <Link
+              to={'/' + est.slug}
+              style={{
+                width: '100%', maxWidth: 480, margin: '0 auto',
+                padding: '13px 16px', borderRadius: 13,
+                background: '#fff', border: `1.5px solid ${C.terracotta}`,
+                color: C.terracotta, textDecoration: 'none', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                fontSize: 14, fontWeight: 800, boxShadow: SH.md,
+              }}>
+              <Video size={16} />
+              Ya grabaste aquí · Mira tu premio
+            </Link>
+          ) : (
+            <button
+              onClick={abrirParticipar}
+              style={{
+                width: '100%', maxWidth: 480, margin: '0 auto',
+                padding: '13px 16px', borderRadius: 13, border: 'none',
+                background: 'linear-gradient(135deg, #E4671F 0%, #C5562C 100%)',
+                color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                fontSize: 14.5, fontWeight: 800, boxShadow: SH.md,
+              }}>
+              <Video size={17} />
+              Graba un vídeo y gana premios
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Ficha del plato (solo lectura) ────────────────────────────── */}
+      {plato && (
+        <FichaPlato
+          producto={plato.producto}
+          tamanos={plato.tamanos}
+          grupos={plato.grupos}
+          onClose={() => setPlato(null)}
+        />
+      )}
+
+      {/* ── Participar en Creadores ───────────────────────────────────── */}
+      {participar && (
+        <Suspense fallback={null}>
+          <ParticiparMesa
+            establecimiento={est}
+            programa={programa}
+            onEnviado={() => {
+              const ahora = new Date().toISOString()
+              try { localStorage.setItem(clavePart(est.id), ahora) } catch { /* modo privado */ }
+              setYaParticipo(ahora)
+            }}
+            onClose={cerrarParticipar}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
@@ -448,19 +660,29 @@ function chipStyle(activo) {
 }
 
 /* ── Una línea de la carta: misma card que la tienda, sin botón de añadir ── */
-function Plato({ producto, tamanos, grupos }) {
+function Plato({ producto, tamanos, grupos, onAbrir }) {
   const conTamanos = tamanos.length > 0
   const opcionesExtra = grupos.flatMap(g => (g.extras_opciones || []).filter(o => Number(o.precio) > 0))
   // Con tamaños, el precio del producto no pinta nada: manda el del tamaño
   // (igual que en la tienda).
   const desde = conTamanos ? Math.min(...tamanos.map(precioLocal)) : precioLocal(producto)
+  // Solo se abre ficha si hay algo más que enseñar. Un refresco sin descripción,
+  // sin tamaños y sin extras no tiene ficha: abrir una hoja medio vacía es peor
+  // que no poder abrirla.
+  const hayFicha = !!(producto.descripcion || conTamanos || grupos.length > 0)
 
   return (
-    <div style={{
-      display: 'flex', gap: 14, alignItems: 'stretch',
-      padding: 12, marginBottom: 10,
-      background: C.cream2, borderRadius: 14,
-    }}>
+    <div
+      onClick={hayFicha ? onAbrir : undefined}
+      role={hayFicha ? 'button' : undefined}
+      tabIndex={hayFicha ? 0 : undefined}
+      onKeyDown={hayFicha ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir() } } : undefined}
+      style={{
+        display: 'flex', gap: 14, alignItems: 'stretch',
+        padding: 12, marginBottom: 10,
+        background: C.cream2, borderRadius: 14,
+        cursor: hayFicha ? 'pointer' : 'default',
+      }}>
       <div style={{
         width: 86, height: 86, borderRadius: 10, background: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -494,17 +716,12 @@ function Plato({ producto, tamanos, grupos }) {
             </div>
           )}
 
+          {/* El detalle de los extras se fue a la ficha: desplegarlos aquí
+              empujaba los platos de abajo y dejaba la carta a saltos. */}
           {opcionesExtra.length > 0 && (
-            <details style={{ marginTop: 6 }}>
-              <summary style={{ fontSize: 11.5, color: C.stone2, cursor: 'pointer', listStyle: 'none', fontWeight: 600 }}>
-                {opcionesExtra.length} extra{opcionesExtra.length === 1 ? '' : 's'} disponible{opcionesExtra.length === 1 ? '' : 's'}
-              </summary>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px', marginTop: 4 }}>
-                {opcionesExtra.map((o, i) => (
-                  <span key={i} style={{ fontSize: 11.5, color: C.stone2 }}>{o.nombre} +{fmt(o.precio)}</span>
-                ))}
-              </div>
-            </details>
+            <div style={{ fontSize: 11.5, color: C.stone2, fontWeight: 600, marginTop: 6 }}>
+              {opcionesExtra.length} extra{opcionesExtra.length === 1 ? '' : 's'} disponible{opcionesExtra.length === 1 ? '' : 's'}
+            </div>
           )}
         </div>
 
@@ -518,16 +735,146 @@ function Plato({ producto, tamanos, grupos }) {
   )
 }
 
+/* ── Ficha de un plato ─────────────────────────────────────────────────────
+ * Hoja de SOLO LECTURA: foto grande, descripción entera, tamaños con su precio
+ * de local y los extras con el suyo. Ni cantidad, ni botón de añadir, ni pie de
+ * acción — desde la mesa no se pide, y la hoja no debe insinuar lo contrario.
+ * ────────────────────────────────────────────────────────────────────────── */
+function FichaPlato({ producto, tamanos, grupos, onClose }) {
+  useEffect(() => {
+    const alPulsar = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', alPulsar)
+    // Con la hoja abierta el fondo no se mueve: en móvil, si no, se scrollea la
+    // carta de debajo y al cerrar has perdido el sitio donde estabas.
+    const previo = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', alPulsar)
+      document.body.style.overflow = previo
+    }
+  }, [onClose])
+
+  const conTamanos = tamanos.length > 0
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(26,24,21,0.55)', zIndex: 4000,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: C.paper, width: '100%', maxWidth: 480,
+          borderRadius: '20px 20px 0 0',
+          // `dvh` y no `vh`: con `vh` el final de la hoja se queda debajo de la
+          // barra del navegador en el móvil y no hay forma de llegar a él.
+          maxHeight: '86dvh', overflowY: 'auto', overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+        <div style={{ position: 'relative' }}>
+          <div style={{
+            height: 190, background: C.cream2,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+          }}>
+            {producto.imagen_url
+              ? <img src={producto.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <FoodIcon kw={producto.nombre} size={90} />}
+          </div>
+          <button
+            onClick={onClose} aria-label="Cerrar"
+            style={{
+              position: 'absolute', top: 12, right: 12,
+              width: 32, height: 32, borderRadius: '50%', border: 'none',
+              background: 'rgba(255,255,255,0.94)', cursor: 'pointer',
+              display: 'grid', placeItems: 'center', boxShadow: SH.sm, color: C.ink,
+            }}><X size={17} strokeWidth={2.4} /></button>
+        </div>
+
+        <div style={{ padding: '16px 18px calc(22px + env(safe-area-inset-bottom, 0px))' }}>
+          <h2 style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+            {producto.nombre}
+          </h2>
+          {producto.descripcion && (
+            <p style={{ fontSize: 13.5, color: C.stone, lineHeight: 1.55, marginTop: 7 }}>
+              {producto.descripcion}
+            </p>
+          )}
+
+          {!conTamanos && (
+            <div style={{ fontSize: 21, fontWeight: 800, color: C.terracotta, marginTop: 12 }}>
+              {fmt(precioLocal(producto))}
+            </div>
+          )}
+
+          {conTamanos && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 7 }}>Tamaños</div>
+              {tamanos.map((t, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 0', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
+                }}>
+                  <span style={{ flex: 1, fontSize: 13.5, color: C.ink }}>{t.nombre}</span>
+                  <span style={{ fontSize: 14.5, fontWeight: 800, color: C.terracotta }}>
+                    {fmt(precioLocal(t))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {grupos.map((g, gi) => {
+            const opciones = (g.extras_opciones || [])
+              .slice()
+              .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+            if (!opciones.length) return null
+            return (
+              <div key={gi} style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 7 }}>{g.nombre}</div>
+                {opciones.map((o, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 0', borderTop: i === 0 ? 'none' : `1px solid ${C.border}`,
+                  }}>
+                    <span style={{ flex: 1, fontSize: 13, color: C.stone }}>{o.nombre}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: Number(o.precio) > 0 ? C.ink : C.stone2 }}>
+                      {Number(o.precio) > 0 ? `+ ${fmt(o.precio)}` : 'Incluido'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+
+          <div style={{
+            marginTop: 18, padding: '10px 12px', borderRadius: 11,
+            background: C.cream2, fontSize: 11.5, color: C.stone, lineHeight: 1.5,
+          }}>
+            Precios para consumo en el establecimiento, IGIC incluido.
+            Para pedir a domicilio, entra en la tienda online.
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#F7F3EC;margin:0}
+.cl-wrap{max-width:720px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 20px 0}
+.cl-wrap-plano{max-width:720px;margin:0 auto}
 .cl-chips div::-webkit-scrollbar{display:none}
 .cl-chips div{scrollbar-width:none}
-details>summary::-webkit-details-marker{display:none}
 input[type=search]::-webkit-search-cancel-button{display:none}
 @media(min-width:900px){
-  .cl-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px}
+  /* El ancho tiene que subir junto con la rejilla: con la página clavada en
+     720px, repartir los platos en columnas solo los hace más estrechos. */
+  .cl-wrap,.cl-wrap-plano{max-width:1120px}
+  .cl-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
   .cl-lista>*{margin-bottom:0!important}
 }
 `

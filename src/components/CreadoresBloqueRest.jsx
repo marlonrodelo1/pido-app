@@ -20,11 +20,18 @@ import CreadoresEscalera, { fmtEur, mejorPremioEuros } from './CreadoresEscalera
 // El programa se puede pasar ya cargado (`programa`) o dejar que lo pida él con
 // `establecimientoId`: `RestDetalle` ya lo tiene de antes y no vale la pena
 // pedirlo dos veces.
+// `intro` y `nota` son opcionales y solo las usa la carta del QR de la mesa: allí
+// el texto de siempre ("Pide aquí...") es FALSO, porque desde la mesa no se puede
+// pedir, y además hay que decir que el premio se gasta A DOMICILIO. Sin ellas, el
+// componente dice exactamente lo mismo que decía antes en la ficha, la tienda y
+// la app, que es donde sí se pide.
 export default function CreadoresBloqueRest({
   programa = null,
   establecimientoId = null,
   onOpenCreadores = null,
   margenSuperior = 18,
+  intro = null,
+  nota = null,
 }) {
   const [prog, setProg] = useState(programa)
   const [abierto, setAbierto] = useState(false)
@@ -123,11 +130,13 @@ export default function CreadoresBloqueRest({
           <div style={{ padding: '0 15px 15px' }}>
             <div style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 13, padding: 13 }}>
               <p style={{ fontSize: 12.5, color: '#7A4C28', marginTop: 0, marginBottom: 10, lineHeight: 1.5 }}>
-                Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones
-                que consiga, te llevas esto para la próxima:
+                {intro || 'Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto para la próxima:'}
               </p>
               <CreadoresEscalera escalera={prog.escalera} compacto
-                nota="El descuento se aplica solo al pagar tu siguiente pedido en este restaurante. Necesitas una cuenta de Pidoo para participar." />
+                // Desde el 18 ago el premio SOLO vale a domicilio (el servidor lo
+                // impone), así que hay que decirlo aquí, antes de grabar. Que se
+                // descubra al ir a pagar una recogida sería el peor momento.
+                nota={nota || 'El descuento se aplica solo al pagar tu siguiente pedido A DOMICILIO en este restaurante. Necesitas una cuenta de Pidoo para participar.'} />
             </div>
 
             {/* Aquí no cabe explicar el programa entero (qué hay que etiquetar,
