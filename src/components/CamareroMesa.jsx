@@ -38,7 +38,12 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 const OrbeVoz = lazy(() => import('./OrbeVoz'))
-const PanelCuenta = lazy(() => import('./PanelCuenta'))
+// PanelCuenta va con import normal y NO con `lazy`, al reves que el orbe.
+// Son 127 lineas sin dependencias: no justifican un trozo aparte, y como
+// trozo aparte eran un punto de fallo justo en el peor momento: si fallase
+// su descarga (wifi de bar), el <Suspense> propaga el error al ErrorBoundary
+// global y se cae la carta ENTERA, llevandose por delante la conversacion.
+import PanelCuenta from './PanelCuenta'
 
 const FUNCIONES = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 
@@ -131,6 +136,20 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
     let raf = 0
     setEstado('conectando')
 
+    // Soltar el micrófono, parar el bucle de audio y cortar la conversación.
+    // ⚠️ Tiene que llamarlo TAMBIÉN `onError`, no solo el desmontaje: pintar la
+    // pantalla de error y quedarse ahí dejaba el micro abierto, el punto rojo
+    // del navegador encendido, el rAF a 60 fps y —lo caro— los minutos de
+    // ElevenLabs corriendo hasta el tope de 7 minutos de la conversación.
+    const soltarTodo = () => {
+      vivo = false
+      cancelAnimationFrame(raf)
+      nivelRef.current = 0
+      const c = convRef.current
+      convRef.current = null
+      if (c) { try { c.endSession() } catch { /* ya cerrada */ } }
+    }
+
     ;(async () => {
       try {
         const { Conversation } = await import('@elevenlabs/client')
@@ -159,6 +178,13 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
           },
           onError: () => {
             if (!vivo) return
+            // Primero se suelta todo y DESPUÉS se pinta el error. Al revés, la
+            // pantalla decía "se ha cortado" con el micro todavía abierto y los
+            // minutos corriendo. Además `soltarTodo` pone `vivo` a false, así
+            // que el `onDisconnect` que dispara `endSession` no cierra el
+            // overlay: el cliente se queda en la pantalla de error, que es
+            // donde tiene el botón de reintentar.
+            soltarTodo()
             setError('Se ha cortado la conversación. Vuelve a intentarlo.')
             setEstado('error')
           },
@@ -198,16 +224,9 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
       }
     })()
 
-    return () => {
-      vivo = false
-      cancelAnimationFrame(raf)
-      nivelRef.current = 0
-      // Cerrar la sesión es lo que suelta el micrófono. Si esto no corre, el
-      // punto rojo del navegador se queda encendido con la carta delante.
-      const conv = convRef.current
-      convRef.current = null
-      if (conv) { try { conv.endSession() } catch { /* ya cerrada */ } }
-    }
+    // Cerrar la sesión es lo que suelta el micrófono. Si esto no corre, el
+    // punto rojo del navegador se queda encendido con la carta delante.
+    return soltarTodo
   }, [sesion, intento])
 
   // 3. Sondear la cuenta para pintarla mientras se habla.
@@ -395,9 +414,7 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
               display: 'flex', justifyContent: 'center',
               animation: 'cmSube .45s ease both',
             }}>
-              <Suspense fallback={null}>
-                <PanelCuenta cuenta={cuenta} />
-              </Suspense>
+              <PanelCuenta cuenta={cuenta} />
             </div>
           )}
 
