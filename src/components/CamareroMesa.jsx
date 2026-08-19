@@ -300,15 +300,12 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
         background: 'rgba(247,243,236,0.40)',
         backdropFilter: 'blur(14px) saturate(1.1)',
         WebkitBackdropFilter: 'blur(14px) saturate(1.1)',
-        // ⚠️ El centrado va con `margin:auto` en el hijo, NO con
-        // `align-items:center`. Con `align-items:center` + `overflow-y:auto`,
-        // un contenido más alto que la pantalla se desborda por ARRIBA y esa
-        // parte se vuelve inalcanzable: no hay forma de rodar hasta ella. Con
-        // una mesa que pide varias rondas y un móvil pequeño, el cliente
-        // perdería las primeras líneas de su propia cuenta.
+        // ⚠️ SIN PADDING Y SIN SCROLL AQUÍ, a propósito. El orbe y la cuenta
+        // van en capas absolutas: si este contenedor tuviera relleno, el orbe
+        // se centraría dentro del relleno y quedaría descolocado respecto a
+        // cómo estaba antes de existir la cuenta. Y no hace falta scroll: la
+        // cuenta rueda por dentro y nada empuja a nada.
         display: 'flex',
-        overflowY: 'auto',
-        padding: `calc(72px + env(safe-area-inset-top, 0px)) 24px calc(28px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
       {/* La X flota arriba a la derecha y está SIEMPRE, en todos los estados:
@@ -332,7 +329,7 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
       </button>
 
       {estado === 'error' ? (
-        <div style={{ textAlign: 'center', maxWidth: 320, margin: 'auto' }}>
+        <div style={{ textAlign: 'center', maxWidth: 320, margin: 'auto', padding: 24 }}>
           <div style={{ fontSize: 14.5, color: C.ink, fontWeight: 600, lineHeight: 1.5 }}>
             {error}
           </div>
@@ -359,55 +356,75 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', margin: 'auto' }}>
-          {/* El orbe, que es el protagonista. Lo único que puede acompañarlo es
-              la cuenta: ni transcripción, ni botones, ni nombre del agente. Lo
-              que se diga, se oye.
-              ⚠️ El orbe NO va envuelto en nada que cambie de identidad al
-              aparecer la cuenta: remontarlo tiraría el contexto WebGL y el orbe
-              parpadearía cada vez que Nico hace un cálculo. Solo se le encoge
-              la caja, que OrbeVoz reabsorbe con su ResizeObserver. */}
+        <>
+          {/* EL ORBE MANDA Y NO SE TOCA. Mismo tamaño y mismo sitio con cuenta
+              y sin ella: la pantalla que ya estaba bien no se cambia para
+              hacerle hueco a lo nuevo. Cuando aparece la cuenta solo SUBE un
+              poco, que se nota mucho menos que encogerlo y deja el orbe entero.
+              ⚠️ Va en su propia capa absoluta y centrada, no dentro de una
+              columna: metido en un flujo que crece con la cuenta, cada cálculo
+              lo movería de sitio. Y NO se envuelve en nada que cambie de
+              identidad al aparecer la cuenta —remontarlo tiraría el contexto
+              WebGL y parpadearía en cada cálculo—: solo cambian estilos.
+              `pointerEvents:none` para que no se coma los toques de la X. */}
           <div style={{
-            width: hayCuenta ? 'min(46vw, 190px)' : 'min(78vw, 340px)',
-            height: hayCuenta ? 'min(46vw, 190px)' : 'min(78vw, 340px)',
-            flexShrink: 0,
-            // Sin conversación todavía, el orbe se atenúa: se ve que aún no
-            // escucha sin tener que escribirlo.
-            opacity: hablando ? 1 : 0.45,
-            transition: 'opacity .45s ease, width .45s ease, height .45s ease',
+            position: 'absolute', inset: 0,
+            display: 'grid', placeItems: 'center', pointerEvents: 'none',
           }}>
-            <Suspense fallback={null}>
-              <OrbeVoz nivelRef={nivelRef} />
-            </Suspense>
+            <div style={{
+              width: 'min(78vw, 340px)', height: 'min(78vw, 340px)',
+              // Sin conversación todavía, el orbe se atenúa: se ve que aún no
+              // escucha sin tener que escribirlo.
+              opacity: hablando ? 1 : 0.45,
+              transform: hayCuenta ? 'translateY(-16%)' : 'none',
+              transition: 'opacity .45s ease, transform .5s ease',
+            }}>
+              <Suspense fallback={null}>
+                <OrbeVoz nivelRef={nivelRef} />
+              </Suspense>
+            </div>
           </div>
 
-          {/* La cuenta. Aparece sola cuando Nico calcula y se va sola cuando no
-              hay nada. El cliente no la pide ni la cierra: no hay nada que
-              tocar. */}
+          {/* La cuenta flota abajo, en cristal, SIN tapar el glaseado. Aparece
+              sola cuando Nico calcula y se va sola. El cliente no la pide ni la
+              cierra: no hay nada que tocar. */}
           {hayCuenta && (
-            <div style={{ width: '100%', marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+            <div style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              padding: `0 14px calc(16px + env(safe-area-inset-bottom, 0px))`,
+              display: 'flex', justifyContent: 'center',
+              animation: 'cmSube .45s ease both',
+            }}>
               <Suspense fallback={null}>
                 <PanelCuenta cuenta={cuenta} />
               </Suspense>
             </div>
           )}
 
-          {/* Todo lo que hay debajo desaparece en cuanto se conecta. El aviso
-              legal se enseña ANTES de hablar, que es cuando sirve de algo, y
-              además el propio camarero lo repite al saludar. Mientras se
-              conversa la pantalla se queda limpia, que es la gracia. */}
-          {!hablando && (
-            <div style={{ textAlign: 'center', marginTop: 26, maxWidth: 300 }}>
+          {/* El estado y el aviso legal, también abajo, y desaparecen en cuanto
+              se conecta. El aviso se enseña ANTES de hablar, que es cuando
+              sirve de algo, y además el propio camarero lo repite al saludar.
+              Mientras se conversa la pantalla se queda limpia, que es la
+              gracia. */}
+          {!hablando && !hayCuenta && (
+            <div style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              padding: `0 28px calc(26px + env(safe-area-inset-bottom, 0px))`,
+              textAlign: 'center',
+            }}>
               <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600 }}>
                 {estado === 'abriendo' ? 'Abriendo el camarero…' : 'Conectando…'}
               </div>
-              <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.5, marginTop: 10 }}>
+              <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.5, marginTop: 10, maxWidth: 320, margin: '10px auto 0' }}>
                 Hablas con un camarero de inteligencia artificial y la conversación se graba.
                 Si necesitas algo que no sepa resolver, avisa a un camarero del local.
               </div>
             </div>
           )}
-        </div>
+
+          <style>{`@keyframes cmSube{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){[style*="cmSube"]{animation:none!important}}`}</style>
+        </>
       )}
     </div>,
     document.body

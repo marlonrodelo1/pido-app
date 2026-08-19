@@ -11,6 +11,12 @@
  * devuelve la acción `ver_ticket`. No hay ningún camino por el que un precio
  * hablado llegue hasta aquí.
  *
+ * ⚠️ ES CRISTAL, NO UNA TARJETA BLANCA, Y ESO NO ES CAPRICHO. La pantalla del
+ * camarero es el orbe sobre la carta emborronada; la cuenta se AÑADE a eso, no
+ * lo sustituye. Una tarjeta opaca tapaba el glaseado y rompía la pantalla que
+ * ya estaba bien. Va translúcida y con su propio desenfoque para que el fondo
+ * siga leyéndose, pero con opacidad alta: el dinero se lee o no se pone.
+ *
  * ⚠️ NO SE TOCA: no hay botones de quitar, ni de sumar, ni de editar. En el
  * momento en que la pantalla pudiera modificar el pedido con el dedo haría
  * falta estado de carrito en el navegador, que es exactamente lo que este
@@ -19,8 +25,8 @@
  * ────────────────────────────────────────────────────────────────────────── */
 
 const C = {
-  ink: '#1A1815', stone: '#6B6560', paper: '#FFFDF9',
-  border: '#E8E0D5', naranja: '#FF6B2C', marron: '#8A3D10',
+  ink: '#1A1815', stone: '#6B6560',
+  naranja: '#FF6B2C', marron: '#8A3D10',
 }
 
 const eur = n => Number(n || 0).toFixed(2).replace('.', ',') + ' €'
@@ -33,27 +39,30 @@ export default function PanelCuenta({ cuenta }) {
 
   return (
     <div style={{
-      width: '100%', maxWidth: 380,
-      borderRadius: 18,
-      // Sólido, no translúcido: encima del glaseado, un panel transparente
-      // dejaría los importes peleando con las letras de la carta de detrás.
-      // El dinero se lee o no se pone.
-      background: C.paper,
-      border: `1px solid ${cancelado ? '#E8D5D5' : C.border}`,
-      boxShadow: '0 6px 24px rgba(26,24,21,0.10)',
+      width: '100%', maxWidth: 420,
+      borderRadius: 22,
+      // Cristal: la carta se sigue intuyendo detrás, igual que en el resto del
+      // overlay. El respaldo es crema con alfa alta para los navegadores sin
+      // backdrop-filter, donde queda un panel casi sólido en vez de un vacío.
+      background: 'rgba(255,253,249,0.80)',
+      backdropFilter: 'blur(20px) saturate(1.2)',
+      WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+      border: '1px solid rgba(255,255,255,0.75)',
+      boxShadow: '0 10px 40px rgba(26,24,21,0.13)',
       overflow: 'hidden',
-      opacity: cancelado ? 0.72 : 1,
+      opacity: cancelado ? 0.7 : 1,
+      transition: 'opacity .4s ease',
     }}>
       {/* Cabecera: dice en qué punto está la cuenta, sin obligar a leer nada más */}
       <div style={{
-        padding: '9px 14px',
-        background: enviado ? '#FFF1E8' : '#FBF7F1',
-        borderBottom: `1px solid ${C.border}`,
+        padding: '10px 16px 8px',
         display: 'flex', alignItems: 'center', gap: 8,
+        borderBottom: '1px solid rgba(232,224,213,0.7)',
       }}>
         <span style={{
           width: 7, height: 7, borderRadius: 999, flexShrink: 0,
-          background: cancelado ? '#B99' : enviado ? '#16A34A' : C.naranja,
+          background: cancelado ? '#B0A69E' : enviado ? '#16A34A' : C.naranja,
+          boxShadow: cancelado ? 'none' : `0 0 0 4px ${enviado ? 'rgba(22,163,74,.14)' : 'rgba(255,107,44,.16)'}`,
         }} />
         <span style={{ fontSize: 12, fontWeight: 800, color: C.marron, letterSpacing: '-0.01em' }}>
           {cancelado ? 'Pedido anulado' : enviado ? 'Pedido enviado a cocina' : 'Tu pedido'}
@@ -65,17 +74,18 @@ export default function PanelCuenta({ cuenta }) {
         )}
       </div>
 
-      {/* Líneas */}
-      <div style={{ padding: '4px 14px' }}>
+      {/* Líneas. Ruedan por dentro: una mesa que pide varias rondas no puede
+          empujar el orbe fuera de la pantalla. */}
+      <div style={{ padding: '2px 16px', maxHeight: '34vh', overflowY: 'auto' }}>
         {cuenta.lineas.map((l, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'flex-start', gap: 10,
             padding: '9px 0',
-            borderTop: i === 0 ? 'none' : `1px solid #F2ECE3`,
+            borderTop: i === 0 ? 'none' : '1px solid rgba(232,224,213,0.55)',
           }}>
             <span style={{
               minWidth: 22, height: 22, borderRadius: 7, flexShrink: 0,
-              background: '#FFEADC', color: C.marron,
+              background: 'rgba(255,107,44,0.13)', color: C.marron,
               fontSize: 11.5, fontWeight: 800, display: 'grid', placeItems: 'center',
               fontVariantNumeric: 'tabular-nums', marginTop: 1,
             }}>{l.cantidad}</span>
@@ -86,7 +96,7 @@ export default function PanelCuenta({ cuenta }) {
                 {l.tamano ? <span style={{ color: C.stone, fontWeight: 500 }}> · {l.tamano}</span> : null}
               </span>
               {/* Los extras llegan ya formateados por el servidor
-                  ("Queso (+0.50€)"): no se recalcula nada aquí. */}
+                  ("Queso (+0.50€)"): aquí no se recalcula nada. */}
               {l.extras?.length ? (
                 <span style={{ display: 'block', fontSize: 11, color: C.stone, marginTop: 2, lineHeight: 1.35 }}>
                   {l.extras.join(' · ')}
@@ -105,23 +115,18 @@ export default function PanelCuenta({ cuenta }) {
       {/* Total */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '11px 14px', borderTop: `1px solid ${C.border}`, background: '#FBF7F1',
+        padding: '11px 16px',
+        borderTop: '1px solid rgba(232,224,213,0.7)',
+        background: 'rgba(255,107,44,0.05)',
       }}>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: C.stone }}>Total</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: C.stone }}>
+          {enviado ? 'Se paga en la barra' : 'Total'}
+        </span>
         <span style={{
-          fontSize: 17, fontWeight: 850, color: C.marron,
+          fontSize: 18, fontWeight: 850, color: C.marron,
           letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
         }}>{eur(cuenta.total)}</span>
       </div>
-
-      {enviado && (
-        <div style={{
-          padding: '8px 14px', fontSize: 11, color: C.stone,
-          background: '#FFF8F3', borderTop: `1px solid ${C.border}`, textAlign: 'center',
-        }}>
-          Se paga en la barra
-        </div>
-      )}
     </div>
   )
 }
