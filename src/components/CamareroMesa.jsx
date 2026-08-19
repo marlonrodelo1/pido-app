@@ -300,10 +300,13 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
         background: 'rgba(247,243,236,0.40)',
         backdropFilter: 'blur(14px) saturate(1.1)',
         WebkitBackdropFilter: 'blur(14px) saturate(1.1)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        // Con una cuenta larga (una mesa pide varias rondas) el contenido puede
-        // no caber en un móvil: que ruede por dentro. El aire de arriba deja
-        // libre la X, que está en posición absoluta.
+        // ⚠️ El centrado va con `margin:auto` en el hijo, NO con
+        // `align-items:center`. Con `align-items:center` + `overflow-y:auto`,
+        // un contenido más alto que la pantalla se desborda por ARRIBA y esa
+        // parte se vuelve inalcanzable: no hay forma de rodar hasta ella. Con
+        // una mesa que pide varias rondas y un móvil pequeño, el cliente
+        // perdería las primeras líneas de su propia cuenta.
+        display: 'flex',
         overflowY: 'auto',
         padding: `calc(72px + env(safe-area-inset-top, 0px)) 24px calc(28px + env(safe-area-inset-bottom, 0px))`,
       }}
@@ -329,7 +332,7 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
       </button>
 
       {estado === 'error' ? (
-        <div style={{ textAlign: 'center', maxWidth: 320 }}>
+        <div style={{ textAlign: 'center', maxWidth: 320, margin: 'auto' }}>
           <div style={{ fontSize: 14.5, color: C.ink, fontWeight: 600, lineHeight: 1.5 }}>
             {error}
           </div>
@@ -356,7 +359,7 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', margin: 'auto' }}>
           {/* El orbe, que es el protagonista. Lo único que puede acompañarlo es
               la cuenta: ni transcripción, ni botones, ni nombre del agente. Lo
               que se diga, se oye.
