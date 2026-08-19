@@ -25,6 +25,7 @@
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
     "@capawesome/capacitor-app-update": "^8.0.3",
+    "@elevenlabs/client": "^1.20.0",
     "@react-google-maps/api": "^2.20.8",
     "@stripe/react-stripe-js": "^6.0.0",
     "@stripe/stripe-js": "^9.0.0",

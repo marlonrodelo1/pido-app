@@ -1,9 +1,15 @@
 /* ──────────────────────────────────────────────────────────────────────────
  * CamareroMesa — el camarero de voz de la carta de mesa.
  *
- * ⚠️ ESTE COMPONENTE SE CARGA CON `lazy` Y NO DEBE DEJAR DE HACERLO. Arrastra
- * el SDK de ElevenLabs desde unpkg; quien solo viene a mirar la carta no tiene
- * por qué descargarse nada de eso.
+ * ⚠️ AQUÍ NO HAY WIDGET DE ELEVENLABS, Y NO ES UN OLVIDO. Antes se plantaba
+ * el custom element `<elevenlabs-convai>`, que dibuja su propia interfaz
+ * —transcripción, botones y el banner "Powered by ElevenAgents"— dentro de un
+ * shadow DOM y se coloca él solo en la pantalla. No hay CSS que le quite el
+ * texto de forma fiable. Como lo que se quiere es que se vea SOLO el orbe
+ * encima de la carta, se habla con el agente por el SDK sin interfaz
+ * (`@elevenlabs/client`), que no pinta absolutamente nada: la pantalla la
+ * ponemos nosotros. De regalo desaparece el banner de ElevenLabs, que con el
+ * widget no se podía quitar en este plan.
  *
  * ⚠️ NO monta `CartProvider` NI `AuthProvider`, igual que el resto de
  * `/[slug]/carta`. No es un descuido:
@@ -22,17 +28,22 @@
  * El token de mesa (`?m=`) es una PISTA, nunca una credencial: quien manda es
  * el servidor, que lo valida contra `mesas` junto con el restaurante, el
  * horario y si el camarero está encendido.
+ *
+ * ⚠️ EL SDK ENTRA POR `import()` DINÁMICO Y DEBE SEGUIR ASÍ. Este componente
+ * ya se carga con `lazy`, pero además el SDK se lleva su propio trozo: quien
+ * solo viene a mirar la carta no se descarga el motor de audio.
  * ────────────────────────────────────────────────────────────────────────── */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Mic } from 'lucide-react'
+import { X } from 'lucide-react'
 
-const SDK = 'https://unpkg.com/@elevenlabs/convai-widget-embed'
+const OrbeVoz = lazy(() => import('./OrbeVoz'))
+
 const FUNCIONES = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 
 const C = {
   ink: '#1A1815', stone: '#6B6560', paper: '#FFFDF9',
-  cream: '#F7F2EA', border: '#E8E0D5', naranja: '#FF6B2C',
+  cream: '#F7F3EC', border: '#E8E0D5', naranja: '#FF6B2C',
 }
 
 // El servidor devuelve el motivo en seco. Aquí se traduce a algo que una
@@ -47,34 +58,37 @@ const MOTIVOS = {
   faltan_datos:            'Falta el código de la mesa. Escanea el QR que hay en tu mesa.',
 }
 
-// El SDK se carga una sola vez por pestaña, aunque el panel se abra y se
-// cierre varias veces.
-let cargaSdk = null
-function cargarSdk() {
-  if (cargaSdk) return cargaSdk
-  cargaSdk = new Promise((resolve, reject) => {
-    if (window.customElements?.get('elevenlabs-convai')) return resolve()
-    const s = document.createElement('script')
-    s.src = SDK
-    s.async = true
-    s.type = 'text/javascript'
-    s.onload = () => {
-      // El script define el custom element de forma asíncrona.
-      if (window.customElements?.whenDefined) {
-        window.customElements.whenDefined('elevenlabs-convai').then(resolve, resolve)
-      } else resolve()
-    }
-    s.onerror = () => { cargaSdk = null; reject(new Error('no se pudo cargar el camarero')) }
-    document.head.appendChild(s)
-  })
-  return cargaSdk
+function rms(datos) {
+  if (!datos || !datos.length) return 0
+  let suma = 0
+  for (let i = 0; i < datos.length; i++) {
+    const v = datos[i] / 255
+    suma += v * v
+  }
+  return Math.sqrt(suma / datos.length)
 }
 
 export default function CamareroMesa({ slug, tokenMesa, onClose }) {
-  const [estado, setEstado] = useState('abriendo')   // abriendo | listo | error
+  // abriendo → conectando → hablando · error en cualquier punto
+  const [estado, setEstado] = useState('abriendo')
   const [error, setError] = useState(null)
   const [sesion, setSesion] = useState(null)
-  const hueco = useRef(null)
+  const [intento, setIntento] = useState(0)
+
+  const convRef = useRef(null)
+  // El nivel de voz va por ref y NO por estado: es un valor que cambia 60
+  // veces por segundo y como estado re-renderizaría el árbol entero (y
+  // remontaría el WebGL) en cada fotograma.
+  const nivelRef = useRef(0)
+
+  // ⚠️ `onClose` TAMBIÉN va por ref, y esto no es manía: quien lo pasa es
+  // `CartaLocal` con una flecha inline, que es una función NUEVA en cada
+  // render suyo. Si estuviera en las dependencias del efecto de abajo,
+  // cualquier re-render de la carta —una tecla en el buscador, un estado
+  // cualquiera— cerraría la sesión de voz y abriría otra: la conversación se
+  // cortaría a media frase y se pagaría dos veces.
+  const cerrarRef = useRef(onClose)
+  useEffect(() => { cerrarRef.current = onClose }, [onClose])
 
   // 1. Abrir sesión de mesa contra el servidor.
   useEffect(() => {
@@ -99,116 +113,211 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
           return
         }
         setSesion(d)
-      } catch (_) {
+      } catch {
         if (vivo) { setError('Sin conexión. Comprueba el wifi o los datos.'); setEstado('error') }
       }
     })()
     return () => { vivo = false }
   }, [slug, tokenMesa])
 
-  // 2. Con la sesión abierta, cargar el SDK y plantar el widget.
+  // 2. Con la sesión abierta, arrancar la conversación y leer el audio.
   useEffect(() => {
-    if (!sesion || !hueco.current) return
+    if (!sesion) return
     let vivo = true
-    cargarSdk().then(() => {
-      if (!vivo || !hueco.current) return
-      const el = document.createElement('elevenlabs-convai')
-      el.setAttribute('agent-id', sesion.agent_id)
-      // El token de sesión viaja como variable dinámica: es lo que las
-      // herramientas del agente mandan al servidor en cada llamada. El modelo
-      // no lo ve ni lo puede recitar.
-      el.setAttribute('dynamic-variables', JSON.stringify({
-        session_token: sesion.session_token,
-        mesa: String(sesion.mesa ?? ''),
-        restaurante: sesion.restaurante?.nombre ?? '',
-      }))
-      hueco.current.appendChild(el)
-      setEstado('listo')
-    }).catch(() => {
-      if (vivo) { setError('No se ha podido cargar el camarero. Comprueba tu conexión.'); setEstado('error') }
-    })
+    let raf = 0
+    setEstado('conectando')
+
+    ;(async () => {
+      try {
+        const { Conversation } = await import('@elevenlabs/client')
+        if (!vivo) return
+
+        const conv = await Conversation.startSession({
+          agentId: sesion.agent_id,
+          // Websocket a pelo, no WebRTC, A PROPÓSITO: la CSP de pidoo.es solo
+          // abre `wss://api.elevenlabs.io`. WebRTC negocia contra servidores
+          // de LiveKit que habría que añadir a `connect-src` uno a uno, y el
+          // día que la CSP deje de ser Report-Only el camarero moriría en
+          // silencio.
+          connectionType: 'websocket',
+          // El token de sesión viaja como variable dinámica: es lo que las
+          // herramientas del agente mandan al servidor en cada llamada. El
+          // modelo no lo ve ni lo puede recitar.
+          dynamicVariables: {
+            session_token: sesion.session_token,
+            mesa: String(sesion.mesa ?? ''),
+            restaurante: sesion.restaurante?.nombre ?? '',
+          },
+          onDisconnect: () => {
+            // Si se corta la conversación (el agente cuelga, se cae el wifi),
+            // no se deja al cliente mirando un orbe que ya no escucha.
+            if (vivo) cerrarRef.current?.()
+          },
+          onError: () => {
+            if (!vivo) return
+            setError('Se ha cortado la conversación. Vuelve a intentarlo.')
+            setEstado('error')
+          },
+        })
+        if (!vivo) { try { await conv.endSession() } catch { /* ya cerrada */ } return }
+
+        convRef.current = conv
+        setEstado('hablando')
+
+        // El nivel sale de los analizadores DEL PROPIO SDK, que ya tiene el
+        // micro abierto. Abrir aquí un segundo `getUserMedia` solo para medir
+        // sería dos streams peleándose en el mismo teléfono.
+        const leer = () => {
+          raf = requestAnimationFrame(leer)
+          try {
+            const entrada = rms(conv.getInputByteFrequencyData?.())
+            const salida = rms(conv.getOutputByteFrequencyData?.())
+            // Se queda con el más fuerte de los dos: así el orbe se mueve
+            // cuando habla el cliente Y cuando contesta el camarero.
+            nivelRef.current = Math.min(1, Math.max(entrada * 4.5, salida * 3.2))
+          } catch {
+            // Conversación de solo texto o analizador aún no listo: el orbe
+            // sigue girando en reposo, que es exactamente lo que toca.
+            nivelRef.current = 0
+          }
+        }
+        raf = requestAnimationFrame(leer)
+      } catch (e) {
+        if (!vivo) return
+        const nombre = e?.name || ''
+        const permiso = nombre === 'NotAllowedError' || nombre === 'SecurityError' ||
+          /permission|denied/i.test(e?.message || '')
+        setError(permiso
+          ? 'Necesito el micrófono para escucharte. Dale a permitir cuando el navegador lo pida.'
+          : 'No se ha podido abrir el camarero. Comprueba tu conexión y vuelve a intentarlo.')
+        setEstado('error')
+      }
+    })()
+
     return () => {
       vivo = false
-      // Quitar el widget al cerrar corta la conversación y suelta el micro.
-      if (hueco.current) hueco.current.innerHTML = ''
+      cancelAnimationFrame(raf)
+      nivelRef.current = 0
+      // Cerrar la sesión es lo que suelta el micrófono. Si esto no corre, el
+      // punto rojo del navegador se queda encendido con la carta delante.
+      const conv = convRef.current
+      convRef.current = null
+      if (conv) { try { conv.endSession() } catch { /* ya cerrada */ } }
     }
-  }, [sesion])
+  }, [sesion, intento])
+
+  const cerrar = () => {
+    const conv = convRef.current
+    convRef.current = null
+    if (conv) { try { conv.endSession() } catch { /* ya cerrada */ } }
+    onClose?.()
+  }
+
+  const hablando = estado === 'hablando'
 
   return createPortal(
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 4000, background: C.paper,
-      display: 'flex', flexDirection: 'column',
-    }}>
-      {/* Cabecera */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: `calc(12px + env(safe-area-inset-top, 0px)) 16px 12px`,
-        borderBottom: `1px solid ${C.border}`, background: C.paper,
-      }}>
-        <Mic size={17} color={C.naranja} strokeWidth={2.2} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>
-            {sesion?.nombre_agente || 'Camarero'}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Camarero de voz"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 4000,
+        // Glaseado CLARO y transparente: la carta se sigue leyendo detrás, solo
+        // desenfocada. El velo es el crema de la carta a baja opacidad — no
+        // está para tapar, sino para calmar el fondo lo justo y que el orbe se
+        // recorte encima.
+        // ⚠️ No subir la opacidad "para que se vea mejor el orbe": Marlon lo
+        // quiere transparente a propósito, tiene que verse que sigues en la
+        // carta y que la X te devuelve a ella.
+        // ⚠️ Sin `backdrop-filter` (navegadores viejos) queda solo el velo
+        // liso: por eso el color de respaldo es crema y no un gris cualquiera.
+        background: 'rgba(247,243,236,0.40)',
+        backdropFilter: 'blur(14px) saturate(1.1)',
+        WebkitBackdropFilter: 'blur(14px) saturate(1.1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      {/* La X flota arriba a la derecha y está SIEMPRE, en todos los estados:
+          es la única salida y tiene que poder pulsarse aunque la conversación
+          se haya quedado a medias. */}
+      <button
+        onClick={cerrar}
+        aria-label="Cerrar y volver a la carta"
+        style={{
+          position: 'absolute',
+          top: `calc(14px + env(safe-area-inset-top, 0px))`, right: 16,
+          width: 42, height: 42, borderRadius: 999,
+          border: `1px solid ${C.border}`,
+          background: 'rgba(255,253,249,0.82)',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+          display: 'grid', placeItems: 'center', cursor: 'pointer',
+          boxShadow: '0 2px 12px rgba(26,24,21,0.10)',
+        }}
+      >
+        <X size={19} color={C.ink} strokeWidth={2.2} />
+      </button>
+
+      {estado === 'error' ? (
+        <div style={{ textAlign: 'center', maxWidth: 320 }}>
+          <div style={{ fontSize: 14.5, color: C.ink, fontWeight: 600, lineHeight: 1.5 }}>
+            {error}
           </div>
-          {sesion?.mesa && (
-            <div style={{ fontSize: 11.5, color: C.stone, marginTop: 1 }}>
-              Mesa {sesion.mesa}
-              {sesion.restaurante?.nombre ? ` · ${sesion.restaurante.nombre}` : ''}
+          <div style={{ display: 'flex', gap: 9, justifyContent: 'center', marginTop: 16 }}>
+            {/* Reintentar es un clic de verdad, y eso importa: en iOS el audio
+                solo arranca dentro de un gesto del usuario. Si el primer
+                intento falló por eso, este botón lo arregla. */}
+            {sesion && (
+              <button
+                onClick={() => { setError(null); setEstado('conectando'); setIntento(n => n + 1) }}
+                style={{
+                  padding: '10px 18px', borderRadius: 11, border: `1px solid ${C.border}`,
+                  background: C.paper, color: C.ink, fontSize: 13.5, fontWeight: 700,
+                  fontFamily: 'inherit', cursor: 'pointer',
+                }}>Reintentar</button>
+            )}
+            <button
+              onClick={cerrar}
+              style={{
+                padding: '10px 18px', borderRadius: 11, border: 'none',
+                background: C.naranja, color: '#fff', fontSize: 13.5, fontWeight: 700,
+                fontFamily: 'inherit', cursor: 'pointer',
+              }}>Volver a la carta</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+          {/* El orbe. Mientras se habla es lo ÚNICO que hay en pantalla: ni
+              transcripción, ni botones, ni nombre. Lo que se diga, se oye. */}
+          <div style={{
+            width: 'min(78vw, 340px)', height: 'min(78vw, 340px)',
+            // Sin conversación todavía, el orbe se atenúa: se ve que aún no
+            // escucha sin tener que escribirlo.
+            opacity: hablando ? 1 : 0.45,
+            transition: 'opacity .45s ease',
+          }}>
+            <Suspense fallback={null}>
+              <OrbeVoz nivelRef={nivelRef} />
+            </Suspense>
+          </div>
+
+          {/* Todo lo que hay debajo desaparece en cuanto se conecta. El aviso
+              legal se enseña ANTES de hablar, que es cuando sirve de algo, y
+              además el propio camarero lo repite al saludar. Mientras se
+              conversa la pantalla se queda limpia, que es la gracia. */}
+          {!hablando && (
+            <div style={{ textAlign: 'center', marginTop: 26, maxWidth: 300 }}>
+              <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600 }}>
+                {estado === 'abriendo' ? 'Abriendo el camarero…' : 'Conectando…'}
+              </div>
+              <div style={{ fontSize: 11, color: C.stone, lineHeight: 1.5, marginTop: 10 }}>
+                Hablas con un camarero de inteligencia artificial y la conversación se graba.
+                Si necesitas algo que no sepa resolver, avisa a un camarero del local.
+              </div>
             </div>
           )}
         </div>
-        <button onClick={onClose} aria-label="Cerrar" style={{
-          width: 34, height: 34, borderRadius: 999, border: `1px solid ${C.border}`,
-          background: C.cream, display: 'grid', placeItems: 'center', cursor: 'pointer',
-          flexShrink: 0,
-        }}>
-          <X size={16} color={C.stone} strokeWidth={2.2} />
-        </button>
-      </div>
-
-      {/* El aviso va justo bajo la cabecera y NO al pie: el widget de
-          ElevenLabs se posiciona solo, ocupa la mitad inferior de la pantalla y
-          taparía cualquier cosa que se ponga ahí abajo. Lo de que es una IA y
-          de que se graba lo dice además el propio camarero al saludar. */}
-      {estado === 'listo' && (
-        <div style={{
-          padding: '9px 22px', background: C.cream,
-          borderBottom: `1px solid ${C.border}`,
-          fontSize: 11, color: C.stone, lineHeight: 1.45, textAlign: 'center',
-        }}>
-          Hablas con un camarero de inteligencia artificial y la conversación se graba.
-          Si necesitas algo que no sepa resolver, avisa a un camarero del local.
-        </div>
       )}
-
-      {/* Cuerpo */}
-      <div style={{
-        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', padding: 22, textAlign: 'center',
-      }}>
-        {estado === 'abriendo' && (
-          <div style={{ fontSize: 13.5, color: C.stone }}>Abriendo el camarero…</div>
-        )}
-
-        {estado === 'error' && (
-          <>
-            <div style={{ fontSize: 14, color: C.ink, fontWeight: 600, marginBottom: 8, maxWidth: 320, lineHeight: 1.5 }}>
-              {error}
-            </div>
-            <button onClick={onClose} style={{
-              marginTop: 10, padding: '10px 18px', borderRadius: 11, border: 'none',
-              background: C.naranja, color: '#fff', fontSize: 13.5, fontWeight: 700,
-              fontFamily: 'inherit', cursor: 'pointer',
-            }}>Volver a la carta</button>
-          </>
-        )}
-
-        {/* El widget se planta aquí y se queda montado aunque cambie el estado:
-            desmontarlo cortaría la conversación en curso. Nada de texto propio
-            dentro de este hueco — el widget se dibuja encima y lo taparía. */}
-        <div ref={hueco} style={{ width: '100%' }} />
-      </div>
-
     </div>,
     document.body
   )

@@ -46,6 +46,11 @@ const ParticiparMesa = lazy(() => import('../components/ParticiparMesa'))
 const CamareroMesa = lazy(() => import('../components/CamareroMesa'))
 const CLAVE_VOLVER = 'pidoo_carta_participar'
 
+// La cara del camarero en el botón. Vive en `public/` y NO se importa como
+// módulo: así el bundle no engorda y el navegador se la trae en paralelo. Si
+// falla —red de bar, fichero borrado— el botón cae al orbe naranja de siempre.
+const AVATAR_CAMARERO = '/camarero-pidoo.png'
+
 // Marca en el móvil del cliente de que YA participó en este restaurante. Vive en
 // `localStorage` y no en la base de datos a propósito: saberlo por servidor
 // exigiría sesión en cada carga de la carta, y eso es justo el acoplamiento que
@@ -112,6 +117,7 @@ export default function CartaLocal() {
   const [participar, setParticipar] = useState(false)
   const [yaParticipo, setYaParticipo] = useState(null)   // fecha ISO o null
   const [camarero, setCamarero] = useState(false)
+  const [avatarOk, setAvatarOk] = useState(true)
 
   // Qué mesa es. Lo pone el QR que el restaurante imprime desde su panel
   // (`urlCarta(slug, token)`). Es una PISTA, no una credencial: quien decide
@@ -457,35 +463,46 @@ export default function CartaLocal() {
           <button
             onClick={() => setCamarero(true)}
             style={{
-              width: '100%', marginTop: 12, padding: '14px 16px', borderRadius: 16,
-              border: '1px solid #FFD2B8', cursor: 'pointer', fontFamily: 'inherit',
-              textAlign: 'left', display: 'flex', alignItems: 'center', gap: 13,
-              // Naranja muy suave: tiene que cantar sobre las tarjetas blancas
-              // de la carta sin gritar. Es la puerta al camarero y hoy es la
-              // única cosa de esta página con la que se puede interactuar.
-              background: 'linear-gradient(135deg, #FFF6F0 0%, #FFEFE4 100%)',
-              boxShadow: '0 2px 10px rgba(255,107,44,0.10)',
+              width: '100%', marginTop: 12, padding: '15px 16px', borderRadius: 18,
+              border: '1px solid #FFC7A6', cursor: 'pointer', fontFamily: 'inherit',
+              textAlign: 'left', display: 'flex', alignItems: 'center', gap: 14,
+              // Naranja suave: tiene que cantar sobre las tarjetas blancas de la
+              // carta sin gritar. Es la puerta al camarero y hoy es la única
+              // cosa de esta página con la que se puede interactuar.
+              background: 'linear-gradient(135deg, #FFF6F0 0%, #FFEADC 100%)',
+              boxShadow: '0 3px 14px rgba(255,107,44,0.15)',
             }}>
-            {/* El orbe, latiendo. Es el mismo lenguaje visual que se va a
-                encontrar dentro al abrir el camarero, así el botón anticipa lo
-                que hay detrás en vez de parecer un enlace más. */}
-            <span style={{ position: 'relative', width: 42, height: 42, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
+            {/* La cara del camarero, latiendo y soltando dos ondas. Una cara
+                dice "aquí se habla con alguien" mucho antes que cualquier
+                icono. Si la imagen no carga —red mala en un bar— cae al orbe
+                naranja de siempre: el botón nunca se queda cojo. */}
+            <span style={{ position: 'relative', width: 50, height: 50, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
               <span className="cl-onda" />
               <span className="cl-onda cl-onda2" />
-              <span className="cl-orbe">
-                <Mic size={17} color="#fff" strokeWidth={2.4} />
-              </span>
+              {avatarOk ? (
+                <img
+                  src={AVATAR_CAMARERO}
+                  alt=""
+                  width={46} height={46}
+                  className="cl-avatar"
+                  onError={() => setAvatarOk(false)}
+                />
+              ) : (
+                <span className="cl-orbe">
+                  <Mic size={17} color="#fff" strokeWidth={2.4} />
+                </span>
+              )}
             </span>
 
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#8A3D10', letterSpacing: '-0.01em' }}>
-                Habla con el camarero
+              <span style={{ display: 'block', fontSize: 15.5, fontWeight: 800, color: '#8A3D10', letterSpacing: '-0.01em' }}>
+                Habla conmigo
               </span>
-              <span style={{ display: 'block', fontSize: 11.5, color: '#A8724F', marginTop: 2, lineHeight: 1.35 }}>
-                Pregúntale por la carta, sin esperar
+              <span style={{ display: 'block', fontSize: 12, color: '#A8724F', marginTop: 2, lineHeight: 1.35 }}>
+                Pregúntame por la carta, te contesto al momento
               </span>
             </span>
-            <ChevronRight size={17} color="#C98B62" style={{ flexShrink: 0 }} />
+            <ChevronRight size={18} color="#C98B62" style={{ flexShrink: 0 }} />
           </button>
         )}
 
@@ -938,8 +955,14 @@ input[type=search]::-webkit-search-cancel-button{display:none}
   box-shadow:0 2px 8px rgba(255,107,44,.35);
   animation:clLatido 2.6s ease-in-out infinite;position:relative;z-index:1;
 }
+.cl-avatar{
+  width:46px;height:46px;border-radius:999px;object-fit:cover;
+  border:2px solid #fff;background:#FFEADC;
+  box-shadow:0 2px 8px rgba(255,107,44,.30);
+  animation:clLatido 2.6s ease-in-out infinite;position:relative;z-index:1;
+}
 .cl-onda{
-  position:absolute;width:34px;height:34px;border-radius:999px;
+  position:absolute;width:46px;height:46px;border-radius:999px;
   border:2px solid #FF6B2C;opacity:0;
   animation:clOnda 2.6s ease-out infinite;
 }
@@ -956,7 +979,7 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 /* Quien pide menos movimiento, no lo tiene. Y de paso se ahorra batería en
    una página que va a estar abierta encima de una mesa un buen rato. */
 @media(prefers-reduced-motion:reduce){
-  .cl-orbe,.cl-onda{animation:none}
+  .cl-orbe,.cl-onda,.cl-avatar{animation:none}
   .cl-onda{opacity:0}
 }
 
