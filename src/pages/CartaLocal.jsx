@@ -31,7 +31,7 @@
  * ────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { useParams, useLocation, useNavigate, Navigate, Link } from 'react-router-dom'
-import { Search, X, Clock, Video, ChevronRight } from 'lucide-react'
+import { Search, X, Clock, Video, ChevronRight, Mic } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { horarioHoyTexto } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
@@ -41,6 +41,9 @@ import CreadoresBloqueRest from '../components/CreadoresBloqueRest'
 // Perezoso a propósito: arrastra AuthContext -> webPush -> pushNotifications ->
 // @capacitor/*. Quien solo viene a mirar la carta no se descarga nada de eso.
 const ParticiparMesa = lazy(() => import('../components/ParticiparMesa'))
+// Igual de perezoso, y por el mismo motivo: arrastra el SDK de voz de
+// ElevenLabs. Quien solo mira la carta no se lo descarga.
+const CamareroMesa = lazy(() => import('../components/CamareroMesa'))
 const CLAVE_VOLVER = 'pidoo_carta_participar'
 
 // Marca en el móvil del cliente de que YA participó en este restaurante. Vive en
@@ -108,6 +111,16 @@ export default function CartaLocal() {
   const [programa, setPrograma] = useState(undefined)
   const [participar, setParticipar] = useState(false)
   const [yaParticipo, setYaParticipo] = useState(null)   // fecha ISO o null
+  const [camarero, setCamarero] = useState(false)
+
+  // Qué mesa es. Lo pone el QR que el restaurante imprime desde su panel
+  // (`urlCarta(slug, token)`). Es una PISTA, no una credencial: quien decide
+  // si vale es el servidor, que lo valida contra `mesas` junto con el
+  // restaurante y el horario. Sin `?m=` no hay camarero: la carta se puede
+  // abrir desde cualquier sitio, pero hablar solo se habla desde una mesa.
+  const tokenMesa = useMemo(
+    () => new URLSearchParams(location.search).get('m') || null,
+    [location.search])
 
   /* ── 1. Resolver el restaurante por slug ─────────────────────────────── */
   useEffect(() => {
@@ -446,6 +459,47 @@ export default function CartaLocal() {
           </button>
         )}
 
+        {/* ── Camarero de voz ─────────────────────────────────────────────
+            Solo si se ha entrado por el QR de una mesa. Si el restaurante no
+            tiene el camarero encendido, el propio panel lo explica al abrirse:
+            averiguarlo aquí exigiría leer `mesa_config` desde el navegador, y
+            esta página no lee configuración interna a propósito. */}
+        {tokenMesa && (
+          <button
+            onClick={() => setCamarero(true)}
+            style={{
+              width: '100%', marginTop: 12, padding: '14px 16px', borderRadius: 16,
+              border: '1px solid #FFD2B8', cursor: 'pointer', fontFamily: 'inherit',
+              textAlign: 'left', display: 'flex', alignItems: 'center', gap: 13,
+              // Naranja muy suave: tiene que cantar sobre las tarjetas blancas
+              // de la carta sin gritar. Es la puerta al camarero y hoy es la
+              // única cosa de esta página con la que se puede interactuar.
+              background: 'linear-gradient(135deg, #FFF6F0 0%, #FFEFE4 100%)',
+              boxShadow: '0 2px 10px rgba(255,107,44,0.10)',
+            }}>
+            {/* El orbe, latiendo. Es el mismo lenguaje visual que se va a
+                encontrar dentro al abrir el camarero, así el botón anticipa lo
+                que hay detrás en vez de parecer un enlace más. */}
+            <span style={{ position: 'relative', width: 42, height: 42, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
+              <span className="cl-onda" />
+              <span className="cl-onda cl-onda2" />
+              <span className="cl-orbe">
+                <Mic size={17} color="#fff" strokeWidth={2.4} />
+              </span>
+            </span>
+
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#8A3D10', letterSpacing: '-0.01em' }}>
+                Habla con el camarero
+              </span>
+              <span style={{ display: 'block', fontSize: 11.5, color: '#A8724F', marginTop: 2, lineHeight: 1.35 }}>
+                Pregúntale por la carta, sin esperar
+              </span>
+            </span>
+            <ChevronRight size={17} color="#C98B62" style={{ flexShrink: 0 }} />
+          </button>
+        )}
+
         {/* ── Buscador ────────────────────────────────────────────────── */}
         <div style={{ position: 'relative', marginTop: 14 }}>
           <Search
@@ -642,6 +696,17 @@ export default function CartaLocal() {
               setYaParticipo(ahora)
             }}
             onClose={cerrarParticipar}
+          />
+        </Suspense>
+      )}
+
+      {/* ── Camarero de voz ───────────────────────────────────────────── */}
+      {camarero && (
+        <Suspense fallback={null}>
+          <CamareroMesa
+            slug={slug}
+            tokenMesa={tokenMesa}
+            onClose={() => setCamarero(false)}
           />
         </Suspense>
       )}
@@ -870,6 +935,42 @@ body{background:#F7F3EC;margin:0}
 .cl-chips div::-webkit-scrollbar{display:none}
 .cl-chips div{scrollbar-width:none}
 input[type=search]::-webkit-search-cancel-button{display:none}
+
+/* ── El botón del camarero ──────────────────────────────────────────────
+   Late despacio y suelta dos ondas, como un walkie o un timbre: es lo que
+   hace que se lea como "aquí se habla" y no como un enlace más. Las ondas
+   van con transform y opacity, que el móvil compone en la GPU sin repintar;
+   animar width/height daría tirones en un teléfono modesto.
+   OJO: nada de acentos graves en estos comentarios — todo este CSS vive
+   dentro de un template string de JavaScript y un acento grave lo cierra. */
+.cl-orbe{
+  width:34px;height:34px;border-radius:999px;display:grid;place-items:center;
+  background:linear-gradient(135deg,#FF6B2C 0%,#FF9A5C 100%);
+  box-shadow:0 2px 8px rgba(255,107,44,.35);
+  animation:clLatido 2.6s ease-in-out infinite;position:relative;z-index:1;
+}
+.cl-onda{
+  position:absolute;width:34px;height:34px;border-radius:999px;
+  border:2px solid #FF6B2C;opacity:0;
+  animation:clOnda 2.6s ease-out infinite;
+}
+.cl-onda2{animation-delay:1.3s}
+@keyframes clLatido{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.07)}
+}
+@keyframes clOnda{
+  0%{transform:scale(1);opacity:.55}
+  70%{transform:scale(1.75);opacity:0}
+  100%{transform:scale(1.75);opacity:0}
+}
+/* Quien pide menos movimiento, no lo tiene. Y de paso se ahorra batería en
+   una página que va a estar abierta encima de una mesa un buen rato. */
+@media(prefers-reduced-motion:reduce){
+  .cl-orbe,.cl-onda{animation:none}
+  .cl-onda{opacity:0}
+}
+
 @media(min-width:900px){
   /* El ancho tiene que subir junto con la rejilla: con la página clavada en
      720px, repartir los platos en columnas solo los hace más estrechos. */
