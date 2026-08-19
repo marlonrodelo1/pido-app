@@ -38,6 +38,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 const OrbeVoz = lazy(() => import('./OrbeVoz'))
+const PanelCuenta = lazy(() => import('./PanelCuenta'))
 
 const FUNCIONES = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 
@@ -74,6 +75,9 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
   const [error, setError] = useState(null)
   const [sesion, setSesion] = useState(null)
   const [intento, setIntento] = useState(0)
+  // La cuenta que se pinta en pantalla. Viene ENTERA del servidor (`ver_ticket`)
+  // y jamás de lo que diga el modelo: ver la cabecera de PanelCuenta.
+  const [cuenta, setCuenta] = useState(null)
 
   const convRef = useRef(null)
   // El nivel de voz va por ref y NO por estado: es un valor que cambia 60
@@ -206,6 +210,67 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
     }
   }, [sesion, intento])
 
+  // 3. Sondear la cuenta para pintarla mientras se habla.
+  //
+  // ⚠️ EFECTO APARTE, Y TIENE QUE SEGUIR SIÉNDOLO. Meter esto dentro del efecto
+  // de `startSession` (deps `[sesion, intento]`) haría que cada cambio de aquí
+  // reabriese la conversación.
+  //
+  // Es sondeo y no Realtime por una razón comprobada, no por pereza:
+  // `mesa_tickets` no está en la publicación de Realtime, tiene RLS activa con
+  // CERO políticas y `anon` no tiene ni GRANT SELECT. Para que Realtime llegara
+  // harían falta las tres cosas, y la política no se puede escribir: el cliente
+  // de mesa es un anónimo sin sesión de Postgres, así que cualquier política que
+  // él cumpla la cumple TODO anónimo — o sea, `select * from mesa_tickets` desde
+  // el navegador de cualquiera, viendo lo que pide cada mesa de cada
+  // restaurante. Es el mismo agujero de la app del socio del 14 ago.
+  useEffect(() => {
+    if (estado !== 'hablando' || !sesion?.session_token) return
+    let vivo = true
+    let temporizador = 0
+    let version = null
+    const aborto = new AbortController()
+
+    const tirar = async () => {
+      if (!vivo) return
+      // Con la pantalla apagada o la pestaña de fondo no hay nadie mirando: no
+      // se gasta ni una llamada. La carta se queda abierta encima de una mesa
+      // un buen rato.
+      if (!document.hidden) {
+        try {
+          const r = await fetch(`${FUNCIONES}/ia-mesa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ver_ticket', session: sesion.session_token }),
+            signal: aborto.signal,
+          })
+          const d = await r.json()
+          if (!vivo) return
+          if (r.ok && d?.ok) {
+            // Solo se repinta si el servidor dice que algo cambió. Sin esto
+            // serían treinta renders por minuto con el WebGL del orbe corriendo
+            // al lado.
+            const v = d.hay_cuenta ? d.version : 'vacia'
+            if (v !== version) { version = v; setCuenta(d) }
+          }
+        } catch {
+          // Un fallo de red no puede tumbar la conversación ni ensuciar la
+          // pantalla: se calla y se reintenta en la siguiente vuelta.
+        }
+      }
+      // Encadenado con setTimeout y no con setInterval: si una petición tarda,
+      // no se solapan.
+      if (vivo) temporizador = setTimeout(tirar, 2000)
+    }
+    tirar()
+
+    return () => {
+      vivo = false
+      clearTimeout(temporizador)
+      aborto.abort()
+    }
+  }, [estado, sesion?.session_token])
+
   const cerrar = () => {
     const conv = convRef.current
     convRef.current = null
@@ -214,6 +279,7 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
   }
 
   const hablando = estado === 'hablando'
+  const hayCuenta = !!cuenta?.hay_cuenta && !!cuenta.lineas?.length
 
   return createPortal(
     <div
@@ -235,7 +301,11 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
         backdropFilter: 'blur(14px) saturate(1.1)',
         WebkitBackdropFilter: 'blur(14px) saturate(1.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24,
+        // Con una cuenta larga (una mesa pide varias rondas) el contenido puede
+        // no caber en un móvil: que ruede por dentro. El aire de arriba deja
+        // libre la X, que está en posición absoluta.
+        overflowY: 'auto',
+        padding: `calc(72px + env(safe-area-inset-top, 0px)) 24px calc(28px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
       {/* La X flota arriba a la derecha y está SIEMPRE, en todos los estados:
@@ -287,19 +357,37 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-          {/* El orbe. Mientras se habla es lo ÚNICO que hay en pantalla: ni
-              transcripción, ni botones, ni nombre. Lo que se diga, se oye. */}
+          {/* El orbe, que es el protagonista. Lo único que puede acompañarlo es
+              la cuenta: ni transcripción, ni botones, ni nombre del agente. Lo
+              que se diga, se oye.
+              ⚠️ El orbe NO va envuelto en nada que cambie de identidad al
+              aparecer la cuenta: remontarlo tiraría el contexto WebGL y el orbe
+              parpadearía cada vez que Nico hace un cálculo. Solo se le encoge
+              la caja, que OrbeVoz reabsorbe con su ResizeObserver. */}
           <div style={{
-            width: 'min(78vw, 340px)', height: 'min(78vw, 340px)',
+            width: hayCuenta ? 'min(46vw, 190px)' : 'min(78vw, 340px)',
+            height: hayCuenta ? 'min(46vw, 190px)' : 'min(78vw, 340px)',
+            flexShrink: 0,
             // Sin conversación todavía, el orbe se atenúa: se ve que aún no
             // escucha sin tener que escribirlo.
             opacity: hablando ? 1 : 0.45,
-            transition: 'opacity .45s ease',
+            transition: 'opacity .45s ease, width .45s ease, height .45s ease',
           }}>
             <Suspense fallback={null}>
               <OrbeVoz nivelRef={nivelRef} />
             </Suspense>
           </div>
+
+          {/* La cuenta. Aparece sola cuando Nico calcula y se va sola cuando no
+              hay nada. El cliente no la pide ni la cierra: no hay nada que
+              tocar. */}
+          {hayCuenta && (
+            <div style={{ width: '100%', marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+              <Suspense fallback={null}>
+                <PanelCuenta cuenta={cuenta} />
+              </Suspense>
+            </div>
+          )}
 
           {/* Todo lo que hay debajo desaparece en cuanto se conecta. El aviso
               legal se enseña ANTES de hablar, que es cuando sirve de algo, y
