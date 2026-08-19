@@ -442,22 +442,11 @@ export default function CartaLocal() {
           intro="Graba lo que estás comiendo en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto:"
           nota={`El premio se aplica solo en tu próximo pedido A DOMICILIO de ${est.nombre}. Necesitas una cuenta de Pidoo para participar.`} />
 
-        {programa?.admite_altas && (
-          <button
-            onClick={abrirParticipar}
-            style={{
-              width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 13,
-              border: `1px solid ${C.border}`, background: C.paper, cursor: 'pointer',
-              fontFamily: 'inherit', textAlign: 'left',
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-            <Video size={16} color="#A85018" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.ink }}>
-              Quiero participar
-            </span>
-            <ChevronRight size={16} color={C.stone} style={{ flexShrink: 0 }} />
-          </button>
-        )}
+        {/* Aquí había un botón "Quiero participar" que hacía exactamente lo
+            mismo que la barra fija de abajo (las dos llaman a `abrirParticipar`
+            y las dos dependen de `admite_altas`). Sobraba: la barra se ve
+            siempre, es naranja pleno y además sabe cambiar a "Ya grabaste aquí"
+            cuando el cliente ya participó, cosa que este botón no hacía. */}
 
         {/* ── Camarero de voz ─────────────────────────────────────────────
             Solo si se ha entrado por el QR de una mesa. Si el restaurante no
