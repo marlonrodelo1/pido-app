@@ -1,6 +1,11 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
+# El postinstall (fix-spm.mjs) corre dentro de `npm install`, así que el script
+# tiene que estar AQUÍ ya, antes de instalar. Sin esta línea el build muere con
+# "Cannot find module /app/scripts/fix-spm.mjs" — le pasó a este Dockerfile el
+# 20 ago 2026, y el del panel-socio ya llevaba el mismo aviso desde julio.
+COPY scripts ./scripts
 RUN npm install
 COPY . .
 
