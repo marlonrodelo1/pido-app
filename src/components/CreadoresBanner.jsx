@@ -77,10 +77,20 @@ export default function CreadoresBanner({ onAbrir, establecimientos = null }) {
       const tope = Math.max(0, ...suyos.map(r => mejorPremioEuros(r.escalera)))
 
       // Si ya participa, no hay nada que descubrirle.
+      //
+      // El `.eq('usuario_id')` NO sobra por mucho que la RLS ya filtre: la
+      // policy del cliente le deja ver solo las suyas, pero la del SUPERADMIN
+      // le deja ver las de todo el mundo y la del dueño las de su local. Sin
+      // filtrar aquí, a esas dos cuentas el contador les salía con las ajenas
+      // dentro y el banner se autoocultaba — a un superadmin con cero vídeos
+      // propios no le aparecía nunca, y eso hace pensar que Creadores está
+      // roto cuando funciona. Se pide explícitamente lo que se quiere contar
+      // en vez de confiar en que los permisos coincidan con la intención.
       if (user) {
         const { count } = await supabase
           .from('participaciones_creador')
           .select('id', { count: 'exact', head: true })
+          .eq('usuario_id', user.id)
         if (!vivo || (count || 0) > 0) return
       }
       setMaxEuros(tope)
