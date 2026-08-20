@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Capacitor } from '@capacitor/core'
 import { Mail, Lock, User, Phone, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import LogoAnimado from '../components/LogoAnimado'
+import { loginApple, appleDisponible, esCancelacionApple } from '../lib/appleAuth'
 
 export default function Login({ nextPath = null, dark = false }) {
   const { login, registro, resetPassword, authError, setAuthError } = useAuth()
@@ -21,7 +22,15 @@ export default function Login({ nextPath = null, dark = false }) {
   const [registroExitoso, setRegistroExitoso] = useState(false)
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [blockedUntil, setBlockedUntil] = useState(null)
+  const [appleLoading, setAppleLoading] = useState(false)
   const lastSubmit = useRef(0)
+
+  // Sign in with Apple: SOLO en iOS, donde el flujo es nativo (hoja del sistema).
+  // Es lo que exige el guideline 4.8 para poder seguir ofreciendo Google, y lo
+  // que costó el rechazo de la 1.47 (22) el 20 ago 2026. En web y Android no se
+  // pinta: allí Apple no es obligatorio y el flujo web necesitaría un Services
+  // ID que este proyecto no tiene configurado.
+  const mostrarApple = appleDisponible()
 
   // Colores de los textos "flotantes" (sin fondo propio) según el glaseado del modal:
   // AppShell usa overlay OSCURO (dark=true) → texto claro; TiendaPublica usa overlay
@@ -76,6 +85,24 @@ export default function Login({ nextPath = null, dark = false }) {
   }
 
   const handleKeyDown = (e) => { if (e.key === 'Enter') handleSubmit() }
+
+  // Apple abre la hoja NATIVA del sistema y resuelve la sesión sin salir de la
+  // app: no hay redirect ni deep link que esperar, así que al volver ya hay
+  // sesión y el AuthContext repinta solo.
+  const handleApple = async () => {
+    if (appleLoading || loading) return
+    setError(null)
+    if (setAuthError) setAuthError(null)
+    setAppleLoading(true)
+    try {
+      await loginApple()
+    } catch (err) {
+      // Cerrar la hoja de Apple no es un fallo que pintar en rojo.
+      if (!esCancelacionApple(err)) setError('Error al conectar con Apple: ' + (err?.message || 'inténtalo de nuevo'))
+    } finally {
+      setAppleLoading(false)
+    }
+  }
 
   const inputWrap = { position: 'relative', marginBottom: 14 }
   const iconStyle = { position: 'absolute', left: 14, top: 14, color: '#767575' }
@@ -270,7 +297,34 @@ export default function Login({ nextPath = null, dark = false }) {
               <span style={{ fontSize: 11, color: sepColor, fontWeight: 600 }}>o</span>
               <div style={{ flex: 1, height: 1, background: dividerColor }} />
             </div>
-            <button onClick={async () => {
+
+            {/* Apple va ANTES que Google a propósito: las HIG piden que el botón
+                de Sign in with Apple no quede por debajo de otros botones
+                sociales, y este login ya se llevó un rechazo por el 4.8. */}
+            {mostrarApple && (
+              <button onClick={handleApple} disabled={loading || appleLoading} style={{
+                width: '100%', padding: '14px 0', borderRadius: 14,
+                // Sobre el overlay oscuro del AppShell, el negro puro se funde
+                // con el fondo: se le da un filo claro para despegarlo.
+                border: dark ? '1px solid rgba(255,255,255,0.35)' : '1px solid #000000',
+                background: '#000000', color: '#FFFFFF',
+                fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+                cursor: (loading || appleLoading) ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                opacity: (loading || appleLoading) ? 0.6 : 1,
+                marginBottom: 10,
+                boxShadow: '0 1px 2px rgba(15,15,15,0.04)',
+              }}>
+                <svg width="16" height="19" viewBox="0 0 17 20" fill="#FFFFFF" aria-hidden="true">
+                  <path d="M14.5 15.2c-.26.6-.57 1.16-.93 1.67-.49.7-.89 1.18-1.2 1.45-.48.44-1 .67-1.55.68-.4 0-.88-.11-1.44-.34-.56-.23-1.08-.34-1.55-.34-.5 0-1.03.11-1.6.34-.57.23-1.03.35-1.38.36-.53.02-1.06-.22-1.59-.7-.34-.29-.75-.79-1.26-1.5-.54-.76-.98-1.63-1.33-2.63-.38-1.06-.56-2.1-.56-3.12 0-1.16.25-2.17.75-3 .4-.68.92-1.21 1.58-1.6.66-.39 1.37-.59 2.14-.6.42 0 .98.13 1.68.39.7.26 1.15.39 1.35.39.15 0 .65-.15 1.5-.46.8-.28 1.48-.4 2.03-.35 1.5.12 2.62.71 3.37 1.77-1.34.81-2 1.95-1.99 3.41.01 1.14.42 2.09 1.24 2.84.37.35.79.62 1.25.81-.1.29-.21.57-.33.84zM11.6.4c0 .87-.32 1.68-.95 2.43-.76.89-1.69 1.41-2.69 1.33a2.7 2.7 0 01-.02-.33c0-.83.36-1.72 1.01-2.45.32-.37.73-.68 1.23-.92C10.7.15 11.17.02 11.6 0c.01.13.01.27.01.4z" />
+                </svg>
+                {appleLoading
+                  ? 'Conectando…'
+                  : modo === 'login' ? 'Iniciar sesión con Apple' : 'Registrarse con Apple'}
+              </button>
+            )}
+
+            <button disabled={loading || appleLoading} onClick={async () => {
               setError(null); setLoading(true)
               try {
                 const isNative = Capacitor.isNativePlatform()
@@ -310,7 +364,9 @@ export default function Login({ nextPath = null, dark = false }) {
               width: '100%', padding: '14px 0', borderRadius: 14,
               border: '1px solid #D8CDB8',
               background: '#FFFFFF', color: '#1A1815',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+              cursor: (loading || appleLoading) ? 'default' : 'pointer',
+              opacity: (loading || appleLoading) ? 0.6 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               transition: 'border-color 0.2s',
               boxShadow: '0 1px 2px rgba(15,15,15,0.04)',
