@@ -37,6 +37,24 @@ export default function PanelCuenta({ cuenta }) {
   const enviado = cuenta.estado === 'enviado'
   const cancelado = cuenta.estado === 'cancelado'
 
+  // Una vez el pedido está en cocina, la cabecera deja de ser un cartel fijo y
+  // pasa a contar en qué punto va: es lo único que le dice al cliente, sentado
+  // y esperando, si su comida sigue haciéndose o ya puede ir a por ella.
+  // `estado_pedido` es el estado CRUDO de `pedidos` que devuelve `ver_ticket`.
+  // Si viniera vacío —una respuesta cacheada de la versión anterior del
+  // servidor, que no lo traía— `includes` da false y se cae en "En
+  // preparación", que es el mensaje correcto para un pedido recién mandado.
+  const listo = enviado && ['listo', 'recogido', 'entregado'].includes(cuenta.estado_pedido)
+  const rotulo = cancelado
+    ? 'Pedido anulado'
+    : !enviado
+      ? 'Tu pedido'
+      : listo
+        ? '¡Listo! Recógelo en la barra'
+        : cuenta.minutos
+          ? `En preparación · unos ${cuenta.minutos} min`
+          : 'En preparación'
+
   return (
     <div style={{
       width: '100%', maxWidth: 420,
@@ -61,11 +79,15 @@ export default function PanelCuenta({ cuenta }) {
       }}>
         <span style={{
           width: 7, height: 7, borderRadius: 999, flexShrink: 0,
-          background: cancelado ? '#B0A69E' : enviado ? '#16A34A' : C.naranja,
-          boxShadow: cancelado ? 'none' : `0 0 0 4px ${enviado ? 'rgba(22,163,74,.14)' : 'rgba(255,107,44,.16)'}`,
+          // Verde solo cuando ya está listo para recoger. Mientras se cocina va
+          // en naranja y latiendo: es información distinta y tiene que verse
+          // distinta de un vistazo, sin leer.
+          background: cancelado ? '#B0A69E' : listo ? '#16A34A' : C.naranja,
+          boxShadow: cancelado ? 'none' : `0 0 0 4px ${listo ? 'rgba(22,163,74,.14)' : 'rgba(255,107,44,.16)'}`,
+          animation: enviado && !listo ? 'pcLate 1.8s ease-in-out infinite' : 'none',
         }} />
         <span style={{ fontSize: 12, fontWeight: 800, color: C.marron, letterSpacing: '-0.01em' }}>
-          {cancelado ? 'Pedido anulado' : enviado ? 'Pedido enviado a cocina' : 'Tu pedido'}
+          {rotulo}
         </span>
         {enviado && cuenta.pedido_codigo && (
           <span style={{ marginLeft: 'auto', fontSize: 11, color: C.stone, fontVariantNumeric: 'tabular-nums' }}>
@@ -127,6 +149,12 @@ export default function PanelCuenta({ cuenta }) {
           letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
         }}>{eur(cuenta.total)}</span>
       </div>
+
+      {/* El latido del punto mientras se cocina. Respeta a quien haya pedido
+          menos movimiento en su sistema: en una pantalla que se queda abierta
+          en la mesa, un parpadeo eterno es exactamente lo que molesta. */}
+      <style>{`@keyframes pcLate{0%,100%{opacity:1}50%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){@keyframes pcLate{0%,100%{opacity:1}}}`}</style>
     </div>
   )
 }

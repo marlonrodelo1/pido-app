@@ -75,7 +75,13 @@ function rms(datos) {
 }
 
 export default function CamareroMesa({ slug, tokenMesa, onClose }) {
-  // abriendo → conectando → hablando · error en cualquier punto
+  // abriendo → conectando → hablando → enviado · error en cualquier punto
+  //
+  // 'enviado' (21 ago 2026): la comanda ya está en cocina, la conversación se
+  // ha colgado sola y la pantalla se queda enseñando en qué punto va el pedido.
+  // Es un estado aparte y no un simple `cerrar()` porque el cliente sigue
+  // sentado esperando su comida: cerrarle la pantalla en la cara justo cuando
+  // acaba de pedir sería lo peor que podría hacer esta pantalla.
   const [estado, setEstado] = useState('abriendo')
   const [error, setError] = useState(null)
   const [sesion, setSesion] = useState(null)
@@ -89,6 +95,15 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
   // veces por segundo y como estado re-renderizaría el árbol entero (y
   // remontaría el WebGL) en cada fotograma.
   const nivelRef = useRef(0)
+
+  // Cuánto está sonando NICO ahora mismo (solo su salida, no el micro). Sale
+  // del mismo analizador que ya alimenta al orbe, así que no cuesta nada: sirve
+  // para no colgarle la conversación a media frase cuando manda el pedido.
+  const salidaRef = useRef(0)
+  // ¿Estamos colgando NOSOTROS porque el pedido ya está en cocina? Sin esta
+  // marca, el `onDisconnect` del SDK cerraría el overlay entero y el cliente se
+  // quedaría sin ver su pedido, que es justo lo contrario de lo que se busca.
+  const enviadoRef = useRef(false)
 
   // ⚠️ `onClose` TAMBIÉN va por ref, y esto no es manía: quien lo pasa es
   // `CartaLocal` con una flecha inline, que es una función NUEVA en cada
@@ -172,6 +187,11 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
             restaurante: sesion.restaurante?.nombre ?? '',
           },
           onDisconnect: () => {
+            // Si la conversación la hemos colgado nosotros porque el pedido ya
+            // está en cocina, NO se cierra la pantalla: el cliente se queda
+            // viendo su comanda y cómo avanza. Es el único caso en que
+            // desconectarse es el final feliz y no una avería.
+            if (enviadoRef.current) return
             // Si se corta la conversación (el agente cuelga, se cae el wifi),
             // no se deja al cliente mirando un orbe que ya no escucha.
             if (vivo) cerrarRef.current?.()
@@ -199,16 +219,24 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
         // sería dos streams peleándose en el mismo teléfono.
         const leer = () => {
           raf = requestAnimationFrame(leer)
+          // Tras colgar por pedido enviado, `convRef` se pone a null y el orbe
+          // se queda girando en reposo mientras el cliente mira su comanda. Se
+          // sale por aquí en vez de dejar que el `try` reviente 60 veces por
+          // segundo contra una conversación ya cerrada.
+          const viva = convRef.current
+          if (!viva) { nivelRef.current = 0; salidaRef.current = 0; return }
           try {
-            const entrada = rms(conv.getInputByteFrequencyData?.())
-            const salida = rms(conv.getOutputByteFrequencyData?.())
+            const entrada = rms(viva.getInputByteFrequencyData?.())
+            const salida = rms(viva.getOutputByteFrequencyData?.())
             // Se queda con el más fuerte de los dos: así el orbe se mueve
             // cuando habla el cliente Y cuando contesta el camarero.
             nivelRef.current = Math.min(1, Math.max(entrada * 4.5, salida * 3.2))
+            salidaRef.current = salida
           } catch {
             // Conversación de solo texto o analizador aún no listo: el orbe
             // sigue girando en reposo, que es exactamente lo que toca.
             nivelRef.current = 0
+            salidaRef.current = 0
           }
         }
         raf = requestAnimationFrame(leer)
@@ -243,12 +271,50 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
   // él cumpla la cumple TODO anónimo — o sea, `select * from mesa_tickets` desde
   // el navegador de cualquiera, viendo lo que pide cada mesa de cada
   // restaurante. Es el mismo agujero de la app del socio del 14 ago.
+  //
+  // ⚠️ SIGUE SONDEANDO DESPUÉS DE COLGAR ('enviado'), y es a propósito: el
+  // cliente se queda sentado esperando su comida y esta pantalla es lo único
+  // que le dice si sigue en cocina o ya está lista. Si el sondeo parase al
+  // colgar, la pantalla se congelaría en el estado del segundo en que se envió.
   useEffect(() => {
-    if (estado !== 'hablando' || !sesion?.session_token) return
+    if ((estado !== 'hablando' && estado !== 'enviado') || !sesion?.session_token) return
     let vivo = true
     let temporizador = 0
     let version = null
     const aborto = new AbortController()
+
+    // ── Colgar cuando Nico acabe de hablar ───────────────────────────────────
+    // El pedido ya está en cocina: la conversación no pinta nada más y cada
+    // segundo abierta son minutos de ElevenLabs que se pagan.
+    //
+    // ⚠️ NO se cuelga en el instante en que el sondeo ve el pedido. Entre que
+    // `mandar_a_cocina` devuelve y Nico dice "listo, en unos 15 minutos, se
+    // paga en la barra" pasan varios segundos, y colgar ahí le cortaría la
+    // frase al cliente en la cara. Se espera a que deje de sonar de verdad:
+    // el nivel de SALIDA del propio SDK, callado durante 1,2 s seguidos.
+    //
+    // Y con tope de 12 s: si el analizador no diera señal (conversación de solo
+    // texto, navegador raro), esto no puede quedarse esperando para siempre con
+    // el micro abierto y el contador corriendo.
+    const colgarCuandoTermine = () => {
+      const arranque = Date.now()
+      let calladoDesde = 0
+      const mirar = () => {
+        if (!vivo) return
+        if (salidaRef.current > 0.015) calladoDesde = 0
+        else if (!calladoDesde) calladoDesde = Date.now()
+
+        const yaCallo = calladoDesde && Date.now() - calladoDesde > 1200
+        const seAcabo = Date.now() - arranque > 12000
+        if (!yaCallo && !seAcabo) { setTimeout(mirar, 200); return }
+
+        const conv = convRef.current
+        convRef.current = null
+        if (conv) { try { conv.endSession() } catch { /* ya cerrada */ } }
+        setEstado('enviado')
+      }
+      mirar()
+    }
 
     const tirar = async () => {
       if (!vivo) return
@@ -271,6 +337,19 @@ export default function CamareroMesa({ slug, tokenMesa, onClose }) {
             // al lado.
             const v = d.hay_cuenta ? d.version : 'vacia'
             if (v !== version) { version = v; setCuenta(d) }
+
+            // El pedido ha entrado en cocina: se cuelga la conversación (una
+            // sola vez) y la pantalla pasa a enseñar cómo va.
+            //
+            // Se dispara con `estado === 'enviado'`, que lo pone el SERVIDOR al
+            // ver `usado_at` en el ticket. No se mira nada que haya dicho el
+            // modelo: Nico puede decir "ya está mandado" sin haberlo mandado, y
+            // esta pantalla no se lo cree. Tampoco se cuelga al cancelar: ahí
+            // el cliente casi siempre quiere seguir pidiendo otra cosa.
+            if (d.hay_cuenta && d.estado === 'enviado' && !enviadoRef.current) {
+              enviadoRef.current = true
+              colgarCuandoTermine()
+            }
           }
         } catch {
           // Un fallo de red no puede tumbar la conversación ni ensuciar la
