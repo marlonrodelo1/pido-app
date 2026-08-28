@@ -135,6 +135,13 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
 const brandIcon = { visa: '💳', mastercard: '💳', amex: '💳' }
 
+// B2: edad máxima (min) de una fila 'pendiente_pago' para poder reusarla. Tiene que ir
+// POR DEBAJO de auto_cancelar_min (10): los relojes del servidor cuentan desde
+// created_at, así que reusar una fila vieja haría nacer el pedido pagado ya "caducado"
+// para auto-cancelar-pedidos-no-aceptados (cancelación + reembolso al minuto) y lo
+// acercaría a la guadaña de los 20 min de recuperar-pagos-huerfanos.
+const REUSO_MAX_MIN = 8
+
 function ResLine({ label, value, tone }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '3px 0' }}>
@@ -165,6 +172,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [pedidoPendiente, setPedidoPendiente] = useState(null)
   const isPaying = useRef(false)
   const pagoEnviado = useRef(false)
+  // B2 (16 ago 2026): "firma" del carrito con la que se creó `pedidoPendiente`.
+  // Si al reintentar el pago la firma no ha cambiado, se REUSA esa fila y su
+  // código en vez de fabricar otra (una sesión de compra = un solo pedido en BD).
+  const firmaPendiente = useRef(null)
   const [restCerrado, setRestCerrado] = useState(false)
   const [restCerradoMsg, setRestCerradoMsg] = useState('')
   const [promoActiva, setPromoActiva] = useState(null)
@@ -603,7 +614,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     return `PD-${n.toString().padStart(5, '0')}`
   }
 
-  async function insertarPedidoEnBD(estado) {
+  // `codigoForzado`: solo para el caso edge de crearPedidoYFinalizar (el pago ya
+  // salió con ese código dentro del PaymentIntent). Todo lo demás genera código
+  // nuevo SIEMPRE: desde que `codigoPedido` sobrevive al "Volver al carrito"
+  // (B2), heredarlo aquí pondría el código de una fila vieja en una fila nueva.
+  async function insertarPedidoEnBD(estado, codigoForzado = null) {
     if (carrito.length === 0) { setErrorMsg('El carrito está vacío'); return null }
     // Validación dirección: usuario logueado o guest
     const tieneDireccionLogueado = !!(perfil?.latitud && perfil?.longitud && perfil?.direccion)
@@ -615,7 +630,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       setErrorMsg('Añade una direccion de entrega antes de confirmar el pedido')
       return null
     }
-    const codigo = codigoPedido || await generarCodigo()
+    const codigo = codigoForzado || await generarCodigo()
     setCodigoPedido(codigo)
     const totalFinal = Math.max(0, total - descuentoEfectivo)
 
@@ -736,22 +751,73 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     finalizarPedido(pedido)
   }
 
+  // B2 (16 ago 2026): la "firma" de la compra. Si NADA de esto cambia entre dos
+  // intentos de pago con tarjeta, el pedido 'pendiente_pago' anterior sigue
+  // representando fielmente la compra y se reusa (misma fila, mismo código y —
+  // por la Idempotency-Key de crear_pago_stripe v30 — el MISMO PaymentIntent).
+  // Cualquier cambio (producto, importes, entrega, dirección, teléfono, notas,
+  // cupón, socio) invalida la fila anterior y fuerza una nueva.
+  function firmaCarritoActual() {
+    let socioMkt = null
+    try { socioMkt = (typeof window !== 'undefined' && sessionStorage.getItem('pidoo_socio_id')) || null } catch (_) {}
+    return JSON.stringify({
+      items: carrito.map(i => [i.producto_id, i.cantidad, i.tamano, i.extras, i.precio_unitario]),
+      subtotal, envio, propina,
+      total: Math.max(0, total - descuentoEfectivo),
+      modo: modoEntrega,
+      dir: modoEntrega === 'delivery'
+        ? [perfil?.direccion || guestDireccion || null, perfil?.latitud ?? guestLat ?? null, perfil?.longitud ?? guestLng ?? null]
+        : null,
+      notas: notas || '',
+      cupon: cuponSel?.id || null,
+      socio: socioMkt,
+      tel: (perfil?.telefono || telefonoInput || '').trim() || null,
+    })
+  }
+
+  // B1 (16 ago 2026): descarta en el servidor la fila 'pendiente_pago' de un
+  // intento de pago que ya no vale, y cancela su PaymentIntent en Stripe. Va por
+  // edge function porque `pedidos_guard_update` solo le deja al cliente la
+  // transición pendiente_pago→nuevo. Best-effort: si falla, devuelve null y el
+  // cron de 20 min sigue haciendo de red de seguridad, como siempre.
+  // Respuestas que importan: { ya_pagado: true } = el intento anterior SÍ se
+  // cobró (lo rescató el webhook) — NO hay que cobrar ni crear otro pedido;
+  // { procesando: true } = el banco aún no ha contestado — no tocar nada.
+  async function descartarPendiente(pedido) {
+    if (!pedido?.id) return null
+    try {
+      const { data, error } = await supabase.functions.invoke('descartar-pago-pendiente', {
+        body: { pedido_id: pedido.id },
+      })
+      if (error) { console.warn('[Carrito] descartar-pago-pendiente', error); return null }
+      return data
+    } catch (e) {
+      console.warn('[Carrito] descartar-pago-pendiente', e)
+      return null
+    }
+  }
+
   function finalizarPedido(pedido) {
     clearCart(); setOpen(false); setPasoTarjeta(false); setClientSecret(null); setCodigoPedido(null)
-    setPedidoPendiente(null); setDescuento(0); setPromoActiva(null); setCuponSel(null); setNotas('')
+    setPedidoPendiente(null); firmaPendiente.current = null
+    setDescuento(0); setPromoActiva(null); setCuponSel(null); setNotas('')
     cuponRechazado.current = false
     setSinDireccion(false); setRestCerrado(false); setErrorMsg(null)
     sendPush({
       targetType: 'restaurante', targetId: pedido.establecimiento_id,
-      title: 'Nuevo pedido', body: `Pedido ${pedido.codigo} - ${(Math.max(0, total - descuentoEfectivo)).toFixed(2)} €`,
+      // El importe sale del PEDIDO, no del carrito en pantalla: en los caminos
+      // ya_pagado el carrito vigente puede ser otro distinto del pedido que se
+      // está confirmando, y el restaurante vería un importe que no es.
+      title: 'Nuevo pedido', body: `Pedido ${pedido.codigo} - ${(Number(pedido?.total) || Math.max(0, total - descuentoEfectivo)).toFixed(2)} €`,
       data: { pedido_id: pedido.id },
     })
     onPedidoCreado(pedido)
   }
 
-  // Crea pedido con estado 'nuevo' + stripe_payment_id, luego finaliza
+  // Crea pedido con estado 'nuevo' + stripe_payment_id, luego finaliza.
+  // Reusa `codigoPedido` a propósito: es el código que viaja en el PaymentIntent.
   async function crearPedidoYFinalizar(stripePaymentId) {
-    const pedido = await insertarPedidoEnBD('nuevo')
+    const pedido = await insertarPedidoEnBD('nuevo', codigoPedido)
     if (!pedido) return
     if (stripePaymentId) {
       // El pedido ya es visible ('nuevo'); si falla el guardado del payment id,
@@ -790,6 +856,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     pagoEnviado.current = false
     setLoading(true)
     setErrorMsg(null)
+    // La fila de tarjeta que este intento está usando (reusada o recién creada).
+    // Variable local a propósito: el `catch` la necesita y el estado de React
+    // (pedidoPendiente) es una foto vieja dentro de esta misma llamada.
+    let pedidoEnCurso = null
 
     try {
       // Blindaje: nunca crear un pedido a un restaurante cerrado, aunque el botón
@@ -880,12 +950,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       }
       const totalConDescuento = Math.max(0, total - descuentoEfectivo)
       if (metodoPago === 'tarjeta') {
-        // Generar código sin insertar pedido en BD todavía
-        const codigo = codigoPedido || await generarCodigo()
-        setCodigoPedido(codigo)
-
         if (tarjetaSel && tarjetasGuardadas.length > 0) {
-          // Tarjeta guardada: cobrar primero, crear pedido DESPUÉS
+          // Tarjeta guardada: cobrar primero, crear pedido DESPUÉS.
+          // (Hoy es código muerto: crear_pago_stripe devuelve cards:[] y
+          // 'pay_saved' está sin implementar.)
+          // Código SIEMPRE nuevo: con B2, `codigoPedido` sobrevive entre
+          // intentos apuntando a la fila pendiente — heredarlo aquí cobraría
+          // contra esa fila y el insert posterior chocaría con unique(codigo).
+          const codigo = await generarCodigo()
+          setCodigoPedido(codigo)
           const result = await pagarConTarjetaGuardada({
             paymentMethodId: tarjetaSel, amount: totalConDescuento,
             pedidoCodigo: codigo, customerEmail: user?.email, userId: user?.id,
@@ -897,17 +970,91 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           }
         }
 
-        // Tarjeta nueva: insertar pedido como 'pendiente_pago' (el panel
-        // restaurante filtra solo 'nuevo' asi que NO lo ve), pedir clientSecret
-        // y mostrar formulario. crear_pago_stripe v22 (HARDENED) requiere que
-        // el pedido exista en BD para validar total/propietario/radio. Al
-        // confirmarse el pago, onSuccess llama a confirmarPago() que pasa
-        // el pedido a 'nuevo' + agrega stripe_payment_id.
-        const pedidoTmp = await insertarPedidoEnBD('pendiente_pago')
-        // El pestillo y el `loading` los suelta el `finally` de abajo: es el
-        // ÚNICO sitio que los toca, para que no haya dos dueños.
-        if (!pedidoTmp) return
+        // Tarjeta nueva: pedido como 'pendiente_pago' (el panel restaurante
+        // filtra solo 'nuevo' asi que NO lo ve), pedir clientSecret y mostrar
+        // formulario. crear_pago_stripe exige que el pedido exista en BD para
+        // validar total/propietario/radio. Al confirmarse el pago, onSuccess
+        // llama a confirmarPago() → 'nuevo' + stripe_payment_id.
+        //
+        // B2: si esta misma sesión ya dejó un 'pendiente_pago' con la MISMA
+        // firma de carrito, se reusa esa fila (y su PaymentIntent, por la
+        // Idempotency-Key) en vez de fabricar un cadáver nuevo por reintento.
+        const firma = firmaCarritoActual()
+        let pedidoTmp = null
+        if (pedidoPendiente && firmaPendiente.current === firma) {
+          const { data: vivo } = await supabase.from('pedidos')
+            .select('id, estado, created_at').eq('id', pedidoPendiente.id).maybeSingle()
+          // Solo se reusa una fila JOVEN (< REUSO_MAX_MIN): los relojes del
+          // servidor (auto-cancelador a los 10 min, cron de huérfanos a los 20)
+          // cuentan desde created_at y el reuso no los resetea. Una fila vieja
+          // se trata como cadáver: descarte + fila nueva con reloj fresco.
+          const edadMin = vivo?.created_at
+            ? (Date.now() - new Date(vivo.created_at).getTime()) / 60000
+            : Infinity
+          if (vivo?.estado === 'pendiente_pago' && edadMin < REUSO_MAX_MIN) {
+            pedidoTmp = pedidoPendiente
+          } else if (vivo?.estado && !['cancelado', 'fallido', 'rechazado', 'pendiente_pago'].includes(vivo.estado)) {
+            // El intento anterior SÍ llegó a cobrarse (lo rescató el webhook
+            // stripe-webhook-pagos). Cobrar otra vez sería un doble cobro: se
+            // da por completado ese pedido y punto.
+            finalizarPedido(pedidoPendiente)
+            return
+          }
+        }
+        if (pedidoTmp) {
+          // El reuso se salta el INSERT y con él el candado PD101 del trigger
+          // (restaurante cerrado), y `restCerrado` puede estar rancio si el
+          // modal lleva abierto desde antes del cierre. Se relee la verdad:
+          // si el restaurante cerró entre el primer intento y este, se
+          // descarta la fila y NO se cobra una cena que nadie va a cocinar.
+          const { data: est } = await supabase.from('establecimientos')
+            .select('activo').eq('id', carrito[0].establecimiento_id).maybeSingle()
+          if (est && est.activo === false) {
+            descartarPendiente(pedidoTmp)
+            setPedidoPendiente(null)
+            firmaPendiente.current = null
+            setRestCerrado(true)
+            setErrorMsg('Este restaurante está cerrado ahora mismo. No se pueden hacer pedidos.')
+            return
+          }
+        }
+        if (!pedidoTmp) {
+          // B1: la fila del intento anterior ya no vale (carrito distinto o la
+          // canceló el cron). Se descarta EN EL SERVIDOR antes de crear la
+          // nueva; si el descarte falla, se sigue igual y el cron de 20 min
+          // hace de red de seguridad (PD117 no cuenta filas canceladas ni
+          // 'pendiente_pago', así que nada de esto bloquea el pedido nuevo).
+          const cadaver = pedidoPendiente
+          if (cadaver) {
+            const res = await descartarPendiente(cadaver)
+            if (res?.ya_pagado) {
+              // El pago de aquel intento SÍ entró. La edge v2 ya promocionó la
+              // fila a 'nuevo'; si no pudo (promovido:false), lo hace la app —
+              // pendiente_pago→nuevo es la única transición que el guard le
+              // permite al cliente, y confirmarPago ya sabe reintentar y avisar.
+              if (res.promovido === false && res.payment_intent) {
+                await confirmarPago(cadaver, res.payment_intent)
+              } else {
+                finalizarPedido(cadaver)
+              }
+              return
+            }
+            if (res?.procesando) {
+              setErrorMsg('Tu pago anterior todavía se está procesando en el banco. Espera un momento: si se completa, verás tu pedido confirmado sin pagar de nuevo.')
+              return
+            }
+          }
+          setPedidoPendiente(null)
+          firmaPendiente.current = null
+          pedidoTmp = await insertarPedidoEnBD('pendiente_pago')
+          // El pestillo y el `loading` los suelta el `finally` de abajo: es el
+          // ÚNICO sitio que los toca, para que no haya dos dueños.
+          if (!pedidoTmp) return
+        }
+        pedidoEnCurso = pedidoTmp
         setPedidoPendiente(pedidoTmp)
+        firmaPendiente.current = firma
+        setCodigoPedido(pedidoTmp.codigo)
         const result = await crearPagoStripe({
           amount: totalConDescuento, pedidoCodigo: pedidoTmp.codigo,
           customerEmail: user?.email, userId: user?.id,
@@ -917,7 +1064,31 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         setPasoTarjeta(true)
         // El pedido pasa a 'nuevo' en onSuccess del FormularioPago
       } else {
-        // Efectivo: crear pedido directamente como 'nuevo'
+        // Efectivo/datáfono: crear pedido directamente como 'nuevo'.
+        // B1: si esta sesión dejó un intento de tarjeta a medias, se descarta
+        // ANTES en el servidor. Si aquel pago en realidad SÍ entró (rescate del
+        // webhook), aquí se corta: crear otro pedido sería cobrarle dos veces
+        // la misma cena (patrón PD-7XK7V3 → PD-959EYI del 27 ago).
+        const cadaver = pedidoPendiente
+        if (cadaver) {
+          const res = await descartarPendiente(cadaver)
+          if (res?.ya_pagado) {
+            // Aquel pago con tarjeta SÍ entró: ese pedido ya está en marcha.
+            // La edge v2 promociona la fila; si no pudo, lo remata la app.
+            if (res.promovido === false && res.payment_intent) {
+              await confirmarPago(cadaver, res.payment_intent)
+            } else {
+              finalizarPedido(cadaver)
+            }
+            return
+          }
+          if (res?.procesando) {
+            setErrorMsg('Tu pago con tarjeta anterior todavía se está procesando en el banco. Espera un momento: si se completa, verás tu pedido confirmado sin pagar de nuevo.')
+            return
+          }
+          setPedidoPendiente(null)
+          firmaPendiente.current = null
+        }
         const pedido = await insertarPedidoEnBD('nuevo')
         // Aquí faltaba `isPaying.current = false` —a diferencia de su gemela de
         // tarjeta— así que un fallo al crear el pedido en efectivo dejaba el
@@ -935,7 +1106,26 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       }
       setCodigoPedido(null)
       setClientSecret(null)
-      setPedidoPendiente(null)
+      // B2: `pedidoPendiente` NO se suelta en un error transitorio — el
+      // siguiente intento lo reusa (y antes verifica su estado en BD). Solo se
+      // suelta si el servidor dice que esa fila ya no se puede cobrar (p. ej.
+      // la canceló el cron de 20 min): reusarla sería un bucle de errores.
+      if (/no se puede cobrar/i.test(String(err?.message || ''))) {
+        // Matiz del 409: también salta si la fila está VIVA ('nuevo',
+        // 'aceptado'…) porque el webhook rescató el pago y el restaurante ya
+        // la tiene. Ese cliente YA pagó: darle un error lo empuja a pagar la
+        // misma cena dos veces. Se relee la verdad antes de decidir.
+        if (pedidoEnCurso) {
+          const { data: v } = await supabase.from('pedidos')
+            .select('estado').eq('id', pedidoEnCurso.id).maybeSingle()
+          if (v?.estado && !['cancelado', 'fallido', 'rechazado', 'pendiente_pago'].includes(v.estado)) {
+            finalizarPedido(pedidoEnCurso)
+            return
+          }
+        }
+        setPedidoPendiente(null)
+        firmaPendiente.current = null
+      }
     }
     finally {
       // Solo resetear isPaying si el pago NO fue enviado a Stripe (errores previos)
@@ -964,8 +1154,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           className="modal-overlay"
           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,15,15,0.55)', zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={() => {
-            setOpen(false); setPasoTarjeta(false); setPedidoPendiente(null)
-            setCodigoPedido(null); setClientSecret(null)
+            setOpen(false); setPasoTarjeta(false); setClientSecret(null)
+            // B2: `pedidoPendiente` y `codigoPedido` se CONSERVAN a propósito.
+            // Si vuelve a intentarlo con el mismo carrito, se reusa la fila (y
+            // su PaymentIntent); si cambia algo o pide en efectivo, iniciarPago
+            // la descarta en el servidor. Si no vuelve, el cron de 20 min la
+            // cancela como siempre.
             // Mismo reset que "Volver al carrito": sin esto, cerrar tocando el
             // fondo durante el paso de tarjeta dejaba isPaying=true para siempre
             // y el botón de pagar quedaba muerto hasta recargar.
@@ -1029,9 +1223,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     }
                   }}
                   onCancel={() => {
-                    // No hay pedido en BD que marcar como fallido
-                    setPasoTarjeta(false); setPedidoPendiente(null)
-                    setCodigoPedido(null); setClientSecret(null)
+                    // SÍ hay pedido en BD ('pendiente_pago', invisible para el
+                    // restaurante) y se CONSERVA a propósito (B2): el reintento
+                    // con el mismo carrito reusa fila, código y PaymentIntent.
+                    // Si cambia el carrito o paga en efectivo, iniciarPago lo
+                    // descarta en el servidor (B1); si no vuelve, lo cancela el
+                    // cron de 20 min como siempre.
+                    setPasoTarjeta(false); setClientSecret(null)
                     isPaying.current = false; pagoEnviado.current = false
                   }}
                 />
