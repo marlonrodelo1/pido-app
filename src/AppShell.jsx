@@ -9,6 +9,7 @@ import { CartProvider, useCart } from './context/CartContext'
 import Login from './pages/Login'
 import SplashPidoo from './components/SplashPidoo'
 import BottomNav from './components/BottomNav'
+import BannerSocios from './components/BannerSocios'
 
 // Lazy-loaded routes (code splitting)
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -302,6 +303,13 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
         </div>
       </div>
       </div>
+
+      {/* Captación de socios, justo bajo la cabecera. Solo en el listado de
+          inicio: el mensaje ("monta uno como estos") solo tiene sentido con los
+          restaurantes a la vista, y en el perfil o en el tracking sería ruido.
+          Fuera también dentro de la tienda de un socio (socioData): ahí el
+          cliente está en la marca de ESE socio y no toca ofrecerle competir. */}
+      {seccion === 'home' && !restOpen && !socioData && <BannerSocios />}
 
       <div className="tablet-pad shell-max" style={{ padding: 20, animation: 'fadeIn 0.3s ease' }}>
         <Suspense fallback={SuspenseFallback}>
