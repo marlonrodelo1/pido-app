@@ -61,6 +61,12 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   const [resenaSocioEnviada, setResenaSocioEnviada] = useState(false)
   const [yaValoradoSocio, setYaValoradoSocio] = useState(false)
   const [iframeError, setIframeError] = useState(false)
+  // Restaurantes que reparten por su cuenta (Max's Pizza): Pidoo no les busca
+  // repartidor NUNCA, así que "Buscando repartidor…" era mentira. El criterio
+  // bueno es `establecimientos.delivery_sin_socio`, no "no tiene riders
+  // vinculados": Australia, Octava Isla y Mamma Mia tienen 0 riders vinculados
+  // y sin embargo reparten con socios.
+  const [restaurante, setRestaurante] = useState(null)
 
   const esTerminado = pedido.estado === 'entregado' || pedido.estado === 'cancelado' || pedido.estado === 'fallido'
   const esDelivery = pedido.modo_entrega === 'delivery'
@@ -99,6 +105,18 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
         }
       })
   }, [pedidoInicial.id, esInvitado])
+
+  // Consulta directa, NO un embed dentro del select de `pedidos`: en PostgREST
+  // un filtro sobre tabla embebida se come las filas con la columna a NULL
+  // (misma trampa que ya está documentada en super-admin/Dispatch.jsx).
+  useEffect(() => {
+    const estId = pedido?.establecimiento_id
+    if (!estId) return
+    supabase.from('establecimientos')
+      .select('nombre, delivery_sin_socio')
+      .eq('id', estId).maybeSingle()
+      .then(({ data }) => { if (data) setRestaurante(data) })
+  }, [pedido?.establecimiento_id])
 
   function abrirSocio() {
     if (!socio?.slug) return
@@ -450,6 +468,14 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
   // ==================== EN CURSO ====================
   const currentStep = estadoToStep(pedido.estado)
   const riderOk = riderAsignado(pedido)
+  // `shipday_status === 'reparto_propio'` queda solo como red de seguridad por
+  // si falla la consulta de arriba. No sirve como criterio único: el trigger
+  // `tg_pedido_reparto_propio` solo lo estampa cuando el dispatcher se rinde
+  // (`no_rider` / `error_crear_orden`), y hasta ese momento — que puede ser un
+  // buen rato — el cliente seguiría viendo el texto viejo.
+  const esRepartoPropio = esDelivery && (
+    restaurante?.delivery_sin_socio === true || pedido.shipday_status === 'reparto_propio'
+  )
 
   const stepLabels = esPickup
     ? ['Aceptado', 'Preparando', 'Listo', 'Recogido']
@@ -572,14 +598,32 @@ export default function Tracking({ pedido: pedidoInicial, onClose }) {
               </div>
               <div style={{ fontSize: 12, color: C.stone, marginTop: 4, lineHeight: 1.4 }}>
                 {pedido.estado === 'listo'
-                  ? esPickup ? 'Puedes pasar a recogerlo cuando quieras' : 'El rider lo recogerá enseguida'
+                  ? esPickup ? 'Puedes pasar a recogerlo cuando quieras'
+                    : esRepartoPropio ? 'Sale hacia ti enseguida'
+                      : 'El rider lo recogerá enseguida'
                   : pedido.minutos_preparacion ? `~ ${pedido.minutos_preparacion} min` : 'En la cocina'}
               </div>
             </div>
           </div>
 
           {esDelivery && !riderOk && (
-            pedido.shipday_status === 'no_rider' ? (
+            esRepartoPropio ? (
+              // El restaurante sale a repartir con su propia gente: aquí no hay
+              // ninguna búsqueda de repartidor que contarle al cliente.
+              <div style={{
+                borderRadius: 12, padding: '12px 14px',
+                background: C.sageSoft,
+                marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ fontSize: 18 }}>🛵</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.sage2 }}>Lo reparte el restaurante</div>
+                  <div style={{ fontSize: 11, color: C.sage2, opacity: 0.9 }}>
+                    {restaurante?.nombre ? `${restaurante.nombre} lo lleva` : 'Lo llevan'} con su propio repartidor. Te llegará en breve.
+                  </div>
+                </div>
+              </div>
+            ) : pedido.shipday_status === 'no_rider' ? (
               // Se agotaron los intentos de asignación: sin esta rama el cliente
               // veía "Buscando repartidor…" indefinidamente.
               <div style={{
