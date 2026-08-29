@@ -1,7 +1,10 @@
 # pido-app — Documentación Completa (App del Cliente)
 
-> Versión Android: versionCode 28 · versionName 1.27 · applicationId: `com.pidoo.app`
-> Web: https://pidoo.es · Auto-deploy en Dokploy al push a `main`
+> **📦 PARA SUBIR UNA VERSIÓN A LAS TIENDAS: `Pidoo/docs/SUBIR-VERSION.md`.**
+> Ahí están los números actuales, los comandos y las 5 reglas. No improvisar.
+>
+> Web: https://pidoo.es · ⚠️ El auto-deploy de Dokploy NO es fiable: tras el push hay
+> que comprobar el hash del bundle y, si no cambió, lanzar el deploy por API.
 
 ---
 
@@ -24,7 +27,7 @@ App móvil y PWA para el **cliente final** del ecosistema Pidoo. Permite:
 | Capa | Tecnología |
 |---|---|
 | Framework | React 19 + Vite |
-| Mobile | Capacitor 6 (iOS + Android) |
+| Mobile | Capacitor 8 (iOS + Android) |
 | Backend | Supabase (PostgreSQL + Realtime + Edge Functions + Auth) |
 | Pagos | Stripe (Payment Intents, tarjetas guardadas) |
 | Mapas | Google Maps JavaScript API |
@@ -264,8 +267,9 @@ npx cap sync android
 npx cap open android   # Android Studio → Generate Signed APK/AAB
 ```
 
-- **applicationId:** `com.pidoo.app` · versionCode 28 · versionName 1.27
-- **Keystore:** `android/app/pidoo-apk.jks` (NO en git)
+- **applicationId:** `com.pidoo.app` · **los números vivos están en `docs/SUBIR-VERSION.md`**, no aquí (aquí se quedan viejos)
+- **Keystore:** `android/app/pidoo-apk.jks` (NO en git), config en `android/keystore.properties`
+- ⚠️ **No compilar desde Android Studio**: la receta buena es `gradlew.bat bundleRelease` con `JAVA_HOME` apuntando al JBR de Android Studio. Ver `docs/SUBIR-VERSION.md`.
 
 ---
 
