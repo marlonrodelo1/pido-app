@@ -450,8 +450,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   }, [open, carrito[0]?.establecimiento_id])
 
   // Métodos disponibles según config del restaurante:
-  //  · tarjeta  → Stripe en el checkout. Se oculta a los invitados: el flujo
-  //               necesita cuenta para el SCA 3DS y para los reembolsos.
+  //  · tarjeta  → Stripe en el checkout. Solo seleccionable con cuenta: el
+  //               flujo necesita cuenta para el SCA 3DS y para los reembolsos.
+  //               Al invitado el botón SÍ se le enseña (ver tarjetaConCuenta),
+  //               pero tocarla avisa de que necesita cuenta en vez de activarla.
   //  · datáfono → tarjeta en mano, con el TPV del repartidor o del local.
   //  · efectivo → en mano al entregar o al recoger.
   const metodosDisponibles = useMemo(() => {
@@ -498,6 +500,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     restConfigLista &&
     !restConfig.exige_registro_cliente
   )
+  // El invitado ve el botón de Tarjeta aunque no pueda usarla sin cuenta: si se
+  // oculta, ni se entera de que la opción existe. Al tocarlo no se selecciona
+  // nada — sale el aviso con el acceso al login (el carrito se conserva).
+  const tarjetaConCuenta = guestPermitido && restConfig.acepta_tarjeta_online
+  const [avisoTarjetaInvitado, setAvisoTarjetaInvitado] = useState(false)
+  useEffect(() => { if (!open || user) setAvisoTarjetaInvitado(false) }, [open, user])
   const [guestNombre, setGuestNombre] = useState('')
   const [guestTelefono, setGuestTelefono] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -1145,6 +1153,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const isDisabled = loading || envioLoading || restCerrado || bajoMinimo
     || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
     || (!user && guestPermitido && !guestValido())
+    // Sin método de pago seleccionable no hay pedido: pasa si el restaurante
+    // apaga todos los métodos, o para el invitado cuando solo hay tarjeta
+    // (la tarjeta exige cuenta — PD113; el servidor lo re-valida igual).
+    || metodosDisponibles.length === 0
 
   return (
     <>
@@ -1511,7 +1523,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {/* Método pago — dinámico según restaurante */}
                 <div style={{ marginBottom: 14 }}>
                   <div style={S.label}>Método de pago</div>
-                  {metodosDisponibles.length === 0 ? (
+                  {metodosDisponibles.length === 0 && !tarjetaConCuenta ? (
                     <div style={{
                       padding: '10px 12px', borderRadius: 10,
                       background: 'rgba(239,68,68,0.10)', color: '#B5564A',
@@ -1521,6 +1533,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     </div>
                   ) : (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {/* Tarjeta para el invitado: se enseña pero no se activa;
+                          al tocarla sale el aviso de que necesita cuenta. */}
+                      {tarjetaConCuenta && (
+                        <button onClick={() => setAvisoTarjetaInvitado(true)} style={S.selBtn(false)}>
+                          <span style={{display:'inline-flex',gap:6,alignItems:'center'}}>
+                            <CreditCard size={14}/> Tarjeta <Lock size={11} color={C.stone}/>
+                          </span>
+                        </button>
+                      )}
                       {metodosDisponibles.map(m => (
                         <button key={m.id} onClick={() => setMetodoPago(m.id)} style={S.selBtn(metodoPago === m.id)}>
                           {m.icon === 'card' ? (
@@ -1530,6 +1551,32 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           ) : m.label}
                         </button>
                       ))}
+                    </div>
+                  )}
+
+                  {/* El aviso sale al tocar la tarjeta; si la tarjeta es el ÚNICO
+                      método del restaurante, sale siempre (sin cuenta no se
+                      puede pedir y el botón de pagar queda bloqueado). */}
+                  {tarjetaConCuenta && (avisoTarjetaInvitado || metodosDisponibles.length === 0) && (
+                    <div style={{
+                      marginTop: 8, padding: '10px 12px', borderRadius: 10,
+                      background: C.warningSoft, border: `1px solid ${C.warning}`,
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 8 }}>
+                        {metodosDisponibles.length === 0
+                          ? 'Este restaurante solo acepta pago con tarjeta, y para eso necesitas una cuenta.'
+                          : `Para pagar con tarjeta necesitas una cuenta. Sin cuenta puedes pedir igual y pagar${restConfig.acepta_efectivo && restConfig.acepta_datafono ? ' en efectivo o con datáfono' : restConfig.acepta_datafono ? ' con datáfono' : ' en efectivo'} al recibir tu pedido.`}
+                      </div>
+                      <button
+                        onClick={() => onRequireLogin?.()}
+                        style={{
+                          padding: '8px 16px', borderRadius: 999, border: 'none',
+                          background: C.burnt, color: '#fff',
+                          fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        Iniciar sesión o registrarme →
+                      </button>
                     </div>
                   )}
 
