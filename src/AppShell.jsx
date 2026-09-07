@@ -362,7 +362,9 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
 
       {loginOpen && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 300,
+          // zIndex 10000: el carrito es un portal a body con zIndex 9999 y
+          // también pide login desde dentro; con 300 el login quedaba detrás.
+          position: 'fixed', inset: 0, zIndex: 10000,
           background: 'rgba(15,15,15,0.55)', backdropFilter: 'blur(6px)',
           overflowY: 'auto', animation: 'fadeIn 0.25s ease',
         }}>

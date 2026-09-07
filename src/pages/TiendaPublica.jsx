@@ -261,7 +261,10 @@ export default function TiendaPublica({ establecimiento }) {
 
         {loginOpen && (
           <div style={{
-            position: 'fixed', inset: 0, zIndex: 300,
+            // Por ENCIMA del modal del carrito (portal a body con zIndex 9999):
+            // el login se abre también desde dentro del carrito y con 300 quedaba
+            // detrás, invisible — parecía que el botón no hacía nada.
+            position: 'fixed', inset: 0, zIndex: 10000,
             background: 'rgba(247,243,236,0.96)', backdropFilter: 'blur(6px)',
             overflowY: 'auto', animation: 'fadeIn 0.25s ease',
           }}>
@@ -389,7 +392,9 @@ export default function TiendaPublica({ establecimiento }) {
 
       {loginOpen && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 300,
+          // zIndex 10000: por encima del modal del carrito (9999) — ver la
+          // nota en la rama desktop.
+          position: 'fixed', inset: 0, zIndex: 10000,
           background: 'rgba(247,243,236,0.97)', backdropFilter: 'blur(6px)',
           overflowY: 'auto', animation: 'fadeIn 0.25s ease',
         }}>
