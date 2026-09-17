@@ -78,7 +78,7 @@ const fmt = (n) => `${(Number(n) || 0).toFixed(2).replace('.', ',')} €`
 // Columnas explícitas (nada de `*`): no traer PII ni configuración interna a
 // una página pública que abre cualquiera sin identificarse.
 const COLS_EST =
-  'id, nombre, descripcion, direccion, logo_url, banner_url, slug, tipo, rating, activo, horario, carta_local_activa'
+  'id, nombre, descripcion, direccion, logo_url, banner_url, slug, tipo, rating, activo, horario, carta_local_activa, solo_carta'
 
 /** Precio a mostrar: el de local si lo han puesto, si no el normal. */
 function precioLocal(fila) {
@@ -233,12 +233,15 @@ export default function CartaLocal() {
   // tiene permiso para `anon`, así que responde sin sesión y sin providers.
   useEffect(() => {
     if (estado !== 'ok' || !est?.id) return
+    // Solo carta: el premio de Creadores se gasta en un pedido a domicilio, y
+    // este local no vende por Pidoo. Prometerlo sería mentir: ni bloque ni barra.
+    if (est.solo_carta) { setPrograma(null); return }
     let cancelado = false
     supabase.rpc('creadores_programa_publico', { p_establecimiento_id: est.id })
       .then(({ data }) => { if (!cancelado) setPrograma(data || null) })
     setYaParticipo(leerParticipacion(est.id))
     return () => { cancelado = true }
-  }, [estado, est?.id])
+  }, [estado, est?.id, est?.solo_carta])
 
   /* ── 2c. Volver del rodeo de Google ──────────────────────────────────── */
   // Identificarse con Google recarga la página entera (pasa por /auth/callback),
@@ -324,6 +327,9 @@ export default function CartaLocal() {
   if (estado === 'notfound') return <Navigate to="/" replace />
   if (estado === 'sin-carta') return <Navigate to={'/' + slug} replace />
 
+  // En un solo carta no se habla de domicilio aunque el dueño rellene precios de
+  // local: la tienda a la que remite ese aviso no existe (/<slug> lleva aquí).
+  const avisoDosPrecios = dosPrecios && !est.solo_carta
   const totalVisibles = grupos.reduce((s, g) => s + g.items.length, 0)
   // Un solo booleano manda sobre la barra Y sobre el hueco que deja al final.
   // Si fueran dos condiciones distintas acabarían separándose.
@@ -422,7 +428,7 @@ export default function CartaLocal() {
         {/* Es la pieza que evita el "en la carta ponía otro precio" si alguien
             comparte este enlace por WhatsApp. Solo sale si de verdad hay dos
             precios (ver `dosPrecios`). */}
-        {dosPrecios && (
+        {avisoDosPrecios && (
           <div style={{
             marginTop: 14, padding: '11px 13px',
             background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
@@ -610,28 +616,34 @@ export default function CartaLocal() {
       <footer className="cl-wrap-plano" style={{
         padding: `6px 20px calc(${barraVisible ? 96 : 28}px + env(safe-area-inset-bottom, 0px))`,
       }}>
-        <Link
-          to={'/' + est.slug}
-          style={{
-            display: 'block', textAlign: 'center',
-            fontSize: 13.5, fontWeight: 700, color: C.terracotta, textDecoration: 'none',
-          }}
-        >
-          Ver la tienda online y pedir a domicilio
-        </Link>
+        {/* Un local "solo carta" no vende por Pidoo: ni tienda online ni reparto
+            que ofrecer. Enseñar esto le mandaría a una tienda que nunca abre. */}
+        {!est.solo_carta && (
+          <>
+            <Link
+              to={'/' + est.slug}
+              style={{
+                display: 'block', textAlign: 'center',
+                fontSize: 13.5, fontWeight: 700, color: C.terracotta, textDecoration: 'none',
+              }}
+            >
+              Ver la tienda online y pedir a domicilio
+            </Link>
 
-        {/* Aquí sí: al final, después de haber visto la carta, y con el precio de
-            domicilio explicado en la propia línea del banner. */}
-        <div style={{ marginTop: 18 }}>
-          <AppDownloadBanner
-            slug={est.slug}
-            titulo="¿Prefieres que te lo llevemos a casa?"
-            subtitulo="Los precios a domicilio incluyen el reparto, así que no son los de esta carta."
-          />
-        </div>
+            {/* Aquí sí: al final, después de haber visto la carta, y con el precio de
+                domicilio explicado en la propia línea del banner. */}
+            <div style={{ marginTop: 18 }}>
+              <AppDownloadBanner
+                slug={est.slug}
+                titulo="¿Prefieres que te lo llevemos a casa?"
+                subtitulo="Los precios a domicilio incluyen el reparto, así que no son los de esta carta."
+              />
+            </div>
+          </>
+        )}
         <p style={{
           fontSize: 11.5, color: C.stone, textAlign: 'center',
-          marginTop: 16, lineHeight: 1.5,
+          marginTop: est.solo_carta ? 4 : 16, lineHeight: 1.5,
         }}>
           Carta digital de {est.nombre}.<br />
           Precios para consumo en el local, IGIC incluido.
@@ -690,7 +702,7 @@ export default function CartaLocal() {
           producto={plato.producto}
           tamanos={plato.tamanos}
           grupos={plato.grupos}
-          dosPrecios={dosPrecios}
+          dosPrecios={avisoDosPrecios}
           onClose={() => setPlato(null)}
         />
       )}

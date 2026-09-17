@@ -41,7 +41,7 @@ export default function TiendaPublicaRoute() {
       // `tipo` y `telefono` los pinta el panel de identidad de la vista de
       // escritorio (tipo de negocio y teléfono del local). Sin ellos salían
       // como `undefined` y esas dos líneas simplemente no aparecían.
-      .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre, tipo, telefono, exige_registro_cliente')
+      .select('id, nombre, logo_url, banner_url, slug, activo, horario, rating, total_resenas, descripcion, direccion, latitud, longitud, radio_cobertura_km, tiene_delivery, tarifa_envio_fija, plan_pro, categoria_padre, tipo, telefono, exige_registro_cliente, solo_carta, carta_local_activa')
       .eq('slug', slug)
       // Sin filtro por 'activo': el enlace del flyer/QR de un restaurante CERRADO tiene que
       // enseñar su tienda con el cartel de cerrado, no mandar al cliente a la home genérica
@@ -63,6 +63,14 @@ export default function TiendaPublicaRoute() {
 
   if (estado === 'loading') return fallback
   if (estado === 'notfound' || !tienda) return <Navigate to="/" replace />
+  // Solo carta (Bar Narciso): no vende por Pidoo, así que su "tienda" sería una
+  // página de "cerrado · abre mañana" que mañana seguiría cerrada. Lo que tiene
+  // es la carta de mesa, y ahí va quien teclee o comparta pidoo.es/<slug>.
+  // Con la carta apagada NO se manda a /carta: CartaLocal devolvería aquí y las
+  // dos rutas se pasarían la pelota para siempre. Sin carta ni tienda, a la portada.
+  if (tienda.solo_carta) {
+    return <Navigate to={tienda.carta_local_activa ? '/' + tienda.slug + '/carta' : '/'} replace />
+  }
 
   return (
     <AuthProvider>

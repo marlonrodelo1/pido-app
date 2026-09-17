@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from './lib/supabase'
 import { slugDeRutaApp } from './lib/deepLinks'
 import { COLS_ESTABLECIMIENTO } from './lib/estColumns'
@@ -116,10 +117,18 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
     if (!slug) return
 
     let cancelado = false
-    supabase.from('establecimientos').select(COLS_REST_DEEP_LINK)
+    supabase.from('establecimientos').select(COLS_REST_DEEP_LINK + ', solo_carta')
       .eq('slug', slug).eq('estado', 'activo').maybeSingle()
       .then(({ data }) => {
         if (cancelado) return
+        // Solo carta: su ficha dejaría pedir algo que la base de datos rechaza
+        // (PD101). En la web se lleva a su carta de mesa; dentro de la app nativa
+        // NO, porque la carta no tiene barra ni botón atrás y en iOS el usuario
+        // se quedaría atrapado en una página sin salida: ahí, a la home.
+        if (data?.solo_carta) {
+          navigate(Capacitor.isNativePlatform() ? '/app' : '/' + slug + '/carta', { replace: true })
+          return
+        }
         if (data) { setRestOpen(data); setSeccion('home') }
         // La URL se CONSUME. El shell navega por estado, así que si se dejara
         // puesta: (a) al cerrar la ficha la URL seguiría diciendo /app/r/x, y

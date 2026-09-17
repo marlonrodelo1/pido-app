@@ -44,10 +44,13 @@ export default function AbrirEnApp() {
     if (!valido) return
     let cancelado = false
     supabase.from('establecimientos')
-      .select('id, nombre, logo_url, slug')
+      .select('id, nombre, logo_url, slug, solo_carta')
       .eq('slug', slug).eq('estado', 'activo').maybeSingle()
       .then(({ data }) => {
         if (cancelado) return
+        // Solo carta: en la app no hay nada que pedirle. Se le lleva a su carta
+        // en vez de lanzar la app o mandar a instalarla.
+        if (data?.solo_carta) { setRest(data); setEstado('solo-carta'); return }
         if (data) { setRest(data); setEstado('found') } else { setEstado('notfound') }
       })
       // Sin esto, una caída de red deja la página en "Cargando..." para
@@ -109,6 +112,7 @@ export default function AbrirEnApp() {
     return <div style={{ ...pagina, color: C.stone, fontSize: 13 }}>Cargando...</div>
   }
   if (estado === 'notfound' || !rest) return <Navigate to="/" replace />
+  if (estado === 'solo-carta') return <Navigate to={'/' + rest.slug + '/carta'} replace />
 
   return (
     <div style={pagina}>
