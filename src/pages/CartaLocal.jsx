@@ -37,6 +37,7 @@ import { FoodIcon } from '../lib/food'
 import AppDownloadBanner from '../components/AppDownloadBanner'
 import CreadoresBloqueRest from '../components/CreadoresBloqueRest'
 import HorarioSemana from '../components/HorarioSemana'
+import AvisoAlergenos from '../components/AvisoAlergenos'
 
 // Perezoso a propósito: arrastra AuthContext -> webPush -> pushNotifications ->
 // @capacitor/*. Quien solo viene a mirar la carta no se descarga nada de eso.
@@ -308,6 +309,17 @@ export default function CartaLocal() {
     return salida
   }, [productos, categorias, busqueda, catFiltro])
 
+  // ¿Este local cobra en la mesa algo distinto de lo que cobra a domicilio? Solo
+  // entonces tiene sentido avisar de que "los pedidos a domicilio tienen su propia
+  // tarifa": en un local con un único precio (Bar Narciso, que ni siquiera
+  // reparte) ese aviso es ruido, y encima invita a buscar un reparto que no hay.
+  const dosPrecios = useMemo(() => {
+    const distinto = (f) =>
+      f.precio_local !== null && f.precio_local !== undefined && f.precio_local !== '' &&
+      Number(f.precio_local) !== Number(f.precio)
+    return productos.some(distinto) || Object.values(tamanosPorProducto).some(ts => ts.some(distinto))
+  }, [productos, tamanosPorProducto])
+
   if (estado === 'loading') return pantalla('Cargando carta...')
   if (estado === 'notfound') return <Navigate to="/" replace />
   if (estado === 'sin-carta') return <Navigate to={'/' + slug} replace />
@@ -403,21 +415,27 @@ export default function CartaLocal() {
             (motor de presencia), no cuando el local echa el cierre. */}
         <HorarioSemana horario={est.horario} />
 
+        {/* ── Alérgenos ───────────────────────────────────────────────── */}
+        <AvisoAlergenos />
+
         {/* ── Aviso de precios ────────────────────────────────────────── */}
         {/* Es la pieza que evita el "en la carta ponía otro precio" si alguien
-            comparte este enlace por WhatsApp. */}
-        <div style={{
-          marginTop: 14, padding: '11px 13px',
-          background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
-        }}>
-          <div style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em' }}>
-            Carta del local
+            comparte este enlace por WhatsApp. Solo sale si de verdad hay dos
+            precios (ver `dosPrecios`). */}
+        {dosPrecios && (
+          <div style={{
+            marginTop: 14, padding: '11px 13px',
+            background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
+          }}>
+            <div style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em' }}>
+              Carta del local
+            </div>
+            <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.4, marginTop: 2 }}>
+              Precios para consumo en el establecimiento, IGIC incluido.
+              Los pedidos a domicilio tienen su propia tarifa.
+            </div>
           </div>
-          <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.4, marginTop: 2 }}>
-            Precios para consumo en el establecimiento, IGIC incluido.
-            Los pedidos a domicilio tienen su propia tarifa.
-          </div>
-        </div>
+        )}
 
         {/* ── Pidoo Creadores ─────────────────────────────────────────── */}
         {/* El mismo bloque que la ficha del restaurante y la tienda pública: es
@@ -672,6 +690,7 @@ export default function CartaLocal() {
           producto={plato.producto}
           tamanos={plato.tamanos}
           grupos={plato.grupos}
+          dosPrecios={dosPrecios}
           onClose={() => setPlato(null)}
         />
       )}
@@ -797,7 +816,7 @@ function Plato({ producto, tamanos, grupos, onAbrir }) {
  * de local y los extras con el suyo. Ni cantidad, ni botón de añadir, ni pie de
  * acción — desde la mesa no se pide, y la hoja no debe insinuar lo contrario.
  * ────────────────────────────────────────────────────────────────────────── */
-function FichaPlato({ producto, tamanos, grupos, onClose }) {
+function FichaPlato({ producto, tamanos, grupos, dosPrecios, onClose }) {
   useEffect(() => {
     const alPulsar = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', alPulsar)
@@ -905,13 +924,16 @@ function FichaPlato({ producto, tamanos, grupos, onClose }) {
             )
           })}
 
-          <div style={{
-            marginTop: 18, padding: '10px 12px', borderRadius: 11,
-            background: C.cream2, fontSize: 11.5, color: C.stone, lineHeight: 1.5,
-          }}>
-            Precios para consumo en el establecimiento, IGIC incluido.
-            Para pedir a domicilio, entra en la tienda online.
-          </div>
+          {/* Mismo criterio que el aviso de arriba: solo si el local tiene dos precios. */}
+          {dosPrecios && (
+            <div style={{
+              marginTop: 18, padding: '10px 12px', borderRadius: 11,
+              background: C.cream2, fontSize: 11.5, color: C.stone, lineHeight: 1.5,
+            }}>
+              Precios para consumo en el establecimiento, IGIC incluido.
+              Para pedir a domicilio, entra en la tienda online.
+            </div>
+          )}
         </div>
       </div>
     </div>
