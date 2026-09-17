@@ -31,12 +31,12 @@
  * ────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { useParams, useLocation, useNavigate, Navigate, Link } from 'react-router-dom'
-import { Search, X, Clock, Video, ChevronRight, Mic } from 'lucide-react'
+import { Search, X, Video, ChevronRight, Mic } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { horarioHoyTexto } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import AppDownloadBanner from '../components/AppDownloadBanner'
 import CreadoresBloqueRest from '../components/CreadoresBloqueRest'
+import HorarioSemana from '../components/HorarioSemana'
 
 // Perezoso a propósito: arrastra AuthContext -> webPush -> pushNotifications ->
 // @capacitor/*. Quien solo viene a mirar la carta no se descarga nada de eso.
@@ -312,7 +312,6 @@ export default function CartaLocal() {
   if (estado === 'notfound') return <Navigate to="/" replace />
   if (estado === 'sin-carta') return <Navigate to={'/' + slug} replace />
 
-  const horarioHoy = horarioHoyTexto(est.horario)
   const totalVisibles = grupos.reduce((s, g) => s + g.items.length, 0)
   // Un solo booleano manda sobre la barra Y sobre el hueco que deja al final.
   // Si fueran dos condiciones distintas acabarían separándose.
@@ -365,27 +364,6 @@ export default function CartaLocal() {
               background: 'linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.6) 100%)',
             }} />
 
-            {/* Solo el horario, NUNCA un "Abierto / Cerrado". Quien mira esta
-                carta está SENTADO en el bar, así que un cartel de "Cerrado
-                ahora" sería absurdo — y llegaría solo: `activo` se apaga cuando
-                el panel del restaurante pierde la conexión (motor de presencia),
-                no cuando el local echa el cierre. */}
-            {horarioHoy && (
-              <div style={{
-                position: 'absolute', top: 14, left: 14,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'rgba(255,255,255,0.95)',
-                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-                padding: '6px 11px', borderRadius: 999,
-                fontSize: 11.5, fontWeight: 700, color: C.ink,
-                boxShadow: SH.sm, maxWidth: 'calc(100% - 90px)',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>
-                <Clock size={12} strokeWidth={2.4} style={{ flexShrink: 0 }} />
-                Hoy · {horarioHoy}
-              </div>
-            )}
-
             <div style={{
               position: 'absolute', top: 12, right: 12,
               width: 62, height: 62, borderRadius: '50%',
@@ -416,6 +394,14 @@ export default function CartaLocal() {
             </div>
           </div>
         </div>
+
+        {/* ── Horario ─────────────────────────────────────────────────── */}
+        {/* El mismo desplegable que la tienda, y solo el horario, NUNCA un
+            "Abierto / Cerrado". Quien mira esta carta está SENTADO en el bar,
+            así que un cartel de "Cerrado ahora" sería absurdo — y llegaría solo:
+            `activo` se apaga cuando el panel del restaurante pierde la conexión
+            (motor de presencia), no cuando el local echa el cierre. */}
+        <HorarioSemana horario={est.horario} />
 
         {/* ── Aviso de precios ────────────────────────────────────────── */}
         {/* Es la pieza que evita el "en la carta ponía otro precio" si alguien
