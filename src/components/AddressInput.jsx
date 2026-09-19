@@ -41,6 +41,19 @@ function cargarGoogle() {
   return promesaGoogle
 }
 
+// Si Google solo conoce la calle (sin portal), mete detrás de la calle el número
+// que escribió el cliente: "carretera general del norte 1600" + "Carr. Gral. del
+// Nte., Tacoronte, …" → "Carr. Gral. del Nte., 1600, Tacoronte, …". Solo números
+// de 1-4 cifras (un 38350 es código postal) y que no estén ya en la dirección
+// ("calle 3" no es el portal 3).
+function conNumeroEscrito(direccion, escrito) {
+  const nums = (escrito || '').match(/\b\d{1,4}[a-zA-Z]?\b/g)
+  const num = nums && nums[nums.length - 1]
+  if (!num || new RegExp(`(^|\\D)${num}(\\D|$)`, 'i').test(direccion)) return direccion
+  const [calle, ...resto] = direccion.split(', ')
+  return [calle, num, ...resto].join(', ')
+}
+
 // Primer antepasado con scroll propio (la hoja del carrito); null = la ventana.
 function contenedorScroll(el) {
   let p = el?.parentElement
@@ -159,7 +172,10 @@ export default function AddressInput({ value, onChange, onSelect, placeholder, s
       // General, La Matanza…") y el repartidor no sabría a qué casa ir: en ese
       // caso se guarda el texto de la sugerencia que tocó, que sí lo lleva.
       const conNumero = (place.address_components || []).some(c => c.types?.includes('street_number'))
-      const texto = !conNumero && /\d/.test(pred.description || '') ? pred.description : (place.formatted_address || pred.description)
+      const formatted = place.formatted_address || pred.description
+      const texto = conNumero ? formatted
+        : /\d/.test(pred.description || '') ? pred.description
+        : conNumeroEscrito(formatted, value)
       confirmar(texto, loc.lat(), loc.lng())
     } catch (e) {
       console.error('[AddressInput] detalle', e)
@@ -204,7 +220,7 @@ export default function AddressInput({ value, onChange, onSelect, placeholder, s
         const conNumero = (r.address_components || []).some(c => c.types?.includes('street_number'))
         return {
           place_id: r.place_id,
-          description: !conNumero && /\d/.test(q) ? `${q} (${r.formatted_address})` : r.formatted_address,
+          description: conNumero ? r.formatted_address : conNumeroEscrito(r.formatted_address, q),
           structured_formatting: { main_text: partes.slice(0, n).join(', '), secondary_text: partes.slice(n).join(', ') },
           _loc: { lat: r.geometry.location.lat(), lng: r.geometry.location.lng() },
         }
