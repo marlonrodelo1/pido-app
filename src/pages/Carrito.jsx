@@ -231,6 +231,23 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const socioOnline = socioData ? !!socioData.rider_online : true
   const deliveryDisponible = tieneDelivery && socioOnline
 
+  // Posición del restaurante: solo para sesgar el buscador de direcciones hacia
+  // su zona. Consulta aparte a propósito: si fallara, no puede tumbar la de
+  // tiene_delivery/pedido mínimo de abajo.
+  const [restPos, setRestPos] = useState(null)
+  const estIdCarrito = carrito[0]?.establecimiento_id
+  useEffect(() => {
+    if (!open || !estIdCarrito) return
+    let cancel = false
+    supabase.from('establecimientos').select('latitud, longitud').eq('id', estIdCarrito).maybeSingle()
+      .then(({ data }) => {
+        if (cancel) return
+        const lat = Number(data?.latitud), lng = Number(data?.longitud)
+        setRestPos(Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng) ? { lat, lng } : null)
+      })
+    return () => { cancel = true }
+  }, [open, estIdCarrito])
+
   // Comprobar tiene_delivery + tarifa fija. Reactiva cuando el cron actualiza
   // tiene_delivery (Realtime sobre la fila concreta del establecimiento).
   useEffect(() => {
@@ -1457,7 +1474,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       <div style={{ marginTop: 8 }}>
                         <AddressInput
                           value={guestDireccion}
-                          onChange={(v) => { setGuestDireccion(v); if (!v) { setGuestLat(null); setGuestLng(null) } }}
+                          // Cualquier cambio a mano suelta las coordenadas: si no, se
+                          // podía elegir una dirección, editar el texto y pedir con el
+                          // texto nuevo y el punto de la vieja. Al elegir sugerencia,
+                          // AddressInput llama a onChange y luego a onSelect (que las fija).
+                          onChange={(v) => { setGuestDireccion(v); setGuestLat(null); setGuestLng(null) }}
                           onSelect={(addr) => {
                             setGuestDireccion(addr.direccion || addr.formatted || '')
                             setGuestLat(addr.latitud ?? addr.lat ?? null)
@@ -1465,6 +1486,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           }}
                           placeholder="Dirección de entrega *"
                           style={S.input}
+                          cerca={restPos}
                         />
                         {guestDireccion && guestLat == null && (
                           <div style={{ fontSize: 10, color: C.warning, marginTop: 4 }}>
@@ -1818,16 +1840,26 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           let pos = null
                           try {
                             pos = await getCurrentPosition()
-                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json&addressdetails=1`)
-                            const data = await res.json()
-                            const addr = data.display_name || `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`
+                            // Poner nombre a la calle es opcional: si Nominatim falla o se
+                            // cuelga, antes se perdía el punto GPS y salía "no se pudo
+                            // guardar". Ahora, a los 6 s, se guarda con las coordenadas.
+                            let addr = null
+                            try {
+                              const ctrl = new AbortController()
+                              const tope = setTimeout(() => ctrl.abort(), 6000)
+                              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json&addressdetails=1`, { signal: ctrl.signal, headers: { 'Accept-Language': 'es' } })
+                              clearTimeout(tope)
+                              if (res.ok) addr = (await res.json())?.display_name || null
+                            } catch (err) { console.error('[Carrito] nombre de la ubicación', err) }
+                            if (!addr) addr = `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`
                             await updatePerfil({ direccion: addr, latitud: pos.lat, longitud: pos.lng })
                             if (user?.id) {
                               const { data: existing } = await supabase.from('direcciones_usuario').select('id').eq('usuario_id', user.id)
-                              await supabase.from('direcciones_usuario').insert({
+                              const { error: errDir } = await supabase.from('direcciones_usuario').insert({
                                 usuario_id: user.id, etiqueta: 'Mi ubicacion', direccion: addr,
                                 latitud: pos.lat, longitud: pos.lng, principal: !existing || existing.length === 0,
                               })
+                              if (errDir) console.error('[Carrito] direcciones_usuario (GPS)', errDir)
                             }
                             setSinDireccion(false); setMostrarAddDir(false); setDirMsg(null)
                             if (modoEntrega === 'delivery') calcularEnvio(pos.lat, pos.lng, null).catch(() => {})
@@ -1836,7 +1868,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                             // ambos decían lo mismo y mandaban al cliente a pelearse con
                             // los permisos del móvil cuando el fallo era al guardar.
                             console.error('[Carrito] ubicación actual', e)
-                            setDirMsg(pos ? 'No se pudo guardar la dirección. Inténtalo de nuevo.' : 'No se pudo obtener la ubicación')
+                            // Sin GPS (permiso denegado en el móvil o sin señal) el cliente
+                            // se quedaba con un "No se pudo obtener la ubicación" a secas y
+                            // acababa escribiendo la dirección en las notas del pedido.
+                            const denegado = e?.code === 1 || /denegad|denied/i.test(e?.message || '')
+                            setDirMsg(pos ? 'No se pudo guardar la dirección. Inténtalo de nuevo.'
+                              : denegado ? 'Tu navegador no nos deja ver tu ubicación. Escribe tu dirección en el buscador y elígela de la lista.'
+                              : 'No pudimos localizarte. Escribe tu dirección en el buscador y elígela de la lista.')
                           }
                           finally { setGeoLoading(false) }
                         }} disabled={geoLoading} style={{
@@ -1868,16 +1906,18 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                                 }
                                 if (user?.id) {
                                   const { data: existing } = await supabase.from('direcciones_usuario').select('id').eq('usuario_id', user.id)
-                                  await supabase.from('direcciones_usuario').insert({
+                                  const { error: errDir } = await supabase.from('direcciones_usuario').insert({
                                     usuario_id: user.id, etiqueta: 'Entrega', direccion: place.direccion,
                                     latitud: place.lat, longitud: place.lng, principal: !existing || existing.length === 0,
                                   })
+                                  if (errDir) console.error('[Carrito] direcciones_usuario (buscador)', errDir)
                                 }
                                 setSinDireccion(false); setMostrarAddDir(false)
                                 if (modoEntrega === 'delivery') calcularEnvio(place.lat, place.lng, null).catch(() => {})
                               }
                             }}
                             placeholder="Buscar dirección..."
+                            cerca={restPos}
                             style={{
                               width: '100%', padding: '10px 10px 10px 32px', borderRadius: 14,
                               border: '1px solid var(--c-border)', fontSize: 13, fontFamily: 'inherit',
