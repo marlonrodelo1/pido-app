@@ -13,6 +13,9 @@ import { getCurrentPosition } from '../lib/geolocation'
 import { CreditCard, Lock, X, ArrowLeft, Check, Navigation, MapPin, Trash2 } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
 import { FoodIcon } from '../lib/food'
+import { tieneNumeroCasa, componerDireccion, direccionCorta, direccionDeNominatim } from '../lib/direccion'
+import { normalizarTelefono, telefonoValido, MSG_TELEFONO_INVALIDO } from '../lib/telefono'
+import { registrarEventoPago, nuevaSesionPago, codigoErrorStripe } from '../lib/eventosPago'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -54,32 +57,88 @@ const S = {
 }
 
 /* ─── FormularioPago ─────────────────────────────────────── */
-function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
+// Cada paso deja rastro en eventos_pago (lib/eventosPago.js): sin eso, un pago que
+// "no hacía nada" era imposible de explicar después.
+function FormularioPago({ clientSecret, total, pedido, onSuccess, onCancel }) {
   const stripe = useStripe()
   const elements = useElements()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  // El formulario de Stripe tarda en pintarse. Hasta que avisa de que está listo
+  // el botón se ve GRIS y lo dice: antes se veía naranja y entero y, pulsado, no
+  // hacía nada (un `return` mudo). Así fallaban los primeros intentos.
+  const [listo, setListo] = useState(false)
+  const listoRef = useRef(false)
+  const errorCargaRef = useRef(false)
+  const [errorCarga, setErrorCarga] = useState(null)
+  const [lento, setLento] = useState(false)
+  const [metodo, setMetodo] = useState(null)
+  const sesion = useRef(nuevaSesionPago())
+  const evento = (etapa, datos = {}) =>
+    registrarEventoPago(etapa, { pedido, sesion: sesion.current, importe: total, metodo, ...datos })
+
+  useEffect(() => {
+    evento('formulario_abierto')
+    // Si a los 20 s sigue sin pintarse, se avisa (y queda apuntado).
+    const t = setTimeout(() => {
+      if (!listoRef.current && !errorCargaRef.current) { setLento(true); evento('formulario_no_carga', { mensaje: 'Sin cargar a los 20 s' }) }
+    }, 20000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const puedePagar = !!stripe && !!elements && listo && !errorCarga
 
   const handlePagar = async () => {
-    if (!stripe || !elements) return
+    if (loading) return
+    if (!puedePagar) {
+      evento('pagar_sin_stripe', { mensaje: errorCarga || (listo ? 'stripe/elements sin cargar' : 'formulario sin cargar') })
+      setError(errorCarga
+        ? 'El formulario de pago no se ha cargado. Vuelve al carrito e inténtalo de nuevo.'
+        : 'El formulario de pago todavía se está cargando. Espera un momento.')
+      return
+    }
     setLoading(true); setError(null)
-    const { error: submitError } = await elements.submit()
+    evento('pulsa_pagar')
+    // Stripe devuelve {error} cuando el pago falla, pero un fallo de integración
+    // llega como promesa RECHAZADA: sin este try el botón se quedaba en
+    // "Procesando pago..." para siempre y sin rastro. La rama de éxito va fuera a
+    // propósito: una excepción tras un cobro bueno no debe reactivar el botón.
+    let submitError = null, stripeError = null, paymentIntent = null
+    try {
+      ({ error: submitError } = await elements.submit())
+      if (!submitError) {
+        ({ error: stripeError, paymentIntent } = await stripe.confirmPayment({
+          elements,
+          clientSecret,
+          redirect: 'if_required',
+        }))
+      }
+    } catch (e) {
+      evento('error_pago', { codigo_error: 'excepcion/' + (e?.name || 'Error'), mensaje: e?.message })
+      setError('No se pudo procesar el pago. Inténtalo de nuevo.')
+      setLoading(false)
+      return
+    }
     if (submitError) {
+      evento('error_datos', { codigo_error: codigoErrorStripe(submitError), mensaje: submitError.message })
       setError(submitError.message || 'Completa los datos del método de pago')
       setLoading(false)
       return
     }
-    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      clientSecret,
-      redirect: 'if_required',
-    })
     if (stripeError) {
+      evento('error_pago', {
+        codigo_error: codigoErrorStripe(stripeError),
+        mensaje: stripeError.message,
+        metodo: stripeError.payment_method?.type || metodo,
+      })
       setError(stripeError.message || 'Error al procesar el pago')
       setLoading(false)
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      evento('pago_ok')
       onSuccess(paymentIntent.id)
     } else {
+      evento('estado_inesperado', { codigo_error: paymentIntent?.status || 'sin_payment_intent' })
       setError('El pago no se pudo completar')
       setLoading(false)
     }
@@ -98,14 +157,39 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
 
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--c-text)', marginBottom: 4 }}>Elige cómo pagar</div>
-        <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>Tarjeta, Apple Pay, Google Pay o Link</div>
+        <div style={{ fontSize: 12, color: 'var(--c-muted)' }}>Tarjeta, Bizum, Apple Pay o Google Pay</div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <PaymentElement options={{
-          layout: { type: 'accordion', defaultCollapsed: false, radios: 'always', spacedAccordionItems: true },
-          wallets: { applePay: 'auto', googlePay: 'auto' },
-        }} />
+        <PaymentElement
+          options={{
+            layout: { type: 'accordion', defaultCollapsed: false, radios: 'always', spacedAccordionItems: true },
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          }}
+          // setError(null): antes de estar listo el único error posible es el de
+          // "todavía se está cargando", que ya no es verdad.
+          onReady={() => { listoRef.current = true; setListo(true); setLento(false); setError(null); evento('formulario_listo') }}
+          onLoadError={(e) => {
+            errorCargaRef.current = true
+            const msg = e?.error?.message || 'No se ha podido cargar'
+            setErrorCarga(msg)
+            evento('formulario_no_carga', { codigo_error: codigoErrorStripe(e?.error), mensaje: msg })
+          }}
+          onChange={(e) => { if (e?.value?.type) setMetodo(e.value.type) }}
+        />
+        {!listo && !errorCarga && (
+          <div style={{ fontSize: 12, color: 'var(--c-muted)', textAlign: 'center', padding: '14px 0' }}>
+            {lento ? 'El formulario de pago está tardando. Comprueba tu conexión…' : 'Cargando las formas de pago…'}
+          </div>
+        )}
+        {errorCarga && (
+          <div style={{
+            background: 'rgba(239,68,68,0.1)', color: 'var(--c-danger)',
+            fontSize: 12, padding: '10px 14px', borderRadius: 10, fontWeight: 600, lineHeight: 1.4,
+          }}>
+            No se ha podido cargar el formulario de pago. Revisa tu conexión, vuelve al carrito e inténtalo de nuevo.
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, justifyContent: 'center' }}>
@@ -121,14 +205,69 @@ function FormularioPago({ clientSecret, total, onSuccess, onCancel }) {
         }}>{error}</div>
       )}
 
-      <button onClick={handlePagar} disabled={loading || !stripe} style={{
+      {/* Sin `disabled`: pulsarlo antes de tiempo explica qué pasa (y queda
+          apuntado) en vez de no hacer nada. El aspecto sí dice que aún no vale. */}
+      <button onClick={handlePagar} aria-disabled={loading || !puedePagar} style={{
         width: '100%', padding: '16px 0', borderRadius: 12, border: 'none',
-        background: loading ? '#E8E1D3' : 'var(--c-btn-gradient)', color: '#fff',
-        fontSize: 15, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
+        background: loading || !puedePagar ? '#E8E1D3' : 'var(--c-btn-gradient)',
+        color: loading || !puedePagar ? '#6B6356' : '#fff',
+        fontSize: 15, fontWeight: 700, cursor: loading || !puedePagar ? 'default' : 'pointer',
         fontFamily: 'inherit', letterSpacing: '0.01em',
       }}>
-        {loading ? 'Procesando pago...' : `Pagar ${fmt(total)}`}
+        {loading ? 'Procesando pago...' : !puedePagar && !errorCarga ? 'Cargando el pago…' : `Pagar ${fmt(total)}`}
       </button>
+    </div>
+  )
+}
+
+/* ─── Número de la casa ──────────────────────────────────── */
+// Sale debajo de la dirección cuando a esta le falta el número (ver
+// lib/direccion.js). Sin número no se puede pedir a domicilio; la casa que de
+// verdad no tiene número se marca como tal y se explica cómo encontrarla.
+function CamposNumeroCasa({ numero, setNumero, piso, setPiso, sinNumero, setSinNumero, indicacion, setIndicacion, numeroNoValido }) {
+  return (
+    <div style={{ marginTop: 8, padding: 12, borderRadius: 12, background: '#FFF6EF', border: '1px solid #F3C9A8' }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 2 }}>¿Qué número es tu casa?</div>
+      <div style={{ fontSize: 11, color: C.stone, marginBottom: 10, lineHeight: 1.4 }}>
+        Sin él, el repartidor llega a tu calle pero no sabe a qué puerta llamar.
+      </div>
+      {sinNumero ? (
+        <input
+          value={indicacion}
+          onChange={e => setIndicacion(e.target.value.slice(0, 80))}
+          placeholder="¿Cómo la encuentra? Ej.: casa blanca, portón verde *"
+          style={S.input}
+        />
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={numero}
+            onChange={e => setNumero(e.target.value.slice(0, 10))}
+            placeholder="Número *"
+            style={{ ...S.input, flex: '0 0 36%' }}
+          />
+          <input
+            value={piso}
+            onChange={e => setPiso(e.target.value.slice(0, 30))}
+            placeholder="Piso, puerta (opcional)"
+            style={{ ...S.input, flex: 1, minWidth: 0 }}
+          />
+        </div>
+      )}
+      {!sinNumero && numeroNoValido && (
+        <div style={{ fontSize: 11, color: C.danger, marginTop: 6, lineHeight: 1.4 }}>
+          Escribe solo el número del portal (ej.: 12 o 12B). Si tu casa solo tiene punto kilométrico, marca «Mi casa no tiene número» y explícalo.
+        </div>
+      )}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12, color: C.ink, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={sinNumero}
+          onChange={e => setSinNumero(e.target.checked)}
+          style={{ width: 16, height: 16, accentColor: C.burnt, margin: 0 }}
+        />
+        Mi casa no tiene número
+      </label>
     </div>
   )
 }
@@ -156,7 +295,7 @@ function ResLine({ label, value, tone }) {
 
 export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp, setOpen: setOpenProp, onRequireLogin, socioData = null }) {
   const { user, perfil, updatePerfil } = useAuth()
-  const { carrito, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, elegirEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
+  const { carrito, addItem, removeItem, updateCantidad, clearCart, propina, setPropina, metodoPago, setMetodoPago, modoEntrega, setModoEntrega, entregaManual, elegirEntrega, totalItems, subtotal, envio, total, calcularEnvio, envioLoading, envioError, distanciaKm, origenPedido, setEnvio } = useCart()
   const [tarifaEnvioFija, setTarifaEnvioFija] = useState(null)
   const [pedidoMinimo, setPedidoMinimo] = useState(0)
   const [openInternal, setOpenInternal] = useState(false)
@@ -179,6 +318,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   const [restCerrado, setRestCerrado] = useState(false)
   const [restCerradoMsg, setRestCerradoMsg] = useState('')
   const [promoActiva, setPromoActiva] = useState(null)
+  // TODAS las promociones vigentes del restaurante con su estado, para enseñarlas
+  // en el carrito. Antes solo se veía una, y la de "producto gratis" desaparecía en
+  // cuanto se llegaba al mínimo si el producto no estaba ya en el carrito: el
+  // cliente nunca se enteraba de que podía llevárselo.
+  const [promosLista, setPromosLista] = useState([])
   const [descuento, setDescuento] = useState(0)
   // Pidoo Creadores. `cuponSel` es solo la INTENCIÓN del cliente: el descuento
   // de verdad lo fija el servidor en el BEFORE INSERT de `pedidos`, con la misma
@@ -210,6 +354,17 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   // se pide aquí (obligatorio) y se guarda en el perfil + en el pedido para que el
   // socio/rider pueda llamar al cliente. Resuelve el bug "no aparece el teléfono".
   const [telefonoInput, setTelefonoInput] = useState('')
+  // El del perfil manda si es válido; si no (o no hay), el que se escribe aquí.
+  const telContacto = telefonoValido(perfil?.telefono) ? perfil.telefono : telefonoInput
+  // Número de la casa cuando la dirección no lo trae (ver CamposNumeroCasa).
+  const [numCasa, setNumCasa] = useState('')
+  const [pisoCasa, setPisoCasa] = useState('')
+  const [sinNumCasa, setSinNumCasa] = useState(false)
+  const [indicacionCasa, setIndicacionCasa] = useState('')
+  // El cliente con cuenta pulsó "Cambiar" en "Entregar en".
+  const [cambiarDir, setCambiarDir] = useState(false)
+  // Al cerrar el carrito, el "Cambiar" a medias no se queda abierto para la próxima.
+  useEffect(() => { if (!open) setCambiarDir(false) }, [open])
   const tieneDireccion = () => !!(perfil?.latitud && perfil?.longitud && perfil?.direccion)
   // Optimista: arranca en false (no mostrar aviso) hasta que perfil cargue
   // y confirme. Si arrancase en true cuando perfil aun es null, mostraria
@@ -328,8 +483,17 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         })
       supabase.from('promociones').select('*').eq('establecimiento_id', estId).eq('activa', true)
         .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
-        .then(async ({ data: promos }) => {
+        .then(async ({ data: promosTodas }) => {
           if (cancelled) return
+          // Solo las que valen YA y en este canal (fecha_inicio y solo_origenes no
+          // se miraban: una promo programada para mañana descontaba hoy).
+          let socioMkt = null
+          try { socioMkt = sessionStorage.getItem('pidoo_socio_id') } catch { /* sin storage */ }
+          const origenActual = socioMkt ? 'marketplace_socio' : (origenPedido || 'pido')
+          const ahora = Date.now()
+          const promos = (promosTodas || []).filter(p =>
+            (!p.fecha_inicio || new Date(p.fecha_inicio).getTime() <= ahora) &&
+            (!Array.isArray(p.solo_origenes) || p.solo_origenes.length === 0 || p.solo_origenes.includes(origenActual)))
           // ── Regalo por cantidad ────────────────────────────────────────────
           // Quien REGALA de verdad es el servidor: el trigger trg_zz_regalo_por_cantidad
           // mete la línea a 0 € al crear el pedido, en cualquier canal. Esto de aquí NO
@@ -338,10 +502,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
           // Por eso el cálculo replica el del trigger: unidades del carrito cuya
           // CATEGORÍA está en condicion_categoria_ids, contra condicion_cantidad.
           // No toca el total ni `descuento`: el regalo vale 0.
-          const promoRegalo = (promos || []).find(p =>
+          const promosRegalo = promos.filter(p =>
             p.tipo === 'regalo_por_cantidad' && p.producto_id &&
             Array.isArray(p.condicion_categoria_ids) && p.condicion_categoria_ids.length > 0)
-          if (!promoRegalo) {
+          const estadoRegalo = {}
+          if (promosRegalo.length === 0) {
             setRegalo(null)
           } else {
             // El carrito guarda nombres, no categorías: hay que preguntarlas.
@@ -349,46 +514,73 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
             const { data: prods } = await supabase.from('productos').select('id, categoria_id').in('id', ids)
             if (cancelled) return
             const catDe = new Map((prods || []).map(p => [p.id, p.categoria_id]))
-            const unidades = carrito.reduce((n, i) =>
-              promoRegalo.condicion_categoria_ids.includes(catDe.get(i.producto_id)) ? n + i.cantidad : n, 0)
-            const objetivo = promoRegalo.condicion_cantidad || 2
-            setRegalo({
-              nombre: promoRegalo.producto_nombre || 'Regalo',
-              titulo: promoRegalo.titulo,
-              cumplido: unidades >= objetivo,
-              faltan: Math.max(0, objetivo - unidades),
-            })
-          }
-          if (promos && promos.length > 0) {
-            const aplicables = promos.filter(p => subtotal >= (p.minimo_compra || 0))
-            if (aplicables.length > 0) {
-              let mejor = null, mejorDesc = 0
-              for (const p of aplicables) {
-                let d = 0
-                if (p.tipo === 'descuento_porcentaje') d = subtotal * (p.valor / 100)
-                else if (p.tipo === 'descuento_fijo') d = p.valor
-                else if (p.tipo === '2x1') {
-                  const item2x1 = carrito.find(i => i.producto_id === p.producto_id)
-                  if (item2x1 && item2x1.cantidad >= 2) d = item2x1.precio_unitario * Math.floor(item2x1.cantidad / 2)
-                }
-                else if (p.tipo === 'producto_gratis') {
-                  const itemGratis = carrito.find(i => i.producto_id === p.producto_id)
-                  if (itemGratis) d = itemGratis.precio_unitario
-                }
-                if (d > mejorDesc) { mejor = p; mejorDesc = d }
+            for (const pr of promosRegalo) {
+              const unidades = carrito.reduce((n, i) =>
+                pr.condicion_categoria_ids.includes(catDe.get(i.producto_id)) ? n + i.cantidad : n, 0)
+              const objetivo = pr.condicion_cantidad || 2
+              estadoRegalo[pr.id] = {
+                nombre: pr.producto_nombre || 'Regalo',
+                titulo: pr.titulo,
+                cumplido: unidades >= objetivo,
+                faltan: Math.max(0, objetivo - unidades),
               }
-              setPromoActiva(mejor); setDescuento(Math.round(mejorDesc * 100) / 100)
-            } else {
-              const menorMinimo = promos.sort((a, b) => (a.minimo_compra || 0) - (b.minimo_compra || 0))[0]
-              setPromoActiva(menorMinimo); setDescuento(0)
             }
-          } else { setPromoActiva(null); setDescuento(0) }
+            // El desglose enseña el primero que se cumple (o el primero, si ninguno).
+            setRegalo(Object.values(estadoRegalo).find(r => r.cumplido) || Object.values(estadoRegalo)[0])
+          }
 
+          // Descuento: se aplica UNA, la que más descuenta (igual que hasta ahora).
+          const enCarrito = (pid) => carrito.find(i => i.producto_id === pid)
+          const descuentoDe = (p) => {
+            if (p.tipo === 'descuento_porcentaje') return subtotal * (p.valor / 100)
+            if (p.tipo === 'descuento_fijo') return Number(p.valor) || 0
+            if (p.tipo === '2x1') {
+              const it = enCarrito(p.producto_id)
+              return it && it.cantidad >= 2 ? it.precio_unitario * Math.floor(it.cantidad / 2) : 0
+            }
+            if (p.tipo === 'producto_gratis') {
+              const it = enCarrito(p.producto_id)
+              return it ? it.precio_unitario : 0
+            }
+            return 0
+          }
+          const llegaMinimo = (p) => subtotal + 0.0001 >= (Number(p.minimo_compra) || 0)
+          let mejor = null, mejorDesc = 0
+          for (const p of promos.filter(llegaMinimo)) {
+            const d = descuentoDe(p)
+            if (d > mejorDesc) { mejor = p; mejorDesc = d }
+          }
+          setPromoActiva(mejor); setDescuento(Math.round(mejorDesc * 100) / 100)
+
+          // La lista que ve el cliente: todas, cada una con lo que le falta.
+          setPromosLista(promos.map(p => {
+            const base = { id: p.id, titulo: p.titulo || 'Promoción' }
+            if (p.tipo === 'regalo_por_cantidad') {
+              const r = estadoRegalo[p.id]
+              if (!r) return { ...base, ok: false, texto: p.descripcion || '' }
+              return r.cumplido
+                ? { ...base, ok: true, texto: `Te llevas ${r.nombre} gratis` }
+                : { ...base, ok: false, texto: `Te falta${r.faltan === 1 ? '' : 'n'} ${r.faltan} para llevarte ${r.nombre} gratis` }
+            }
+            if (!llegaMinimo(p)) {
+              const falta = (Number(p.minimo_compra) || 0) - subtotal
+              return { ...base, ok: false, texto: `Te faltan ${fmt(falta)} (pedido mínimo ${fmt(p.minimo_compra)})` }
+            }
+            if (p.id === mejor?.id) return { ...base, ok: true, texto: `Aplicada: −${fmt(mejorDesc)}` }
+            if (p.tipo === 'producto_gratis' && !enCarrito(p.producto_id)) {
+              return { ...base, ok: false, texto: `Añade ${p.producto_nombre || 'el producto'} al carrito: te sale gratis`, anadir: p.producto_id }
+            }
+            if (p.tipo === '2x1' && !(enCarrito(p.producto_id)?.cantidad >= 2)) {
+              return { ...base, ok: false, texto: `Pide 2 de ${p.producto_nombre || 'este producto'} y paga 1` }
+            }
+            // Vale, pero otra descuenta más: no se suman.
+            return { ...base, ok: false, texto: 'No se suma: se aplica la promoción que más te descuenta' }
+          }))
         })
     }
     run()
     return () => { cancelled = true }
-  }, [open, carrito, subtotal])
+  }, [open, carrito, subtotal, origenPedido])
 
   useEffect(() => {
     if (open && carrito.length > 0 && modoEntrega === 'delivery') {
@@ -623,15 +815,80 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     return () => { vivo = false }
   }, [user, carrito, subtotal, envio, modoEntrega])
 
+  // ── Número de la casa ──────────────────────────────────────────────────
+  // Se mira la dirección con la que se va a pedir: la del perfil con cuenta, la
+  // que escribió el invitado sin ella. Si no lleva número, el pedido sale con la
+  // dirección COMPUESTA ("Calle X 12, 2º B, …"); con cuenta, además, se guarda en
+  // el perfil al pedir para no volver a preguntarlo.
+  // ⚠️ El efecto tiene que ir ANTES del `return null` de abajo (ver el de cupones).
+  const dirBase = (user ? perfil?.direccion : guestDireccion) || ''
+  const faltaNumero = modoEntrega === 'delivery' && !!dirBase.trim() && !tieneNumeroCasa(dirBase)
+  // El número se valida con el MISMO detector con el que se relee la dirección
+  // guardada: si se aceptara "km 23" o "12345" y luego tieneNumeroCasa no lo
+  // reconociera, se volvería a pedir en cada pedido y el perfil acumularía el
+  // número repetido ("…, km 23, km 23, …").
+  const numeroValido = !!numCasa.trim() && tieneNumeroCasa(componerDireccion(dirBase, { numero: numCasa }))
+  const numeroNoValido = /\d/.test(numCasa) && !numeroValido
+  const numeroCompleto = !faltaNumero || (sinNumCasa ? indicacionCasa.trim().length >= 3 : numeroValido)
+  const dirEntregaFinal = !faltaNumero
+    ? dirBase
+    : numeroCompleto
+      ? componerDireccion(dirBase, { numero: numCasa, piso: pisoCasa, sinNumero: sinNumCasa, indicacion: indicacionCasa })
+      : null
+  // Otra dirección, otro número: no arrastrar el de la anterior.
+  useEffect(() => {
+    setNumCasa(''); setPisoCasa(''); setSinNumCasa(false); setIndicacionCasa('')
+  }, [dirBase])
+
   function guestValido() {
     if (!guestPermitido) return true
     if (!guestNombre.trim() || guestNombre.trim().length < 2) return false
-    if (!guestTelefono.trim() || guestTelefono.trim().length < 6) return false
+    if (!telefonoValido(guestTelefono)) return false
     if (modoEntrega === 'delivery' && (!guestDireccion.trim() || guestLat == null || guestLng == null)) return false
+    if (modoEntrega === 'delivery' && !numeroCompleto) return false
     return true
   }
 
   if (totalItems === 0) return null
+
+  // "Añadir" de una promo de producto gratis: mete ese producto (precio de carta;
+  // la promo lo descuenta). Si ya no está disponible, se dice.
+  async function anadirProductoPromo(productoId) {
+    const { data: p } = await supabase.from('productos')
+      .select('id, nombre, precio, imagen_url, disponible').eq('id', productoId).maybeSingle()
+    if (!p || p.disponible === false) {
+      setErrorMsg('Ese producto no está disponible ahora mismo.')
+      return
+    }
+    addItem({
+      producto_id: p.id, nombre: p.nombre, imagen_url: p.imagen_url || null,
+      tamano: null, extras: [], precio_unitario: Number(p.precio) || 0, cantidad: 1,
+      establecimiento_id: carrito[0]?.establecimiento_id,
+      establecimiento_nombre: carrito[0]?.establecimiento_nombre || '',
+      coste_envio: 0,
+    })
+  }
+
+  // Guarda la dirección elegida en "Mis direcciones" SIN duplicarla: con "Cambiar"
+  // en el carrito cada búsqueda metía una fila nueva aunque ya existiera. Se da por
+  // la misma si coincide el texto o si está a menos de ~30 m (el texto cambia en
+  // cuanto se le compone el número de la casa). Best-effort: si falla, se sigue.
+  async function guardarEnMisDirecciones({ direccion, lat, lng, etiqueta }) {
+    if (!user?.id || !direccion) return
+    try {
+      const { data: existentes } = await supabase.from('direcciones_usuario')
+        .select('id, direccion, latitud, longitud').eq('usuario_id', user.id)
+      const lista = existentes || []
+      const norm = (s) => String(s || '').trim().toLowerCase()
+      const repetida = lista.some(d => norm(d.direccion) === norm(direccion)
+        || (Math.abs(Number(d.latitud) - lat) < 0.0003 && Math.abs(Number(d.longitud) - lng) < 0.0003))
+      if (repetida) return
+      const { error: errDir } = await supabase.from('direcciones_usuario').insert({
+        usuario_id: user.id, etiqueta, direccion, latitud: lat, longitud: lng, principal: lista.length === 0,
+      })
+      if (errDir) console.error('[Carrito] direcciones_usuario', errDir)
+    } catch (e) { console.error('[Carrito] direcciones_usuario', e) }
+  }
 
   async function generarCodigo() {
     try { const { data } = await supabase.functions.invoke('generar_codigo_pedido', { body: {} }); if (data?.codigo) return data.codigo } catch (e) { console.error('[Carrito] generar_codigo_pedido', e) }
@@ -655,6 +912,10 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       setErrorMsg('Añade una direccion de entrega antes de confirmar el pedido')
       return null
     }
+    if (modoEntrega === 'delivery' && !dirEntregaFinal) {
+      setErrorMsg('Añade el número de tu casa para que el repartidor sepa a qué puerta llamar.')
+      return null
+    }
     const codigo = codigoForzado || await generarCodigo()
     setCodigoPedido(codigo)
     const totalFinal = Math.max(0, total - descuentoEfectivo)
@@ -664,12 +925,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
     let latEntrega = null
     let lngEntrega = null
     if (modoEntrega === 'delivery') {
+      // dirEntregaFinal = la dirección con el número de la casa ya metido.
       if (user && tieneDireccionLogueado) {
-        dirEntrega = perfil.direccion
+        dirEntrega = dirEntregaFinal
         latEntrega = perfil.latitud
         lngEntrega = perfil.longitud
       } else if (guestPermitido && tieneDireccionGuest) {
-        dirEntrega = guestDireccion
+        dirEntrega = dirEntregaFinal
         latEntrega = guestLat
         lngEntrega = guestLng
       }
@@ -700,7 +962,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       // Solo la referencia: el importe lo calcula y lo impone el servidor.
       cupon_creador_id: cuponSel?.id || null,
       // Snapshot del teléfono de contacto EN el pedido → el socio lo lee sin tocar la RLS de usuarios.
-      cliente_telefono: (perfil?.telefono || telefonoInput || '').trim() || null,
+      cliente_telefono: normalizarTelefono(telContacto) || (telContacto || '').trim() || null,
     }
     // Líneas del pedido (el pedido_id se añade después, cuando existe)
     const lineas = carrito.map(item => {
@@ -730,7 +992,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         p_pedido: {
           ...insertPayload,
           guest_nombre: guestNombre.trim(),
-          guest_telefono: guestTelefono.trim(),
+          guest_telefono: normalizarTelefono(guestTelefono) || guestTelefono.trim(),
           guest_email: guestEmail.trim() || null,
         },
         p_items: lineas,
@@ -791,12 +1053,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       total: Math.max(0, total - descuentoEfectivo),
       modo: modoEntrega,
       dir: modoEntrega === 'delivery'
-        ? [perfil?.direccion || guestDireccion || null, perfil?.latitud ?? guestLat ?? null, perfil?.longitud ?? guestLng ?? null]
+        ? [dirEntregaFinal || null, perfil?.latitud ?? guestLat ?? null, perfil?.longitud ?? guestLng ?? null]
         : null,
       notas: notas || '',
       cupon: cuponSel?.id || null,
       socio: socioMkt,
-      tel: (perfil?.telefono || telefonoInput || '').trim() || null,
+      tel: normalizarTelefono(telContacto) || (telContacto || '').trim() || null,
     })
   }
 
@@ -893,6 +1155,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         setErrorMsg('Este restaurante está cerrado ahora mismo. No se pueden hacer pedidos.')
         return
       }
+      // Cambiando la dirección: la vieja ya no se ve, no se pide a ella.
+      if (cambiandoDirUsuario) {
+        setErrorMsg('Elige tu nueva dirección de la lista, o pulsa Cancelar para dejar la de antes.')
+        return
+      }
       // Blindaje pedido mínimo (por si el botón quedó habilitado por una carrera de carga).
       if (bajoMinimo) {
         setErrorMsg(`El pedido mínimo de este restaurante es ${fmt(pedidoMinimo)}. Te faltan ${fmt(faltaMinimo)}.`)
@@ -906,24 +1173,46 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
       }
       if (!user) {
         if (!guestValido()) {
-          setErrorMsg(modoEntrega === 'delivery'
-            ? 'Completa tu nombre, tu teléfono y la dirección de entrega.'
-            : 'Completa tu nombre y tu teléfono.')
+          setErrorMsg(guestTelefono.trim() && !telefonoValido(guestTelefono)
+            ? MSG_TELEFONO_INVALIDO
+            : modoEntrega === 'delivery'
+              ? (guestLat != null && !numeroCompleto
+                  ? 'Añade el número de tu casa para que el repartidor sepa a qué puerta llamar.'
+                  : 'Completa tu nombre, tu teléfono y la dirección de entrega.')
+              : 'Completa tu nombre y tu teléfono.')
           return
         }
       } else {
-        // Teléfono de contacto obligatorio: el socio/rider debe poder llamar al cliente.
-        const telContacto = (perfil?.telefono || telefonoInput || '').trim()
-        if (telContacto.replace(/\D/g, '').length < 6) {
-          setErrorMsg('Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
+        // Teléfono de contacto obligatorio y VÁLIDO: el socio/rider debe poder llamar
+        // al cliente. Antes valía cualquier cosa con 6 cifras.
+        if (!telefonoValido(telContacto)) {
+          setErrorMsg((telContacto || '').trim()
+            ? MSG_TELEFONO_INVALIDO
+            : 'Añade un teléfono de contacto para que el repartidor pueda llamarte si hay algún problema.')
           return
         }
-        if (!perfil?.telefono) {
-          try { await updatePerfil({ telefono: telContacto }) } catch (_) {}
+        if (!telefonoValido(perfil?.telefono)) {
+          try { await updatePerfil({ telefono: normalizarTelefono(telContacto) }) } catch (_) {}
         }
       }
       if (user && modoEntrega === 'delivery' && !(perfil?.latitud && perfil?.longitud && perfil?.direccion)) {
         setSinDireccion(true); setMostrarAddDir(true); return
+      }
+      // Número de la casa: sin él no sale ningún pedido a domicilio. Con cuenta se
+      // guarda en el perfil (y en su dirección guardada) para no volver a pedirlo.
+      // Si guardarlo falla, el pedido sale igual: lleva la dirección compuesta.
+      if (modoEntrega === 'delivery' && faltaNumero) {
+        if (!numeroCompleto) {
+          setErrorMsg('Añade el número de tu casa para que el repartidor sepa a qué puerta llamar.')
+          return
+        }
+        if (user) {
+          try {
+            await updatePerfil({ direccion: dirEntregaFinal })
+            await supabase.from('direcciones_usuario').update({ direccion: dirEntregaFinal })
+              .eq('usuario_id', user.id).eq('direccion', dirBase)
+          } catch (e) { console.warn('[Carrito] no se pudo guardar el número de la casa en el perfil', e) }
+        }
       }
       // Revalidar rider del socio antes de iniciar el pago
       try {
@@ -1123,6 +1412,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
         finalizarPedido(pedido)
       }
     } catch (err) {
+      // Con tarjeta queda apuntado: aquí caen los fallos de crear_pago_stripe
+      // (fuera de radio, sin repartidor, mínimo…) antes de ver el formulario.
+      if (metodoPago === 'tarjeta') {
+        registrarEventoPago('crear_pago_error', {
+          pedido: pedidoEnCurso, importe: Math.max(0, total - descuentoEfectivo), mensaje: err?.message,
+        })
+      }
       // Si el pago llegó a Stripe pero falló la creación del pedido en BD
       if (pagoEnviado.current && codigoPedido) {
         setErrorMsg(`El pago se procesó correctamente pero hubo un problema al guardar el pedido. Por favor contacta con soporte con el código: ${codigoPedido}`)
@@ -1162,14 +1458,25 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   }
 
   // Pedido mínimo del restaurante (0 = sin mínimo). Se compara con el subtotal de productos.
-  const bajoMinimo = pedidoMinimo > 0 && subtotal < pedidoMinimo
+  // `+ 0.0001`: el subtotal se suma en coma flotante y 1,90 + 2,80 + 3,30 da
+  // 7,999999999999999 → "Te faltan 0,00 €" con el pedido justo en el mínimo. Misma
+  // tolerancia que el servidor (PD100 y crear_pago_stripe v37).
+  const bajoMinimo = pedidoMinimo > 0 && subtotal + 0.0001 < pedidoMinimo
   const faltaMinimo = Math.max(0, pedidoMinimo - subtotal)
   // Sin cuenta, el botón espera a que estén el nombre, el teléfono y (si es a
   // domicilio) la dirección. Si el invitado NO está permitido el botón sigue
   // vivo: al pulsarlo es cuando se abre el login.
+  // Con cuenta: sin teléfono válido o sin número de casa no se pide (el invitado
+  // lo tiene dentro de guestValido).
+  const faltaTelefonoUsuario = !!user && !telefonoValido(telContacto)
+  const faltaNumeroUsuario = !!user && modoEntrega === 'delivery' && !sinDireccion && !numeroCompleto
+  // Con "Cambiar" abierto la dirección vieja ya no se ve: pedir en ese momento la
+  // mandaba ahí (también mientras el GPS de "Usar mi ubicación" sigue buscando).
+  const cambiandoDirUsuario = !!user && cambiarDir && modoEntrega === 'delivery'
   const isDisabled = loading || envioLoading || restCerrado || bajoMinimo
     || ((sinDireccion || fueraDeRadio) && modoEntrega === 'delivery')
     || (!user && guestPermitido && !guestValido())
+    || faltaTelefonoUsuario || faltaNumeroUsuario || cambiandoDirUsuario
     // Sin método de pago seleccionable no hay pedido: pasa si el restaurante
     // apaga todos los métodos, o para el invitado cuando solo hay tarjeta
     // (la tarjeta exige cuenta — PD113; el servidor lo re-valida igual).
@@ -1208,12 +1515,21 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               boxShadow: '0 -8px 32px rgba(15,15,15,0.12)',
             }}
           >
-            {/* Handle */}
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.10)', margin: '0 auto 14px' }} />
+            {/* Handle. Va PEGADO arriba (sticky) con el fondo de la hoja: al bajar,
+                el contenido pasaba hasta el mismo borde redondeado y se veía cortado
+                (botones partidos). Así siempre queda un margen limpio arriba. */}
+            <div style={{
+              position: 'sticky', top: -18, zIndex: 5,
+              margin: '-18px -18px 6px', padding: '10px 0 12px',
+              background: C.cream, borderRadius: '20px 20px 0 0',
+            }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.10)', margin: '0 auto' }} />
+            </div>
 
             {pasoTarjeta && clientSecret ? (
               <Elements stripe={stripePromise} options={{
                 clientSecret,
+                locale: 'es',
                 appearance: {
                   theme: 'stripe',
                   variables: {
@@ -1229,6 +1545,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 <FormularioPago
                   clientSecret={clientSecret}
                   total={Math.max(0, total - descuentoEfectivo)}
+                  pedido={pedidoPendiente}
                   onSuccess={async (paymentId) => {
                     // Pago confirmado por Stripe → confirmar el pedido pendiente
                     // (pasarlo de 'pendiente_pago' a 'nuevo' + stripe_payment_id).
@@ -1404,6 +1721,44 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   )}
                 </div>
 
+                {/* Entregar en — con cuenta. Hasta ahora el carrito no enseñaba a qué
+                    dirección iba el pedido: el cliente pedía con la que el GPS guardó
+                    al abrir la app, casi siempre sin número de casa, sin verla. */}
+                {user && modoEntrega === 'delivery' && !sinDireccion && perfil?.direccion && !cambiarDir && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={S.label}>Entregar en</div>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 12,
+                      background: C.paper, border: `1px solid ${C.border}`,
+                    }}>
+                      <MapPin size={16} strokeWidth={2} color={C.burnt} style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: C.ink, lineHeight: 1.35 }}>
+                        {direccionCorta(dirEntregaFinal || dirBase)}
+                      </div>
+                      <button
+                        onClick={() => { setCambiarDir(true); setMostrarAddDir(true); setDirMsg(null) }}
+                        style={{
+                          background: 'none', border: 'none', padding: 0, flexShrink: 0,
+                          color: C.burntText, fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                    {faltaNumero && (
+                      <CamposNumeroCasa
+                        numero={numCasa} setNumero={setNumCasa}
+                        piso={pisoCasa} setPiso={setPisoCasa}
+                        sinNumero={sinNumCasa} setSinNumero={setSinNumCasa}
+                        indicacion={indicacionCasa} setIndicacion={setIndicacionCasa}
+                        numeroNoValido={numeroNoValido}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Propina */}
                 <div style={{ marginBottom: 14 }}>
                   <div style={S.label}>{modoEntrega === 'recogida' ? 'Propina' : 'Propina al rider'}</div>
@@ -1461,8 +1816,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       onChange={(e) => setGuestTelefono(e.target.value)}
                       placeholder="Teléfono *"
                       type="tel"
+                      autoComplete="tel"
                       style={{ ...S.input, marginTop: 8 }}
                     />
+                    {guestTelefono.replace(/\D/g, '').length >= 9 && !telefonoValido(guestTelefono) && (
+                      <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>{MSG_TELEFONO_INVALIDO}</div>
+                    )}
                     <input
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
@@ -1492,6 +1851,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           <div style={{ fontSize: 10, color: C.warning, marginTop: 4 }}>
                             Selecciona la dirección de las sugerencias para fijar la ubicación.
                           </div>
+                        )}
+                        {guestLat != null && faltaNumero && (
+                          <CamposNumeroCasa
+                            numero={numCasa} setNumero={setNumCasa}
+                            piso={pisoCasa} setPiso={setPisoCasa}
+                            sinNumero={sinNumCasa} setSinNumero={setSinNumCasa}
+                            indicacion={indicacionCasa} setIndicacion={setIndicacionCasa}
+                            numeroNoValido={numeroNoValido}
+                          />
                         )}
                       </div>
                     )}
@@ -1523,8 +1891,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   </div>
                 )}
 
-                {/* Teléfono de contacto — obligatorio si el perfil no lo tiene (para que el socio pueda llamar) */}
-                {user && !perfil?.telefono && (
+                {/* Teléfono de contacto — obligatorio si el perfil no tiene uno VÁLIDO (para que el socio pueda llamar) */}
+                {user && !telefonoValido(perfil?.telefono) && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={S.label}>Teléfono de contacto</div>
                     <input
@@ -1532,8 +1900,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                       onChange={(e) => setTelefonoInput(e.target.value)}
                       placeholder="Tu teléfono *"
                       type="tel"
+                      autoComplete="tel"
                       style={S.input}
                     />
+                    {telefonoInput.replace(/\D/g, '').length >= 9 && !telefonoValido(telefonoInput) && (
+                      <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>{MSG_TELEFONO_INVALIDO}</div>
+                    )}
                     <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>
                       {modoEntrega === 'recogida'
                         ? 'El restaurante lo usará para avisarte cuando tu pedido esté listo.'
@@ -1634,50 +2006,37 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   )}
                 </div>
 
-                {/* Promo banner */}
-                {promoActiva && (
-                  <div style={{
-                    marginBottom: 14, padding: '12px 14px', borderRadius: 10,
-                    background: descuento > 0 ? 'var(--c-success-soft)' : 'var(--c-primary-soft)',
-                    border: descuento > 0 ? '1px solid var(--c-success)' : '1px solid var(--c-primary)',
-                    display: 'flex', alignItems: 'center', gap: 10,
-                  }}>
-                    <span style={{ fontSize: 20 }}>{descuento > 0 ? '🎉' : '🏷️'}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: descuento > 0 ? 'var(--c-success)' : 'var(--c-primary)' }}>
-                        {promoActiva.titulo}
-                      </div>
-                      {descuento > 0 ? (
-                        <div style={{ fontSize: 11, color: 'var(--c-success)' }}>-{descuento.toFixed(2)} € aplicado</div>
-                      ) : (
-                        <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>
-                          Compra min. {promoActiva.minimo_compra}€ — te faltan {((promoActiva.minimo_compra || 0) - subtotal).toFixed(2)}€
+                {/* Promociones: TODAS las vigentes del restaurante, cada una con su
+                    estado (aplicada, cuánto falta, qué añadir). Descuento solo se aplica
+                    una, la que más descuenta; el regalo por cantidad va aparte. */}
+                {promosLista.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={S.label}>{promosLista.length === 1 ? 'Promoción' : 'Promociones'}</div>
+                    {promosLista.map(pr => (
+                      <div key={pr.id} style={{
+                        marginBottom: 6, padding: '10px 12px', borderRadius: 10,
+                        // Verde oscuro sobre verde claro: el verde de la paleta sobre su
+                        // fondo suave apenas se leía.
+                        background: pr.ok ? 'rgba(34,197,94,0.12)' : 'var(--c-primary-soft)',
+                        border: `1px solid ${pr.ok ? 'rgba(21,128,61,0.35)' : 'var(--c-primary)'}`,
+                        display: 'flex', alignItems: 'center', gap: 10,
+                      }}>
+                        <span style={{ fontSize: 18 }}>{pr.ok ? '🎉' : '🏷️'}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: pr.ok ? '#15803D' : C.ink }}>{pr.titulo}</div>
+                          {pr.texto && (
+                            <div style={{ fontSize: 11.5, fontWeight: pr.ok ? 600 : 400, color: pr.ok ? '#15803D' : C.stone, marginTop: 1, lineHeight: 1.35 }}>{pr.texto}</div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Regalo por cantidad. Banner propio: no es un descuento (el total no
-                    se mueve), es un producto que se añade solo al confirmar. */}
-                {regalo && (
-                  <div style={{
-                    marginBottom: 14, padding: '12px 14px', borderRadius: 10,
-                    background: regalo.cumplido ? 'var(--c-success-soft)' : 'var(--c-primary-soft)',
-                    border: `1px solid ${regalo.cumplido ? 'var(--c-success)' : 'var(--c-primary)'}`,
-                    display: 'flex', alignItems: 'center', gap: 10,
-                  }}>
-                    <span style={{ fontSize: 20 }}>🎁</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: regalo.cumplido ? 'var(--c-success)' : 'var(--c-primary)' }}>
-                        {regalo.titulo}
+                        {pr.anadir && (
+                          <button onClick={() => anadirProductoPromo(pr.anadir)} style={{
+                            padding: '7px 12px', borderRadius: 999, border: 'none', flexShrink: 0,
+                            background: C.burnt, color: '#fff', fontSize: 12, fontWeight: 700,
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}>Añadir</button>
+                        )}
                       </div>
-                      <div style={{ fontSize: 11, color: regalo.cumplido ? 'var(--c-success)' : 'var(--c-muted)' }}>
-                        {regalo.cumplido
-                          ? `Te llevas ${regalo.nombre} gratis`
-                          : `Te falta${regalo.faltan === 1 ? '' : 'n'} ${regalo.faltan} para llevarte ${regalo.nombre} gratis`}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
 
@@ -1800,7 +2159,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 )}
 
                 {/* Fuera de radio */}
-                {fueraDeRadio && modoEntrega === 'delivery' && !sinDireccion && (
+                {fueraDeRadio && modoEntrega === 'delivery' && !sinDireccion && !cambiarDir && (
                   <div style={{ marginBottom: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 22 }}>🚫</span>
@@ -1815,14 +2174,20 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 {/* Sin dirección — SOLO con cuenta: es la dirección del perfil.
                     Sin cuenta, la dirección se pide arriba en "tus datos", y este
                     bloque salía además del otro (dos sitios para lo mismo) sin
-                    poder guardar nada. */}
-                {user && sinDireccion && modoEntrega === 'delivery' && !fueraDeRadio && (
-                  <div style={{ marginBottom: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                    poder guardar nada. Es también el que abre "Cambiar" en
+                    "Entregar en" (cambiarDir), incluso fuera de zona: era la única
+                    forma de arreglar desde el carrito una dirección que no vale. */}
+                {user && (sinDireccion || cambiarDir) && modoEntrega === 'delivery' && (!fueraDeRadio || cambiarDir) && (
+                  <div style={{ marginBottom: 10, padding: '14px 16px', borderRadius: 12, background: cambiarDir ? C.paper : 'rgba(239,68,68,0.06)', border: cambiarDir ? `1px solid ${C.border}` : '1px solid rgba(239,68,68,0.15)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: mostrarAddDir ? 12 : 0 }}>
                       <span style={{ fontSize: 22 }}>📍</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-danger)', marginBottom: 2 }}>Añade tu dirección de entrega</div>
-                        <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>Necesitas una ubicación guardada para pedir a domicilio</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: cambiarDir ? C.ink : 'var(--c-danger)', marginBottom: 2 }}>
+                          {cambiarDir ? 'Cambia la dirección de entrega' : 'Añade tu dirección de entrega'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>
+                          {cambiarDir ? 'Búscala y elígela de la lista, o usa tu ubicación' : 'Necesitas una ubicación guardada para pedir a domicilio'}
+                        </div>
                       </div>
                       {!mostrarAddDir && (
                         <button onClick={() => setMostrarAddDir(true)} style={{
@@ -1849,19 +2214,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                               const tope = setTimeout(() => ctrl.abort(), 6000)
                               const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json&addressdetails=1`, { signal: ctrl.signal, headers: { 'Accept-Language': 'es' } })
                               clearTimeout(tope)
-                              if (res.ok) addr = (await res.json())?.display_name || null
+                              // Calle primero (direccionDeNominatim): el display_name empieza a
+                              // veces por un local o un barrio y el número de la casa acababa
+                              // pegado a eso.
+                              if (res.ok) addr = direccionDeNominatim(await res.json())
                             } catch (err) { console.error('[Carrito] nombre de la ubicación', err) }
                             if (!addr) addr = `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`
                             await updatePerfil({ direccion: addr, latitud: pos.lat, longitud: pos.lng })
-                            if (user?.id) {
-                              const { data: existing } = await supabase.from('direcciones_usuario').select('id').eq('usuario_id', user.id)
-                              const { error: errDir } = await supabase.from('direcciones_usuario').insert({
-                                usuario_id: user.id, etiqueta: 'Mi ubicacion', direccion: addr,
-                                latitud: pos.lat, longitud: pos.lng, principal: !existing || existing.length === 0,
-                              })
-                              if (errDir) console.error('[Carrito] direcciones_usuario (GPS)', errDir)
-                            }
-                            setSinDireccion(false); setMostrarAddDir(false); setDirMsg(null)
+                            await guardarEnMisDirecciones({ direccion: addr, lat: pos.lat, lng: pos.lng, etiqueta: 'Mi ubicacion' })
+                            setSinDireccion(false); setMostrarAddDir(false); setCambiarDir(false); setDirMsg(null)
                             if (modoEntrega === 'delivery') calcularEnvio(pos.lat, pos.lng, null).catch(() => {})
                           } catch (e) {
                             // Distinguir "no me das el GPS" de "no pude guardarla": antes
@@ -1904,15 +2265,8 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                                   setDirMsg('No se pudo guardar la dirección. Inténtalo de nuevo.')
                                   return
                                 }
-                                if (user?.id) {
-                                  const { data: existing } = await supabase.from('direcciones_usuario').select('id').eq('usuario_id', user.id)
-                                  const { error: errDir } = await supabase.from('direcciones_usuario').insert({
-                                    usuario_id: user.id, etiqueta: 'Entrega', direccion: place.direccion,
-                                    latitud: place.lat, longitud: place.lng, principal: !existing || existing.length === 0,
-                                  })
-                                  if (errDir) console.error('[Carrito] direcciones_usuario (buscador)', errDir)
-                                }
-                                setSinDireccion(false); setMostrarAddDir(false)
+                                await guardarEnMisDirecciones({ direccion: place.direccion, lat: place.lat, lng: place.lng, etiqueta: 'Entrega' })
+                                setSinDireccion(false); setMostrarAddDir(false); setCambiarDir(false)
                                 if (modoEntrega === 'delivery') calcularEnvio(place.lat, place.lng, null).catch(() => {})
                               }
                             }}
@@ -1928,7 +2282,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
 
                         {dirMsg && <div style={{ fontSize: 11, color: 'var(--c-danger)', textAlign: 'center', marginBottom: 4 }}>{dirMsg}</div>}
 
-                        <button onClick={() => { setMostrarAddDir(false); setDirMsg(null) }} style={{
+                        <button onClick={() => { setMostrarAddDir(false); setCambiarDir(false); setDirMsg(null) }} style={{
                           width: '100%', padding: '8px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)',
                           background: 'transparent', color: 'var(--c-muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit',
                         }}>Cancelar</button>
@@ -1986,8 +2340,13 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                     : bajoMinimo ? `Te faltan ${fmt(faltaMinimo)} para el mínimo`
                     : (fueraDeRadio && modoEntrega === 'delivery') ? 'Fuera de zona — prueba recogida'
                     : (sinDireccion && modoEntrega === 'delivery') ? 'Añade tu dirección para pedir'
+                    : cambiandoDirUsuario ? 'Elige la nueva dirección de la lista'
+                    : faltaNumeroUsuario ? 'Añade el número de tu casa'
+                    : faltaTelefonoUsuario ? 'Añade tu teléfono para pedir'
                     : (!user && guestPermitido && !guestValido())
-                      ? (modoEntrega === 'delivery' ? 'Completa tus datos y la dirección' : 'Completa tu nombre y teléfono')
+                      ? (modoEntrega === 'delivery'
+                          ? (guestLat != null && !numeroCompleto ? 'Añade el número de tu casa' : 'Completa tus datos y la dirección')
+                          : 'Completa tu nombre y teléfono')
                     : loading ? 'Procesando...'
                     : (
                       <>

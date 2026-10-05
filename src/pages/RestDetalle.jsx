@@ -894,37 +894,48 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
               background: C.cream,
               borderRadius: '20px 20px 0 0',
               width: '100%', maxWidth: 420,
-              maxHeight: '90%',
+              maxHeight: '88%',
               display: 'flex', flexDirection: 'column',
               animation: 'slideUp 0.3s ease',
               overflow: 'hidden',
             }}
           >
-            {/* Hero del producto */}
-            <div style={{ position: 'relative' }}>
+            {/* Todo lo de arriba se desliza junto (foto incluida). Antes la foto se
+                quedaba FIJA ocupando 200 px y, con muchos extras, la lista pasaba
+                cortada por debajo de ella en un hueco pequeño. Arriba queda una
+                franja fija con el asa y la ✕, como en el carrito. */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               <div style={{
-                height: 200, background: '#fff',
+                position: 'sticky', top: 0, zIndex: 5, background: C.cream,
+                height: 46, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.10)' }} />
+                <button
+                  onClick={() => setModal(null)}
+                  aria-label="Cerrar"
+                  style={{
+                    position: 'absolute', top: 7, right: 12,
+                    width: 32, height: 32, borderRadius: '50%',
+                    border: 'none', background: C.cream2,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: C.ink, fontSize: 18, lineHeight: 1,
+                  }}
+                >×</button>
+              </div>
+
+              {/* Hero del producto */}
+              <div style={{
+                height: 180, margin: '0 14px', borderRadius: 16, background: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden',
               }}>
                 {modal.imagen_url
                   ? <img src={modal.imagen_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <FoodIcon kw={modal.nombre} size={140} />
+                  : <FoodIcon kw={modal.nombre} size={130} />
                 }
               </div>
-              <button
-                onClick={() => setModal(null)}
-                style={{
-                  position: 'absolute', top: 12, right: 12,
-                  width: 34, height: 34, borderRadius: '50%',
-                  border: 'none', background: 'rgba(255,255,255,0.95)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: SH.sm, color: C.ink, fontSize: 18, lineHeight: 1,
-                }}
-              >×</button>
-            </div>
 
-            <div style={{ padding: '18px 18px 12px', flex: 1, overflowY: 'auto' }}>
+            <div style={{ padding: '16px 18px 12px' }}>
               <h3 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0, letterSpacing: '-0.01em' }}>
                 {modal.nombre}
               </h3>
@@ -1056,6 +1067,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                   ><Plus size={14} strokeWidth={2.4} /></button>
                 </div>
               </div>
+            </div>
             </div>
 
             <div style={{ padding: 14, borderTop: `1px solid ${C.border}`, background: C.paper }}>

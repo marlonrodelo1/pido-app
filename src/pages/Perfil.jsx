@@ -5,6 +5,8 @@ import { getCurrentPosition } from '../lib/geolocation'
 import { MapPin, CreditCard, Tag, Settings, HelpCircle, LogOut, ChevronRight, X, Check, Camera, User, Phone, Mail, Navigation, Plus, Trash2, Star, AlertTriangle, Video } from 'lucide-react'
 import AddressInput from '../components/AddressInput'
 import CreadoresSection from '../components/CreadoresSection'
+import { normalizarTelefono, MSG_TELEFONO_INVALIDO } from '../lib/telefono'
+import { direccionDeNominatim } from '../lib/direccion'
 
 export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   const { user, perfil, logout, updatePerfil, fetchPerfil } = useAuth()
@@ -83,6 +85,10 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   }
 
   const handleGuardar = async () => {
+    // El teléfono no se puede borrar ni dejar mal escrito: el restaurante y el
+    // repartidor lo necesitan para avisar del pedido (ver CompletarTelefono).
+    const telNormal = normalizarTelefono(telefono)
+    if (!telNormal) { setMsg('Error: ' + MSG_TELEFONO_INVALIDO); return }
     setSaving(true)
     setMsg(null)
     try {
@@ -95,7 +101,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
         .update({
           nombre: nombre.trim() || perfil?.nombre || '',
           apellido: apellido.trim() || null,
-          telefono: telefono.trim() || null,
+          telefono: telNormal,
         })
         .eq('id', user.id)
         .select()
@@ -183,7 +189,8 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
       const pos = await getCurrentPosition()
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.lat}&lon=${pos.lng}&format=json&addressdetails=1`)
       const data = await res.json()
-      const addr = data.display_name || `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`
+      // Calle primero: ver direccionDeNominatim (lib/direccion.js).
+      const addr = direccionDeNominatim(data) || `${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}`
       await guardarDireccion(addr, pos.lat, pos.lng, nuevaEtiqueta || 'Mi ubicación')
     } catch { setMsg('No se pudo obtener la ubicación') }
     finally { setGeoLoading(false) }

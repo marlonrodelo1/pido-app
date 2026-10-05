@@ -6,6 +6,7 @@ import TiendaBottomNav from '../components/TiendaBottomNav'
 import AppDownloadBanner from '../components/AppDownloadBanner'
 import { permiteInvitado } from '../lib/invitado'
 import Login from './Login'
+import CompletarTelefono from '../components/CompletarTelefono'
 import { X, Bike } from 'lucide-react'
 
 const ESTADOS_PEDIDO_ACTIVO = ['nuevo', 'aceptado', 'preparando', 'listo', 'recogido', 'en_camino']
@@ -285,6 +286,7 @@ export default function TiendaPublica({ establecimiento }) {
             <Login />
           </div>
         )}
+        <CompletarTelefono />
       </div>
     )
   }
@@ -314,7 +316,7 @@ export default function TiendaPublica({ establecimiento }) {
               padding: 'calc(16px + env(safe-area-inset-top, 0px)) 16px 8px',
               maxWidth: 720, marginLeft: 'auto', marginRight: 'auto',
             }}>
-              <MisPedidos onTrack={(p) => { setPedidoActivo(p); setSeccion('tracking') }} />
+              <MisPedidos onTrack={(p) => { setPedidoActivo(p); setSeccion('tracking') }} onOpenCart={() => setCarritoOpen(true)} restaurantesPermitidos={[establecimiento?.id].filter(Boolean)} />
             </div>
           ) : seccion === 'perfil' ? (
             <div style={{
@@ -416,6 +418,7 @@ export default function TiendaPublica({ establecimiento }) {
           <Login />
         </div>
       )}
+      <CompletarTelefono />
     </div>
   )
 }

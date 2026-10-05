@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core'
 import { Mail, Lock, User, Phone, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import LogoAnimado from '../components/LogoAnimado'
 import { loginApple, appleDisponible, esCancelacionApple } from '../lib/appleAuth'
+import { normalizarTelefono, telefonoValido, MSG_TELEFONO_INVALIDO } from '../lib/telefono'
 
 export default function Login({ nextPath = null, dark = false }) {
   const { login, registro, resetPassword, authError, setAuthError } = useAuth()
@@ -53,7 +54,9 @@ export default function Login({ nextPath = null, dark = false }) {
     }
     if (modo === 'registro') {
       if (!nombre.trim()) e.nombre = 'El nombre es obligatorio'
-      if (telefono && !/^\+?\d{7,15}$/.test(telefono.replace(/\s/g, ''))) e.telefono = 'Teléfono no válido'
+      // Obligatorio: el restaurante y el repartidor lo necesitan para avisar del pedido.
+      if (!telefono.trim()) e.telefono = 'El teléfono es obligatorio'
+      else if (!telefonoValido(telefono)) e.telefono = MSG_TELEFONO_INVALIDO
       if (!aceptaTerminos) e.terminos = 'Debes aceptar los términos y condiciones'
     }
     setErrores(e)
@@ -65,15 +68,17 @@ export default function Login({ nextPath = null, dark = false }) {
     if (blockedUntil && Date.now() < blockedUntil) return
     const now = Date.now()
     if (now - lastSubmit.current < 5000) return
-    lastSubmit.current = now
+    // El freno de 5 s cuenta solo los envíos que salen: si el formulario no
+    // valida (p. ej. el teléfono), corregirlo y volver a pulsar tiene que funcionar.
     if (!validar()) return
+    lastSubmit.current = now
     setError(null)
     if (setAuthError) setAuthError(null)
     setLoading(true)
     try {
       if (modo === 'reset') { await resetPassword(email); setResetEnviado(true) }
       else if (modo === 'login') { await login(email, password); setFailedAttempts(0) }
-      else { await registro(email, password, nombre.trim(), telefono.replace(/\s/g, '')); setRegistroExitoso(true) }
+      else { await registro(email, password, nombre.trim(), normalizarTelefono(telefono)); setRegistroExitoso(true) }
     } catch (err) {
       setError(err.message)
       if (modo === 'login') {
@@ -248,7 +253,7 @@ export default function Login({ nextPath = null, dark = false }) {
         {modo === 'registro' && (
           <div style={inputWrap}>
             <Phone size={16} strokeWidth={1.8} style={iconStyle} />
-            <input placeholder="Teléfono (opcional)" value={telefono} onChange={e => setTelefono(e.target.value)}
+            <input placeholder="Teléfono" type="tel" autoComplete="tel" value={telefono} onChange={e => { setTelefono(e.target.value); if (errores.telefono) setErrores(p => ({ ...p, telefono: undefined })) }}
               onKeyDown={handleKeyDown} style={errores.telefono ? inputError : inputStyle}
               onFocus={e => { if (!errores.telefono) e.target.style.borderColor = 'var(--c-primary)' }}
               onBlur={e => { if (!errores.telefono) e.target.style.borderColor = 'transparent' }}

@@ -163,7 +163,12 @@ export function AuthProvider({ children, sinPerfil = false }) {
       email,
       password,
       options: {
-        data: { nombre, rol: 'cliente' },
+        // El teléfono va también en los metadatos: el trigger handle_new_user lo
+        // escribe al crear la fila de `usuarios` (migración
+        // usuarios_telefono_desde_alta). Si solo se escribía con el UPDATE de abajo,
+        // la primera lectura del perfil podía llegar antes y salía "Añade tu
+        // teléfono" justo después de haberlo escrito.
+        data: { nombre, rol: 'cliente', ...(telefono ? { telefono } : {}) },
         emailRedirectTo: window.location.origin || 'https://pidoo.es',
       },
     })

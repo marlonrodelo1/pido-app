@@ -11,6 +11,7 @@ import Login from './pages/Login'
 import SplashPidoo from './components/SplashPidoo'
 import BottomNav from './components/BottomNav'
 import BannerSocios from './components/BannerSocios'
+import CompletarTelefono from './components/CompletarTelefono'
 
 // Lazy-loaded routes (code splitting)
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -34,7 +35,7 @@ const SuspenseFallback = (
 // forma que el que llega por `onOpenRest`. Ver lib/estColumns.js.
 const COLS_REST_DEEP_LINK = COLS_ESTABLECIMIENTO
 
-function AppContent({ socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
+function AppContent({ socioData = null, restaurantesFilter = null, restaurantesFlags = null, splashHecho = true }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, loading } = useAuth()
@@ -336,7 +337,7 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
             : seccion === 'mapa'
             ? <Mapa onOpenRest={abrirRest} restaurantesFilter={restaurantesFilter} />
             : seccion === 'pedidos'
-            ? <MisPedidos onTrack={handleTrack} />
+            ? <MisPedidos onTrack={handleTrack} onOpenCart={() => setCarritoOpen(true)} restaurantesPermitidos={socioData ? restaurantesFilter : null} />
             : seccion === 'notificaciones'
             ? <Notificaciones />
             : seccion === 'perfil'
@@ -397,11 +398,17 @@ function AppContent({ socioData = null, restaurantesFilter = null, restaurantesF
           </div>
         </div>
       )}
+
+      {/* Cuenta sin teléfono válido (Google/Apple o antigua): se pide al entrar. */}
+      {splashHecho && <CompletarTelefono />}
     </div>
   )
 }
 
 export default function AppShell({ socioData = null, restaurantesFilter = null, restaurantesFlags = null }) {
+  // El aviso de "Añade tu teléfono" espera a que termine el logo animado: si no,
+  // salía encima de él nada más abrir la app.
+  const [splashHecho, setSplashHecho] = useState(false)
   return (
     <AuthProvider>
       <CartProvider>
@@ -409,8 +416,8 @@ export default function AppShell({ socioData = null, restaurantesFilter = null, 
             landing ni en la tienda pública: ahí el visitante viene de un enlace
             y meterle una animación de tres segundos por delante es perder la
             visita. */}
-        <SplashPidoo />
-        <AppContent socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} />
+        <SplashPidoo onDone={() => setSplashHecho(true)} />
+        <AppContent socioData={socioData} restaurantesFilter={restaurantesFilter} restaurantesFlags={restaurantesFlags} splashHecho={splashHecho} />
       </CartProvider>
     </AuthProvider>
   )
