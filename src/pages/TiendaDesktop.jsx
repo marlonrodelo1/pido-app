@@ -26,6 +26,8 @@ import { useAuth } from '../context/AuthContext'
 import { estaAbierto, DIAS_ORDEN, DIAS_CORTO } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import { permiteInvitado } from '../lib/invitado'
+import { factorOferta, pctOferta, precioAntesDe, ahorroOfertas } from '../lib/oferta'
+import { promoBadge } from '../lib/promo'
 import CreadoresBloqueRest from '../components/CreadoresBloqueRest'
 
 // Paleta tipo design system (DESIGN.md cream/terracotta/sage)
@@ -158,6 +160,7 @@ function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
       tamano: tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].nombre : null,
       extras: extrasRich,
       precio_unitario: precioTotal / cant,
+      precio_antes_unitario: precioAntesDe(precioTotal / cant, factorOferta(p)),
       cantidad: cant,
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
@@ -261,7 +264,9 @@ function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
                     >
                       <span style={{ fontSize: 14, color: C.ink, fontWeight: 500 }}>{op.nombre}</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
-                        {op.precio > 0 ? `+${fmt(op.precio)}` : 'Gratis'}
+                        {/* En una elección única (el plato de un menú, el punto de la
+                            carne) lo que no suma nada va incluido, no "regalado". */}
+                        {op.precio > 0 ? `+${fmt(op.precio)}` : esUnico ? 'Incluido' : 'Gratis'}
                       </span>
                     </button>
                   )
@@ -299,7 +304,15 @@ function ProductoModal({ p, est, onClose, onAdded, cerrado, getPrecio }) {
             {cerrado
               ? 'Restaurante cerrado'
               : puedeConfirmar
-                ? `Añadir al carrito · ${fmt(precioTotal)}`
+                ? <>
+                    Añadir al carrito ·{' '}
+                    {factorOferta(p) && (
+                      <span style={{ textDecoration: 'line-through', opacity: 0.75, fontWeight: 600, marginRight: 6 }}>
+                        {fmt(precioAntesDe(precioTotal, factorOferta(p)))}
+                      </span>
+                    )}
+                    {fmt(precioTotal)}
+                  </>
                 : 'Selecciona las opciones obligatorias'}
           </button>
         </div>
@@ -369,8 +382,19 @@ function ProductRow({ p, onAddSimple, onOpenModal, carrito, updateCantidad, hasC
           }}>{p.descripcion}</div>
         )}
         <div style={{ flex: 1, minHeight: 8 }}/>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 16, color: C.ink, fontWeight: 800 }}>{fmt(precio)}</span>
+          {pctOferta(p) > 0 && (
+            <>
+              <span style={{ fontSize: 12.5, color: C.stone2, textDecoration: 'line-through' }}>
+                {fmt(precioAntesDe(precio, factorOferta(p)))}
+              </span>
+              <span style={{
+                fontSize: 10.5, fontWeight: 800, color: '#fff', background: C.terracotta,
+                padding: '2px 6px', borderRadius: 6, alignSelf: 'center',
+              }}>−{pctOferta(p)} %</span>
+            </>
+          )}
           {hasConfig && (
             <span style={{ fontSize: 11, color: C.stone2, fontWeight: 600 }}>· opciones</span>
           )}
@@ -478,6 +502,7 @@ function CartSticky({ est, cerrado, onCheckout }) {
   const itemsDeEsteResto = carrito.filter(i => i.establecimiento_id === est.id)
   const cantDeEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.cantidad, 0)
   const subtotalEsteResto = itemsDeEsteResto.reduce((s, i) => s + i.precio_unitario * i.cantidad, 0)
+  const ahorroEsteResto = ahorroOfertas(itemsDeEsteResto)
   const vacio = cantDeEsteResto === 0
 
   return (
@@ -569,6 +594,11 @@ function CartSticky({ est, cerrado, onCheckout }) {
                     </div>
                   </div>
                   <span style={{ fontSize: 13, color: C.ink, fontWeight: 800, minWidth: 56, textAlign: 'right' }}>
+                    {Number(it.precio_antes_unitario) > it.precio_unitario && (
+                      <span style={{ display: 'block', fontSize: 11, color: C.stone2, fontWeight: 500, textDecoration: 'line-through' }}>
+                        {fmt(it.precio_antes_unitario * it.cantidad)}
+                      </span>
+                    )}
                     {fmt(it.precio_unitario * it.cantidad)}
                   </span>
                 </div>
@@ -578,6 +608,12 @@ function CartSticky({ est, cerrado, onCheckout }) {
 
           {/* Totales */}
           <div style={{ padding: 16, borderTop: `1px solid ${C.cream2}`, background: C.cream }}>
+            {/* Oferta: el precio ya va rebajado. Se enseña el de antes y lo que se
+                ahorra, y la resta cuadra con el subtotal que se cobra. */}
+            {ahorroEsteResto > 0 && <>
+              <ResLine label="Precio sin oferta" value={fmt(subtotalEsteResto + ahorroEsteResto)}/>
+              <ResLine label="Descuento de la oferta" value={'-' + fmt(ahorroEsteResto)} tone="sage"/>
+            </>}
             <ResLine label="Subtotal" value={fmt(subtotalEsteResto)}/>
             {modoEntrega === 'delivery' && envio > 0 && <ResLine label="Envío" value={fmt(envio)}/>}
             {propina > 0 && <ResLine label="Propina" value={fmt(propina)}/>}
@@ -858,7 +894,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
       const [catRes, prodRes, promosRes] = await Promise.all([
         supabase.from('categorias').select('*').eq('establecimiento_id', est.id).eq('activa', true).order('orden'),
         supabase.from('productos').select('*').eq('establecimiento_id', est.id).eq('disponible', true).order('orden'),
-        supabase.from('promociones').select('*').eq('establecimiento_id', est.id).eq('activa', true)
+        supabase.from('promociones_visibles').select('*').eq('establecimiento_id', est.id).eq('activa', true)
           .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString()),
       ])
       if (cancel) return
@@ -913,6 +949,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
       imagen_url: p.imagen_url || null,
       tamano: null, extras: [],
       precio_unitario: getPrecioMostrado(p),
+      precio_antes_unitario: precioAntesDe(getPrecioMostrado(p), factorOferta(p)),
       cantidad: 1,
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
@@ -1073,9 +1110,7 @@ export default function TiendaDesktop({ establecimiento, onCheckout, onRequireLo
         {promociones.length > 0 && (
           <div style={{ display: 'flex', gap: 10, marginTop: 20, overflowX: 'auto', paddingBottom: 4 }}>
             {promociones.map(promo => {
-              const badge = promo.tipo === 'descuento_porcentaje' ? `${promo.valor}% OFF`
-                : promo.tipo === 'descuento_fijo' ? `-${promo.valor}€`
-                : promo.tipo === '2x1' ? '2×1' : 'GRATIS'
+              const badge = promoBadge(promo)
               return (
                 <div key={promo.id} style={{
                   minWidth: 240, flexShrink: 0, padding: 14,

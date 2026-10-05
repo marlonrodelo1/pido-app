@@ -11,20 +11,21 @@
 // `establecimientos` (ver `lib/estColumns.js`): cada pantalla escribiéndose su
 // propia versión de algo que debería ser uno.
 //
-// ⚠️ `Home.jsx` todavía lleva su copia. No se tocó aquí a propósito: ese fichero
-// arrastra cambios sin commitear de otra sesión y mezclarlos complica separar
-// los commits. Cuando ese lote entre, Home tiene que importar de aquí y borrar
-// sus copias de `promoBadge`, `promoEmoji` y `promoGradients`.
+// `oferta` (1.55) es solo escaparate: el descuento ya va en el precio de los
+// productos (`productos.precio_antes`, ver `lib/oferta.js`) y `valor` es el % que
+// se anuncia. Las apps viejas no la ven: leen la tabla `promociones`, que la
+// oculta; esta versión lee la vista `promociones_visibles`.
 
 export function promoBadge(promo) {
   if (promo?.tipo === 'descuento_porcentaje') return `-${promo.valor}%`
   if (promo?.tipo === 'descuento_fijo') return `-${promo.valor}€`
   if (promo?.tipo === '2x1') return '2×1'
+  if (promo?.tipo === 'oferta') return promo.valor ? `-${promo.valor}%` : 'OFERTA'
   return 'GRATIS'
 }
 
 export function promoEmoji(promo) {
-  if (promo?.tipo === 'descuento_porcentaje') return '🏷️'
+  if (promo?.tipo === 'descuento_porcentaje' || promo?.tipo === 'oferta') return '🏷️'
   if (promo?.tipo === 'descuento_fijo') return '💰'
   if (promo?.tipo === '2x1') return '🍔'
   return '🎁'

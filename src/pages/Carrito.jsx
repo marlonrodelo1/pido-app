@@ -16,6 +16,7 @@ import { FoodIcon } from '../lib/food'
 import { tieneNumeroCasa, componerDireccion, direccionCorta, direccionDeNominatim } from '../lib/direccion'
 import { normalizarTelefono, telefonoValido, MSG_TELEFONO_INVALIDO } from '../lib/telefono'
 import { registrarEventoPago, nuevaSesionPago, codigoErrorStripe } from '../lib/eventosPago'
+import { ahorroOfertas } from '../lib/oferta'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -345,6 +346,9 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
   // precio y pagaría otro.
   const cuponGana = descuentoCupon > descuento
   const descuentoEfectivo = cuponGana ? descuentoCupon : descuento
+  // Lo que se ahorra con productos en oferta. Solo se ENSEÑA: ya va dentro del
+  // precio de cada línea, así que no se resta del total (lib/oferta.js).
+  const ahorroOferta = ahorroOfertas(carrito)
   // Regalo por cantidad ("2 pizzas = refresco gratis"). Va aparte del descuento
   // porque NO descuenta nada: el regalo entra como línea a 0 €. Ver el bloque
   // que lo calcula, más abajo.
@@ -481,7 +485,7 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                 : `${data.nombre} está cerrado ahora mismo.`
           )
         })
-      supabase.from('promociones').select('*').eq('establecimiento_id', estId).eq('activa', true)
+      supabase.from('promociones_visibles').select('*').eq('establecimiento_id', estId).eq('activa', true)
         .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
         .then(async ({ data: promosTodas }) => {
           if (cancelled) return
@@ -561,6 +565,15 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
               return r.cumplido
                 ? { ...base, ok: true, texto: `Te llevas ${r.nombre} gratis` }
                 : { ...base, ok: false, texto: `Te falta${r.faltan === 1 ? '' : 'n'} ${r.faltan} para llevarte ${r.nombre} gratis` }
+            }
+            // Oferta: no descuenta aquí, el descuento ya va en el precio de cada
+            // producto (lib/oferta.js). Solo se dice cuánto se está ahorrando.
+            if (p.tipo === 'oferta') {
+              const ids = Array.isArray(p.condicion_producto_ids) ? p.condicion_producto_ids : []
+              const ahorroPromo = ahorroOfertas(ids.length ? carrito.filter(i => ids.includes(i.producto_id)) : carrito)
+              return ahorroPromo > 0
+                ? { ...base, ok: true, texto: `Aplicada: −${fmt(ahorroPromo)}` }
+                : { ...base, ok: false, texto: p.descripcion || (p.valor ? `−${p.valor} % en los productos de la oferta` : '') }
             }
             if (!llegaMinimo(p)) {
               const falta = (Number(p.minimo_compra) || 0) - subtotal
@@ -1649,6 +1662,11 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                           <span style={{ fontSize: 14, fontWeight: 800, color: C.burnt }}>
                             {fmt(item.precio_unitario * item.cantidad)}
                           </span>
+                          {Number(item.precio_antes_unitario) > item.precio_unitario && (
+                            <span style={{ fontSize: 11.5, color: C.stone, textDecoration: 'line-through' }}>
+                              {fmt(item.precio_antes_unitario * item.cantidad)}
+                            </span>
+                          )}
                           {item.cantidad > 1 && (
                             <span style={{ fontSize: 11, color: C.stone }}>
                               {fmt(item.precio_unitario)} × {item.cantidad}
@@ -2099,6 +2117,12 @@ export default function Carrito({ onPedidoCreado, canal = 'pido', open: openProp
                   background: C.paper, border: `1px solid ${C.border}`,
                   borderRadius: 14, padding: 14, marginTop: 8,
                 }}>
+                  {/* Oferta: precio de antes y lo que se ahorra; la resta da el subtotal
+                      que se cobra, así que el desglose cuadra con el total. */}
+                  {ahorroOferta > 0 && <>
+                    <ResLine label="Precio sin oferta" value={fmt(subtotal + ahorroOferta)} />
+                    <ResLine label="Descuento de la oferta" value={'-' + fmt(ahorroOferta)} tone="sage" />
+                  </>}
                   <ResLine label="Subtotal" value={fmt(subtotal)} />
                   {cuponGana && (
                     <ResLine label={`🎬 ${cuponSel.descripcion}`} value={'-' + fmt(descuentoCupon)} tone="sage" />

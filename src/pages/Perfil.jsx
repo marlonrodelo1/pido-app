@@ -640,7 +640,7 @@ function PromosSection() {
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    supabase.from('promociones').select('*, establecimientos(nombre, logo_url, latitud, longitud, radio_cobertura_km, activo, estado)')
+    supabase.from('promociones_visibles').select('*, establecimientos(nombre, logo_url, latitud, longitud, radio_cobertura_km, activo, estado)')
       .eq('activa', true)
       .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
       .then(({ data }) => { setPromos(data || []); setLoading(false) })
@@ -688,7 +688,7 @@ function PromosSection() {
             {p.minimo_compra > 0 && <div style={{ fontSize: 11, color: 'var(--c-muted)' }}>Min. {p.minimo_compra}€</div>}
           </div>
           <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(220,38,38,0.12)', color: '#EF4444' }}>
-            {p.tipo === 'descuento_porcentaje' ? `${p.valor}%` : p.tipo === 'descuento_fijo' ? `${p.valor}€` : p.tipo === '2x1' ? '2x1' : 'Gratis'}
+            {p.tipo === 'descuento_porcentaje' || (p.tipo === 'oferta' && p.valor) ? `${p.valor}%` : p.tipo === 'descuento_fijo' ? `${p.valor}€` : p.tipo === '2x1' ? '2x1' : p.tipo === 'oferta' ? 'Oferta' : 'Gratis'}
           </span>
         </div>
       ))}

@@ -10,6 +10,7 @@ import { estaAbierto } from '../lib/horario'
 import { FoodIcon } from '../lib/food'
 import { permiteInvitado } from '../lib/invitado'
 import { promoBadge, promoEmoji, promoGradiente } from '../lib/promo'
+import { factorOferta, pctOferta, precioAntesDe } from '../lib/oferta'
 
 // Paleta directa (alineada con bundle s4-tienda + sx-extras)
 const C = {
@@ -78,6 +79,9 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
   const minPrecio = tamanos.length > 0 ? Math.min(...tamanos.map(t => t.precio)) : null
   const tieneConfig = tamanos.length > 0 || tieneExtras
   const precioBase = getPrecio ? getPrecio(p) : p.precio
+  // Oferta: precio sin oferta tachado + −X % (lib/oferta.js). Se cobra el de siempre.
+  const factor = factorOferta(p)
+  const pct = pctOferta(p)
 
   function handleIncrementar(e) {
     e.stopPropagation()
@@ -139,9 +143,22 @@ function ProductoCard({ p, onOpen, onAddSimple, carrito, updateCantidad, tamanos
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-          <span style={{ fontWeight: 800, fontSize: 17, color: C.terracotta }}>
-            {minPrecio !== null ? fmt(minPrecio) : fmt(precioBase)}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+            <span style={{ fontWeight: 800, fontSize: 17, color: C.terracotta }}>
+              {minPrecio !== null ? fmt(minPrecio) : fmt(precioBase)}
+            </span>
+            {pct > 0 && (
+              <>
+                <span style={{ fontSize: 12, color: C.stone2, textDecoration: 'line-through' }}>
+                  {fmt(precioAntesDe(minPrecio !== null ? minPrecio : precioBase, factor))}
+                </span>
+                <span style={{
+                  fontSize: 10.5, fontWeight: 800, color: '#fff', background: C.terracotta,
+                  padding: '2px 6px', borderRadius: 6, alignSelf: 'center',
+                }}>−{pct} %</span>
+              </>
+            )}
+          </div>
 
           {enCarrito ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -347,7 +364,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
     const [catRes, prodRes, promosRes] = await Promise.all([
       supabase.from('categorias').select('*').eq('establecimiento_id', est.id).eq('activa', true).order('orden'),
       supabase.from('productos').select('*').eq('establecimiento_id', est.id).eq('disponible', true).order('orden'),
-      supabase.from('promociones').select('*')
+      supabase.from('promociones_visibles').select('*')
         .eq('establecimiento_id', est.id).eq('activa', true)
         .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString()),
     ])
@@ -418,6 +435,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       tamano: tamSel !== null && tamanos[tamSel] ? tamanos[tamSel].nombre : null,
       extras: extrasRich,
       precio_unitario: precioTotal() / cant,
+      precio_antes_unitario: precioAntesDe(precioTotal() / cant, factorOferta(modal)),
       cantidad: cant,
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
@@ -437,6 +455,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
       tamano: null,
       extras: [],
       precio_unitario: getPrecioMostrado(p),
+      precio_antes_unitario: precioAntesDe(getPrecioMostrado(p), factorOferta(p)),
       cantidad: 1,
       establecimiento_id: est.id,
       establecimiento_nombre: est.nombre,
@@ -1027,7 +1046,9 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                             </span>
                             <span style={{ flex: 1, fontSize: 14, color: C.ink, fontWeight: 600 }}>{op.nombre}</span>
                             <span style={{ fontSize: 13, color: C.stone, fontWeight: 700 }}>
-                              {op.precio > 0 ? `+ ${fmt(op.precio)}` : 'Gratis'}
+                              {/* En una elección única (el plato de un menú) lo que no
+                                  suma nada va incluido, no "regalado". */}
+                              {op.precio > 0 ? `+ ${fmt(op.precio)}` : esUnico ? 'Incluido' : 'Gratis'}
                             </span>
                           </button>
                         )
@@ -1087,7 +1108,16 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
                 }}
               >
                 <span>{puedeConfirmar ? 'Añadir al carrito' : 'Selecciona las opciones obligatorias'}</span>
-                {puedeConfirmar && <span>{fmt(precioTotal())}</span>}
+                {puedeConfirmar && (
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    {factorOferta(modal) && (
+                      <span style={{ fontSize: 12.5, fontWeight: 600, opacity: 0.75, textDecoration: 'line-through' }}>
+                        {fmt(precioAntesDe(precioTotal(), factorOferta(modal)))}
+                      </span>
+                    )}
+                    {fmt(precioTotal())}
+                  </span>
+                )}
               </button>
             </div>
           </div>

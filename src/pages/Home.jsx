@@ -10,6 +10,7 @@ import { estaAbierto, horarioHoyTexto } from '../lib/horario'
 import { optimizarImagen } from '../lib/img'
 import { COLS_ESTABLECIMIENTO } from '../lib/estColumns'
 import CreadoresBanner from '../components/CreadoresBanner'
+import { promoBadge, promoEmoji, promoGradiente } from '../lib/promo'
 
 function InstagramIcon({ size = 18, color = '#1A1815' }) {
   return (
@@ -183,7 +184,9 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenDirecciones, on
     // promoción se abre la ficha con este objeto, así que si aquí falta algo, la
     // ficha miente. Faltaba `tiene_delivery` y un restaurante con reparto se abría
     // en "Solo recogida" solo por haber entrado desde la promo.
-    supabase.from('promociones').select(`*, establecimientos(${COLS_ESTABLECIMIENTO}, total_resenas)`)
+    // `promociones_visibles` y no la tabla: la tabla oculta las de tipo `oferta`
+    // a las versiones viejas de la app (ver lib/promo.js).
+    supabase.from('promociones_visibles').select(`*, establecimientos(${COLS_ESTABLECIMIENTO}, total_resenas)`)
       .eq('activa', true)
       .or('fecha_fin.is.null,fecha_fin.gt.' + new Date().toISOString())
       .then(({ data }) => {
@@ -484,25 +487,6 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenDirecciones, on
         .sort((a, b) => alFinalSiCerrado(a, b) || (b.destacado === true) - (a.destacado === true) || (b.rating || 0) - (a.rating || 0))
         .slice(0, 5)
 
-  const promoBadge = (promo) => {
-    if (promo.tipo === 'descuento_porcentaje') return `-${promo.valor}%`
-    if (promo.tipo === 'descuento_fijo') return `-${promo.valor}€`
-    if (promo.tipo === '2x1') return '2×1'
-    return 'GRATIS'
-  }
-  const promoEmoji = (promo) => {
-    if (promo.tipo === 'descuento_porcentaje') return '🏷️'
-    if (promo.tipo === 'descuento_fijo') return '💰'
-    if (promo.tipo === '2x1') return '🍔'
-    return '🎁'
-  }
-  // Gradient variants for offer cards
-  const promoGradients = [
-    'linear-gradient(to right, #9f0519, #ff9066)',
-    'linear-gradient(to right, #f5a61c, #ff8d44)',
-    'linear-gradient(to right, #ff9066, #ff8d44)',
-  ]
-
   /* ── Glass style (light) ── */
   /* Tarjeta blanca de la Home.
      LLEVABA `backdrop-filter: blur(12px)` Y ESO ERA EL FALLO DE LAS CATEGORÍAS:
@@ -777,7 +761,7 @@ export default function Home({ onOpenRest, categoriaPadre, onOpenDirecciones, on
                     position: 'relative', overflow: 'hidden',
                     borderRadius: 22, height: 128,
                     display: 'flex', alignItems: 'center', padding: 24,
-                    background: promoGradients[idx % promoGradients.length],
+                    background: promoGradiente(idx),
                   }}>
                     <div style={{ position: 'relative', zIndex: 10, width: '66%' }}>
                       <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1.25, textTransform: 'uppercase', fontStyle: 'italic' }}>
