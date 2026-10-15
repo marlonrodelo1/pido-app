@@ -74,9 +74,14 @@ export default function CreadoresSection() {
   // cliente están igual de vivas (desde el 15 oct todas las historias pasan por ahí).
   const enJuego = parts.filter(p => ['pendiente_validacion', 'activa', 'en_espera_tope'].includes(p.estado))
   const disponibles = cupones.filter(c => !c.usado_at && new Date(c.caduca_at) > new Date())
-  // Sin vídeos antiguos, la pantalla habla solo de historias (y no enseña un
-  // contador de visualizaciones que siempre valdría cero).
-  const soloHistorias = parts.every(p => p.formato === 'historia')
+  // La pantalla habla de HISTORIAS (cómo se participa desde el 15 oct) salvo que
+  // el cliente tenga un vídeo TODAVÍA en juego. Un vídeo viejo ya terminado
+  // (caducado, premiado, rechazado) no cuenta: con uno solo, toda la pantalla
+  // volvía a decir "graba un vídeo" y "visualizaciones".
+  const videoVivo = parts.some(p => p.formato !== 'historia'
+    && ['pendiente_validacion', 'activa', 'en_espera_tope'].includes(p.estado))
+  const soloHistorias = !videoVivo
+  const nHistorias = parts.filter(p => p.formato === 'historia').length
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: C.stone, fontSize: 14 }}>Cargando…</div>
@@ -105,7 +110,7 @@ export default function CreadoresSection() {
       <Escenario
         enJuego={enJuego.length}
         views={parts.reduce((s, p) => s + (p.views_actual || 0), 0)}
-        enviadas={parts.length}
+        enviadas={nHistorias}
         premios={cupones.length}
         soloHistorias={soloHistorias}
       />
@@ -314,7 +319,7 @@ function TarjetaVideo({ p, escalera }) {
         <Nota tono="sage"><Check size={13} style={{ verticalAlign: -2 }} /> Premio conseguido. Lo tienes en “Mis premios”.</Nota>
       )}
       {p.estado === 'caducada' && (
-        <Nota tono="gris">Este vídeo ya no suma: pasaron los 30 días. Graba otro con tu próximo pedido.</Nota>
+        <Nota tono="gris">Este vídeo ya no suma: pasaron los 30 días. Ahora se participa subiendo una historia de Instagram con tu pedido.</Nota>
       )}
       {p.estado === 'rechazada' && (
         <Nota tono="danger">
