@@ -25,6 +25,9 @@ import { AuthProvider, useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { analizarUrlVideo } from '../lib/videoUrl'
 import CreadoresEscalera, { fmtEur, mejorPremioEuros } from './CreadoresEscalera'
+import {
+  FormularioHistoria, HistoriaEnviada, traducirErrorHistoria, CONDICIONES_VERSION_HISTORIA,
+} from './CreadoresHistoria'
 import AppDownloadBanner from './AppDownloadBanner'
 import Login from '../pages/Login'
 
@@ -63,6 +66,9 @@ export default function ParticiparMesa({ establecimiento, programa, onClose, onE
 function Panel({ establecimiento, programa, onClose, onEnviado }) {
   const { user, loading } = useAuth()
   const [enviado, setEnviado] = useState(false)
+  // Desde el 15 oct 2026 los programas son de historias. El de vídeos se queda
+  // por si un restaurante vuelve a tener escalera por visualizaciones.
+  const historia = programa?.formato === 'historia'
 
   return (
     <div
@@ -82,7 +88,9 @@ function Panel({ establecimiento, programa, onClose, onEnviado }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 800 }}>
-              {enviado ? '¡Vídeo enviado!' : 'Graba un vídeo y gana premios'}
+              {historia
+                ? (enviado ? '¡Historia apuntada!' : 'Sube una historia y gana premio')
+                : (enviado ? '¡Vídeo enviado!' : 'Graba un vídeo y gana premios')}
             </div>
             <div style={{ fontSize: 12.5, color: C.stone, marginTop: 2 }}>
               {establecimiento?.nombre}
@@ -98,10 +106,25 @@ function Panel({ establecimiento, programa, onClose, onEnviado }) {
           : loading
             ? <div style={{ padding: '30px 0', textAlign: 'center', fontSize: 13, color: C.stone }}>Un momento…</div>
             : user
-              ? <FormularioVideo
-                  establecimiento={establecimiento}
-                  programa={programa}
-                  onHecho={() => { setEnviado(true); onEnviado?.() }} />
+              ? (historia
+                  ? <FormularioHistoria
+                      programa={programa}
+                      nombreRest={programa?.nombre || establecimiento?.nombre || 'el restaurante'}
+                      desdeMesa
+                      onEnviar={async (usuario) => {
+                        const { error } = await supabase.rpc('crear_participacion_historia', {
+                          p_establecimiento_id: establecimiento.id,
+                          p_usuario_red: usuario,
+                          p_condiciones_version: CONDICIONES_VERSION_HISTORIA,
+                        })
+                        if (error) return { error: traducirErrorHistoria(error.message) }
+                        setEnviado(true); onEnviado?.()
+                        return {}
+                      }} />
+                  : <FormularioVideo
+                      establecimiento={establecimiento}
+                      programa={programa}
+                      onHecho={() => { setEnviado(true); onEnviado?.() }} />)
               : <Identificarse establecimiento={establecimiento} programa={programa} />}
       </div>
     </div>
@@ -119,8 +142,11 @@ function Identificarse({ establecimiento, programa }) {
         border: `1px solid ${C.burnt}`, borderRadius: 14, padding: 14, marginBottom: 14,
       }}>
         <div style={{ fontSize: 13.5, color: '#7A4C28', lineHeight: 1.55 }}>
-          Sube un vídeo de lo que estás comiendo a TikTok o Instagram y, según las
-          visualizaciones que consiga, {establecimiento?.nombre} te regala un descuento.
+          {programa?.formato === 'historia'
+            ? <>Sube una historia de lo que estás comiendo a Instagram, etiqueta a{' '}
+                {establecimiento?.nombre} y te llevas un descuento para tu próximo pedido a domicilio.</>
+            : <>Sube un vídeo de lo que estás comiendo a TikTok o Instagram y, según las
+                visualizaciones que consiga, {establecimiento?.nombre} te regala un descuento.</>}
         </div>
       </div>
 
@@ -340,8 +366,14 @@ function Paso({ n, titulo }) {
 // salto, así que es lo que tiene que ir por delante.
 function Enviado({ establecimiento, programa }) {
   const tope = mejorPremioEuros(programa?.escalera || [])
+  const historia = programa?.formato === 'historia'
   return (
     <div>
+      {historia ? (
+        <div style={{ marginBottom: 14 }}>
+          <HistoriaEnviada nombreRest={establecimiento?.nombre || 'El restaurante'} programa={programa} />
+        </div>
+      ) : (
       <div style={{
         background: 'linear-gradient(135deg, #FDE8D6 0%, #F7CFB2 100%)',
         border: `1px solid ${C.burnt}`, borderRadius: 14, padding: 15, marginBottom: 14,
@@ -360,6 +392,7 @@ function Enviado({ establecimiento, programa }) {
           Te avisamos cuando ganes tu premio.
         </div>
       </div>
+      )}
 
       {/* La regla del domicilio, con todas las letras y en su propia caja. Es la
           condición que más disgusto puede dar si se descubre tarde: alguien que
@@ -370,7 +403,9 @@ function Enviado({ establecimiento, programa }) {
       }}>
         <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 4 }}>
           {tope > 0
-            ? `Hasta ${fmtEur(tope)} € para tu próximo pedido a casa`
+            ? (historia
+                ? `${fmtEur(tope)} € de descuento en tu próximo pedido a casa`
+                : `Hasta ${fmtEur(tope)} € para tu próximo pedido a casa`)
             : 'Tu descuento, para tu próximo pedido a casa'}
         </div>
         <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.55 }}>
@@ -383,7 +418,9 @@ function Enviado({ establecimiento, programa }) {
       <AppDownloadBanner
         slug={establecimiento?.slug}
         titulo="Ahí es donde te espera tu descuento"
-        subtitulo="Y podrás ver las visualizaciones que lleva tu vídeo." />
+        subtitulo={historia
+          ? 'Y ahí verás tu premio en cuanto el restaurante confirme tu historia.'
+          : 'Y podrás ver las visualizaciones que lleva tu vídeo.'} />
     </div>
   )
 }

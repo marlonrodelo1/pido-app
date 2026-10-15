@@ -114,3 +114,33 @@ export function analizarUrlVideo(entrada) {
 }
 
 export const NOMBRE_RED = { tiktok: 'TikTok', instagram: 'Instagram' }
+
+/**
+ * El @ que escribe el cliente para su HISTORIA, limpio igual que lo deja
+ * `creadores_normalizar_usuario_red()` en la base de datos. Acepta "@ana.p",
+ * "ana.p" o la URL del perfil copiada del navegador.
+ *
+ * Tiene que coincidir con el SQL por lo mismo que `normalizarUrl`: el dueño busca
+ * la historia por este @ entre sus menciones, y si aquí se acepta uno que el
+ * servidor rechaza (o al revés), el cliente se queda sin entender por qué.
+ *
+ * @returns {{ ok: boolean, usuario: string|null, vacio: boolean }}
+ */
+export function normalizarUsuarioRed(entrada) {
+  let v = typeof entrada === 'string' ? entrada.trim() : ''
+  if (!v) return { ok: false, usuario: null, vacio: true }
+
+  v = v.toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/^(instagram\.com|tiktok\.com)\//, '')
+    .replace(/\?.*$/, '')
+    .replace(/\/.*$/, '')
+    .replace(/^@+/, '')
+    .trim()
+
+  if (!v) return { ok: false, usuario: null, vacio: true }
+  // Instagram y TikTok admiten letras, números, punto y guion bajo, hasta 30.
+  if (!/^[a-z0-9._]{1,30}$/.test(v)) return { ok: false, usuario: null, vacio: false }
+  return { ok: true, usuario: v, vacio: false }
+}

@@ -40,6 +40,10 @@ export default function CreadoresBanner({ onAbrir, establecimientos = null }) {
   // El premio más alto, en euros, entre los restaurantes que este cliente VE.
   // 0 = no hay ninguno expresable en euros -> el banner va sin cifra.
   const [maxEuros, setMaxEuros] = useState(0)
+  // true si TODOS los programas que ve son de historias (premio fijo). Si hay
+  // alguno de vídeo, el texto sigue siendo el de la escalera ("hasta…").
+  const [soloHistorias, setSoloHistorias] = useState(true)
+  const [importesDistintos, setImportesDistintos] = useState(false)
 
   // Los ids que el cliente puede usar AHORA. Se calcula aparte para que el efecto
   // no se dispare en cada render por recibir un array nuevo con el mismo
@@ -63,7 +67,7 @@ export default function CreadoresBanner({ onAbrir, establecimientos = null }) {
       try { if (localStorage.getItem(CERRADO_KEY) === '1') return } catch (_) {}
       if (!idsDisponibles) return
 
-      const { data } = await supabase.rpc('creadores_programas_abiertos')
+      const { data } = await supabase.rpc('creadores_programas_abiertos_v2')
       if (!vivo) return
       const visibles = new Set(idsDisponibles.split(","))
       const suyos = (Array.isArray(data) ? data : []).filter(r => visibles.has(r.establecimiento_id))
@@ -94,6 +98,9 @@ export default function CreadoresBanner({ onAbrir, establecimientos = null }) {
         if (!vivo || (count || 0) > 0) return
       }
       setMaxEuros(tope)
+      setSoloHistorias(suyos.every(r => r.formato === 'historia'))
+      // Con premios distintos según el restaurante, la cifra es un máximo: "hasta".
+      setImportesDistintos(new Set(suyos.map(r => mejorPremioEuros(r.escalera))).size > 1)
       setMostrar(true)
     }
     mirar()
@@ -157,15 +164,19 @@ export default function CreadoresBanner({ onAbrir, establecimientos = null }) {
 
       <div style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14.5, fontWeight: 800, color: '#8C420C', lineHeight: 1.25 }}>
-          {maxEuros > 0
-            ? `Hasta ${fmtEur(maxEuros)} € de descuento por un vídeo`
-            : 'Descuentos por tus vídeos'}
+          {soloHistorias
+            ? (maxEuros > 0
+                ? `${importesDistintos ? 'Hasta ' : ''}${fmtEur(maxEuros)} € de descuento por una historia`
+                : 'Descuentos por tus historias')
+            : (maxEuros > 0 ? `Hasta ${fmtEur(maxEuros)} € de descuento por un vídeo` : 'Descuentos por tus vídeos')}
         </div>
-        {/* Las visualizaciones NO son un detalle que se pueda omitir: sin ellas
-            el titular promete que basta con grabar, y no basta. Quien graba y se
-            queda en 80 visualizaciones no gana nada. */}
+        {/* Lo que hay que hacer para ganarlo NO es un detalle que se pueda omitir:
+            sin ello el titular promete que basta con pedir. En las historias, la
+            mención al restaurante; en los vídeos, las visualizaciones. */}
         <div style={{ fontSize: 12, color: '#7A4C28', marginTop: 3, lineHeight: 1.35 }}>
-          Cuantas más visualizaciones, mayor el descuento
+          {soloHistorias
+            ? 'Sube tu pedido a tu historia de Instagram etiquetando al restaurante'
+            : 'Cuantas más visualizaciones, mayor el descuento'}
         </div>
       </div>
 

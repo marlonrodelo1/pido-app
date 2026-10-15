@@ -3,12 +3,22 @@ import { createPortal } from 'react-dom'
 import { Video, X, Check, Copy, ChevronDown, Camera } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { analizarUrlVideo, NOMBRE_RED } from '../lib/videoUrl'
+import {
+  FormularioHistoria, HistoriaEnviada, traducirErrorHistoria, CONDICIONES_VERSION_HISTORIA,
+} from './CreadoresHistoria'
 
-// Tarjeta "graba un vídeo y gana premios" + el modal para registrarlo.
+// Tarjeta "sube una historia / graba un vídeo y gana premios" + el modal para
+// registrarlo.
 //
 // Se pinta en Tracking (tras la entrega) y en cada pedido entregado de
 // MisPedidos. Si el restaurante no tiene el programa abierto, NO se pinta nada:
 // para quien no participa la app queda exactamente igual que antes.
+//
+// Desde el 15 oct 2026 los programas son de HISTORIAS (premio fijo, lo confirma
+// el restaurante). El camino de los vídeos sigue aquí para el día que un
+// restaurante vuelva a tener escalera por visualizaciones. Lo decide
+// `programa.formato`, que solo trae `creadores_programa_publico_v2`: la versión
+// de siempre la sigue llamando la app de las tiendas y no enseña las historias.
 //
 // ⚠️ EL AVISO DE PUBLICIDAD NO ES DECORACIÓN. Un vídeo publicado a cambio de un
 // descuento es comunicación comercial con contraprestación, y la Ley de
@@ -46,7 +56,7 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
     async function mirar() {
       if (!estId || pedido?.estado !== 'entregado') return
       const [prog, part] = await Promise.all([
-        supabase.rpc('creadores_programa_publico', { p_establecimiento_id: estId }),
+        supabase.rpc('creadores_programa_publico_v2', { p_establecimiento_id: estId }),
         supabase.from('participaciones_creador').select('id').eq('pedido_id', pedido.id).maybeSingle(),
       ])
       if (!vivo) return
@@ -61,6 +71,7 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
 
   const escalera = programa.escalera || []
   const primero = escalera[0]
+  const historia = programa.formato === 'historia'
   // El nombre lo trae el propio RPC: Tracking.jsx hace `select('*')` sin join y
   // ahí `pedido.establecimientos` no existe. Antes salía "este restaurante".
   const nombreRest = programa.nombre || establecimientoNombre || 'este restaurante'
@@ -84,25 +95,35 @@ export default function CreadoresCTA({ pedido, establecimientoNombre, compacto =
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: compacto ? 13 : 14.5, fontWeight: 800, color: C.burntText }}>
-            Graba un vídeo y gana premios
+            {historia ? 'Sube una historia y gana premio' : 'Graba un vídeo y gana premios'}
           </div>
           <div style={{ fontSize: compacto ? 11.5 : 12.5, color: '#8A5A33', marginTop: 2, lineHeight: 1.4 }}>
-            {primero
-              ? `Desde ${fmtNum(primero.views_necesarias)} visualizaciones: ${primero.descripcion.toLowerCase()}`
-              : 'Consigue descuentos para tu próximo pedido'}
+            {historia && primero
+              ? `${primero.descripcion} si etiquetas a ${nombreRest}`
+              : primero
+                ? `Desde ${fmtNum(primero.views_necesarias)} visualizaciones: ${primero.descripcion.toLowerCase()}`
+                : 'Consigue descuentos para tu próximo pedido'}
           </div>
         </div>
       </button>
 
       {abierto && createPortal(
-        <ModalRegistrar
-          pedido={pedido}
-          nombreRest={nombreRest}
-          escalera={escalera}
-          programa={programa}
-          onClose={() => setAbierto(false)}
-          onHecho={() => { setYaRegistrado(true); setAbierto(false); onRegistrado?.() }}
-        />,
+        historia
+          ? <ModalHistoria
+              pedido={pedido}
+              nombreRest={nombreRest}
+              programa={programa}
+              onClose={() => setAbierto(false)}
+              onHecho={() => { setYaRegistrado(true); setAbierto(false); onRegistrado?.() }}
+            />
+          : <ModalRegistrar
+              pedido={pedido}
+              nombreRest={nombreRest}
+              escalera={escalera}
+              programa={programa}
+              onClose={() => setAbierto(false)}
+              onHecho={() => { setYaRegistrado(true); setAbierto(false); onRegistrado?.() }}
+            />,
         document.body
       )}
     </>
@@ -125,6 +146,72 @@ function Desplegable({ titulo, children, abiertoPorDefecto = false }) {
         <ChevronDown size={15} color={C.stone} style={{ transform: ab ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }} />
       </button>
       {ab && <div style={{ padding: '0 13px 13px' }}>{children}</div>}
+    </div>
+  )
+}
+
+// ── Historia ────────────────────────────────────────────────────────────────
+// Tras enviarla NO se cierra sola: se queda enseñando quién tiene que hacer algo
+// ahora (el restaurante) y cuándo llega el premio. Cerrarla, por el botón o
+// tocando fuera, es lo que marca la tarjeta como hecha.
+function ModalHistoria({ pedido, nombreRest, programa, onClose, onHecho }) {
+  const [hecho, setHecho] = useState(false)
+  const premio = programa?.escalera?.[0]
+  const cerrar = () => (hecho ? onHecho() : onClose())
+
+  async function enviar(usuario) {
+    const { error } = await supabase.rpc('crear_participacion_historia', {
+      p_pedido_id: pedido.id,
+      p_usuario_red: usuario,
+      p_condiciones_version: CONDICIONES_VERSION_HISTORIA,
+    })
+    if (error) return { error: traducirErrorHistoria(error.message) }
+    setHecho(true)
+    return {}
+  }
+
+  return (
+    <div onClick={cerrar} style={{
+      position: 'fixed', inset: 0, background: 'rgba(26,24,21,0.55)', zIndex: 4000,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: C.paper, width: '100%', maxWidth: 480,
+          borderRadius: '20px 20px 0 0', padding: '18px 18px 24px',
+          maxHeight: '86dvh', overflowY: 'auto',
+          overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch',
+        }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.ink }}>
+              {hecho ? '¡Historia apuntada!' : 'Gana premio con tu historia'}
+            </div>
+            {!hecho && premio && (
+              <div style={{ fontSize: 12.5, color: C.stone, marginTop: 2 }}>
+                {premio.descripcion}, a domicilio en {nombreRest}.
+              </div>
+            )}
+          </div>
+          <button onClick={cerrar} aria-label="Cerrar" style={{
+            width: 30, height: 30, borderRadius: 9, border: 'none', cursor: 'pointer',
+            background: C.cream2, display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}><X size={16} color={C.stone} /></button>
+        </div>
+
+        {hecho ? (
+          <>
+            <HistoriaEnviada nombreRest={nombreRest} programa={programa} />
+            <button onClick={onHecho} style={{
+              width: '100%', marginTop: 14, padding: '13px 0', borderRadius: 13, border: 'none',
+              background: C.ink, color: '#fff', fontSize: 14.5, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
+            }}>Entendido</button>
+          </>
+        ) : (
+          <FormularioHistoria programa={programa} nombreRest={nombreRest} onEnviar={enviar} />
+        )}
+      </div>
     </div>
   )
 }

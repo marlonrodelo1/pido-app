@@ -6,7 +6,7 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { analizarUrlVideo, normalizarUrl } from '../src/lib/videoUrl.js'
+import { analizarUrlVideo, normalizarUrl, normalizarUsuarioRed } from '../src/lib/videoUrl.js'
 
 // ── TikTok: lo que copia el botón Compartir ─────────────────────────────────
 
@@ -155,4 +155,32 @@ test('normalizarUrl con basura no revienta', () => {
   assert.equal(normalizarUrl(null), '')
   assert.equal(normalizarUrl(undefined), '')
   assert.equal(normalizarUrl(42), '')
+})
+
+// ── El @ de las historias: tiene que coincidir con creadores_normalizar_usuario_red() ──
+
+test('usuario: con arroba, sin arroba y en mayúsculas dan lo mismo', () => {
+  assert.equal(normalizarUsuarioRed('@Ana.P_92').usuario, 'ana.p_92')
+  assert.equal(normalizarUsuarioRed('ana.p_92').usuario, 'ana.p_92')
+  assert.equal(normalizarUsuarioRed('  @@ana.p_92 ').usuario, 'ana.p_92')
+})
+
+test('usuario: la URL del perfil copiada del navegador vale', () => {
+  assert.equal(normalizarUsuarioRed('https://www.instagram.com/duende.burger/').usuario, 'duende.burger')
+  assert.equal(normalizarUsuarioRed('instagram.com/duende.burger?igsh=abc123').usuario, 'duende.burger')
+  assert.equal(normalizarUsuarioRed('https://www.tiktok.com/@duende.burger').usuario, 'duende.burger')
+})
+
+test('usuario: vacío se distingue de inválido', () => {
+  assert.deepEqual(normalizarUsuarioRed('   '), { ok: false, usuario: null, vacio: true })
+  assert.deepEqual(normalizarUsuarioRed('@'), { ok: false, usuario: null, vacio: true })
+  assert.equal(normalizarUsuarioRed(null).vacio, true)
+  const malo = normalizarUsuarioRed('no vale!!')
+  assert.equal(malo.ok, false)
+  assert.equal(malo.vacio, false)
+})
+
+test('usuario: más de 30 caracteres no es un usuario', () => {
+  assert.equal(normalizarUsuarioRed('a'.repeat(31)).ok, false)
+  assert.equal(normalizarUsuarioRed('a'.repeat(30)).ok, true)
 })

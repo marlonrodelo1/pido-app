@@ -41,7 +41,7 @@ export default function CreadoresBloqueRest({
   useEffect(() => {
     if (programa || !establecimientoId) return
     let vivo = true
-    supabase.rpc('creadores_programa_publico', { p_establecimiento_id: establecimientoId })
+    supabase.rpc('creadores_programa_publico_v2', { p_establecimiento_id: establecimientoId })
       .then(({ data }) => { if (vivo) setProg(data || null) })
     return () => { vivo = false }
   }, [programa, establecimientoId])
@@ -49,6 +49,18 @@ export default function CreadoresBloqueRest({
   if (!prog?.admite_altas || !(prog.escalera?.length > 0)) return null
 
   const tope = mejorPremioEuros(prog.escalera)
+  // Historias: premio FIJO, así que la cifra va sin "hasta". Y el "de descuento"
+  // no se quita nunca: sin eso se lee como dinero y sería publicidad engañosa.
+  const historia = prog.formato === 'historia'
+  const titular = historia
+    ? (tope > 0 ? `${fmtEur(tope)} € de descuento` : 'Descuento por tu historia')
+    : (tope > 0 ? `Hasta ${fmtEur(tope)} € de descuento` : 'Descuentos por tu vídeo')
+  const subtitulo = historia
+    ? 'por subir una historia de tu pedido'
+    : 'por tu vídeo, según sus visualizaciones'
+  const introPorDefecto = historia
+    ? 'Pide aquí, sube una historia de tu pedido a Instagram etiquetando al restaurante y te llevas esto para la próxima:'
+    : 'Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto para la próxima:'
 
   return (
     <div style={{ marginTop: margenSuperior }}>
@@ -111,11 +123,11 @@ export default function CreadoresBloqueRest({
               metálico y sería publicidad engañosa. */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: '#8C420C', lineHeight: 1.2 }}>
-              {tope > 0 ? `Hasta ${fmtEur(tope)} € de descuento` : 'Descuentos por tu vídeo'}
+              {titular}
             </div>
             {!abierto && (
               <div style={{ fontSize: 12, color: '#7A4C28', marginTop: 1, lineHeight: 1.3 }}>
-                por tu vídeo, según sus visualizaciones
+                {subtitulo}
               </div>
             )}
           </div>
@@ -130,7 +142,7 @@ export default function CreadoresBloqueRest({
           <div style={{ padding: '0 15px 15px' }}>
             <div style={{ background: 'rgba(255,255,255,0.55)', borderRadius: 13, padding: 13 }}>
               <p style={{ fontSize: 12.5, color: '#7A4C28', marginTop: 0, marginBottom: 10, lineHeight: 1.5 }}>
-                {intro || 'Pide aquí, graba tu pedido en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto para la próxima:'}
+                {intro || introPorDefecto}
               </p>
               <CreadoresEscalera escalera={prog.escalera} compacto
                 // Desde el 18 ago el premio SOLO vale a domicilio (el servidor lo

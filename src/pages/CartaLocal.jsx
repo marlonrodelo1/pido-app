@@ -237,7 +237,7 @@ export default function CartaLocal() {
     // este local no vende por Pidoo. Prometerlo sería mentir: ni bloque ni barra.
     if (est.solo_carta) { setPrograma(null); return }
     let cancelado = false
-    supabase.rpc('creadores_programa_publico', { p_establecimiento_id: est.id })
+    supabase.rpc('creadores_programa_publico_v2', { p_establecimiento_id: est.id })
       .then(({ data }) => { if (!cancelado) setPrograma(data || null) })
     setYaParticipo(leerParticipacion(est.id))
     return () => { cancelado = true }
@@ -455,7 +455,9 @@ export default function CartaLocal() {
         <CreadoresBloqueRest
           programa={programa || null}
           margenSuperior={14}
-          intro="Graba lo que estás comiendo en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto:"
+          intro={programa?.formato === 'historia'
+            ? 'Sube una historia de lo que estás comiendo a Instagram, etiqueta al restaurante y te llevas esto:'
+            : 'Graba lo que estás comiendo en TikTok o Instagram y, según las visualizaciones que consiga, te llevas esto:'}
           nota={`El premio se aplica solo en tu próximo pedido A DOMICILIO de ${est.nombre}. Necesitas una cuenta de Pidoo para participar.`} />
 
         {/* Aquí había un botón "Quiero participar" que hacía exactamente lo
@@ -676,7 +678,7 @@ export default function CartaLocal() {
                 fontSize: 14, fontWeight: 800, boxShadow: SH.md,
               }}>
               <Video size={16} />
-              Ya grabaste aquí · Mira tu premio
+              {programa?.formato === 'historia' ? 'Ya subiste tu historia · Mira tu premio' : 'Ya grabaste aquí · Mira tu premio'}
             </Link>
           ) : (
             <button
@@ -690,7 +692,7 @@ export default function CartaLocal() {
                 fontSize: 14.5, fontWeight: 800, boxShadow: SH.md,
               }}>
               <Video size={17} />
-              Graba un vídeo y gana premios
+              {programa?.formato === 'historia' ? 'Sube una historia y gana premio' : 'Graba un vídeo y gana premios'}
             </button>
           )}
         </div>

@@ -353,7 +353,7 @@ export default function RestDetalle({ establecimiento, onBack, modoTienda = fals
   useEffect(() => {
     let vivo = true
     if (!est?.id) return
-    supabase.rpc('creadores_programa_publico', { p_establecimiento_id: est.id })
+    supabase.rpc('creadores_programa_publico_v2', { p_establecimiento_id: est.id })
       .then(({ data }) => { if (vivo) setCreadores(data || null) })
     return () => { vivo = false }
   }, [est?.id])

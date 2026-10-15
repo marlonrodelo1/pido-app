@@ -201,7 +201,7 @@ export default function Perfil({ initialSub = null, onInitialSubConsumed }) {
   // no lo encontraba nadie. Es la única entrada destacada de la lista — si se
   // destacan dos, no destaca ninguna.
   const menuItems = [
-    { icon: Video, label: 'Mis vídeos y premios', action: () => setSubSeccion('creadores'), destacado: true },
+    { icon: Video, label: 'Mis historias y premios', action: () => setSubSeccion('creadores'), destacado: true },
     { icon: MapPin, label: 'Mis direcciones', action: () => { setSubSeccion('direcciones'); fetchDirecciones() } },
     { icon: CreditCard, label: 'Método de pago', action: () => setSubSeccion('pagos') },
     { icon: Tag, label: 'Promociones', action: () => setSubSeccion('promos') },

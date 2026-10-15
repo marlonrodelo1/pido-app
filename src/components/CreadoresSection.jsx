@@ -41,7 +41,7 @@ export default function CreadoresSection() {
     if (!user) return
     const [p, c] = await Promise.all([
       supabase.from('participaciones_creador')
-        .select('id, estado, red, share_url, views_actual, nivel_alcanzado, created_at, caduca_at, motivo_rechazo, establecimiento_id, establecimientos(nombre, logo_url)')
+        .select('id, estado, formato, origen, red, share_url, usuario_red, views_actual, nivel_alcanzado, created_at, caduca_at, motivo_rechazo, establecimiento_id, establecimientos(nombre, logo_url)')
         .order('created_at', { ascending: false }),
       supabase.from('cupones_creador')
         .select('id, codigo, tipo, valor, descripcion, caduca_at, usado_at, establecimiento_id, establecimientos(nombre, logo_url)')
@@ -70,8 +70,13 @@ export default function CreadoresSection() {
 
   useEffect(() => { cargar() }, [cargar])
 
-  const enJuego = parts.filter(p => p.estado === 'activa' || p.estado === 'en_espera_tope')
+  // "En juego" incluye las que esperan a que el restaurante las confirme: para el
+  // cliente están igual de vivas (desde el 15 oct todas las historias pasan por ahí).
+  const enJuego = parts.filter(p => ['pendiente_validacion', 'activa', 'en_espera_tope'].includes(p.estado))
   const disponibles = cupones.filter(c => !c.usado_at && new Date(c.caduca_at) > new Date())
+  // Sin vídeos antiguos, la pantalla habla solo de historias (y no enseña un
+  // contador de visualizaciones que siempre valdría cero).
+  const soloHistorias = parts.every(p => p.formato === 'historia')
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center', color: C.stone, fontSize: 14 }}>Cargando…</div>
@@ -100,7 +105,9 @@ export default function CreadoresSection() {
       <Escenario
         enJuego={enJuego.length}
         views={parts.reduce((s, p) => s + (p.views_actual || 0), 0)}
+        enviadas={parts.length}
         premios={cupones.length}
+        soloHistorias={soloHistorias}
       />
 
       {/* Icono ARRIBA y texto debajo. En una sola fila no cabían: "Cómo ganar" y
@@ -109,7 +116,7 @@ export default function CreadoresSection() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {[
           { id: 'como', label: 'Cómo ganar', Icon: Sparkles, n: 0 },
-          { id: 'videos', label: 'Mis vídeos', Icon: Video, n: enJuego.length },
+          { id: 'videos', label: soloHistorias ? 'Mis historias' : 'Mis vídeos', Icon: Video, n: enJuego.length },
           { id: 'premios', label: 'Premios', Icon: Gift, n: disponibles.length },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -142,10 +149,12 @@ export default function CreadoresSection() {
         parts.length === 0
           ? <Vacio
               Icon={Video}
-              titulo="Todavía no has grabado ninguno"
-              texto="Cuando recibas un pedido te saldrá la opción de registrar tu vídeo y empezar a sumar."
+              titulo="Todavía no has subido ninguna"
+              texto="Cuando recibas un pedido te saldrá la opción de apuntar tu historia y ganar tu premio."
             />
-          : parts.map(p => <TarjetaVideo key={p.id} p={p} escalera={escaleras[p.establecimiento_id] || []} />)
+          : parts.map(p => p.formato === 'historia'
+              ? <TarjetaHistoria key={p.id} p={p} />
+              : <TarjetaVideo key={p.id} p={p} escalera={escaleras[p.establecimiento_id] || []} />)
       )}
 
       {tab === 'premios' && (
@@ -153,7 +162,7 @@ export default function CreadoresSection() {
           ? <Vacio
               Icon={Gift}
               titulo="Aún no tienes premios"
-              texto="En cuanto uno de tus vídeos alcance el primer escalón, tu descuento aparecerá aquí."
+              texto="En cuanto el restaurante confirme tu historia, tu descuento aparecerá aquí."
             />
           : cupones.map(c => <TarjetaCupon key={c.id} c={c} />)
       )}
@@ -176,7 +185,7 @@ export default function CreadoresSection() {
    Los tres números no son decoración: son la razón de volver a entrar. Quien ya
    ha grabado ve subir sus visualizaciones, y quien no ha grabado ve tres ceros,
    que es la mejor invitación que hay. */
-function Escenario({ enJuego, views, premios }) {
+function Escenario({ enJuego, views, enviadas, premios, soloHistorias }) {
   return (
     <div style={{
       position: 'relative', overflow: 'hidden',
@@ -206,12 +215,16 @@ function Escenario({ enJuego, views, premios }) {
           </h2>
         </div>
         <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.82)', margin: '0 0 14px', lineHeight: 1.45 }}>
-          Graba tu pedido, súbelo, y cuantas más visualizaciones consiga, mayor el descuento.
+          {soloHistorias
+            ? 'Sube tu pedido a tu historia de Instagram, etiqueta al restaurante y gana descuento para la próxima.'
+            : 'Graba tu pedido, súbelo, y cuantas más visualizaciones consiga, mayor el descuento.'}
         </p>
 
         <div style={{ display: 'flex', gap: 8 }}>
           {[
-            { n: fmtNum(views), t: 'visualizaciones' },
+            soloHistorias
+              ? { n: fmtNum(enviadas), t: enviadas === 1 ? 'historia' : 'historias' }
+              : { n: fmtNum(views), t: 'visualizaciones' },
             // "en juego" y no "vídeos en juego": con la etiqueta larga rompía
             // en dos líneas y descuadraba las tres cajas.
             { n: enJuego,       t: 'en juego' },
@@ -313,6 +326,68 @@ function TarjetaVideo({ p, escalera }) {
         <div style={{ fontSize: 11, color: C.stone2, marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
           <Clock size={11} /> Suma durante {diasPara(p.caduca_at)} días más · registrado el {fmtFecha(p.created_at)}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Una historia ────────────────────────────────────────────────────────────
+// No tiene barra de progreso: no hay visualizaciones que contar. Lo que el
+// cliente necesita saber es en qué punto está y, si espera, a quién y hasta
+// cuándo. El enlace lleva a su propio perfil, que es donde vive la historia.
+const HORAS_REVISION = 48
+
+function TarjetaHistoria({ p }) {
+  const nombre = p.establecimientos?.nombre || 'el restaurante'
+  const horasQuedan = Math.max(0, Math.ceil(HORAS_REVISION - (Date.now() - new Date(p.created_at)) / 3600000))
+
+  return (
+    <div style={{
+      background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
+      padding: 14, marginBottom: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p.establecimientos?.nombre || 'Tu pedido'}
+          </div>
+          <a href={p.share_url} target="_blank" rel="noopener noreferrer" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2,
+            fontSize: 11.5, color: C.terracotta, textDecoration: 'none', fontWeight: 600,
+          }}>
+            Historia de @{p.usuario_red} <ExternalLink size={10} />
+          </a>
+        </div>
+        <div style={{ fontSize: 11, color: C.stone2, flexShrink: 0 }}>{fmtFecha(p.created_at)}</div>
+      </div>
+
+      {p.estado === 'pendiente_validacion' && (
+        <Nota tono="warning">
+          <Clock size={12} style={{ verticalAlign: -2 }} /> Esperando a que {nombre} vea tu mención.{' '}
+          {horasQuedan > 0
+            ? <>Si no la revisa, el premio te llega solo en <strong>{horasQuedan} h</strong>.</>
+            : <>El premio te llega en la próxima hora.</>}
+        </Nota>
+      )}
+      {p.estado === 'activa' && (
+        <Nota tono="sage">Confirmada. Estamos preparando tu premio.</Nota>
+      )}
+      {p.estado === 'en_espera_tope' && (
+        <Nota tono="warning">
+          {nombre} ha llegado a su límite de premios de este mes. <strong>No lo pierdes</strong>:
+          te lo entrega en cuanto empiece el mes que viene.
+        </Nota>
+      )}
+      {p.estado === 'premiada' && (
+        <Nota tono="sage"><Check size={13} style={{ verticalAlign: -2 }} /> Premio conseguido. Lo tienes en “Premios”.</Nota>
+      )}
+      {p.estado === 'caducada' && (
+        <Nota tono="gris">Esta historia ya no cuenta. Sube otra con tu próximo pedido.</Nota>
+      )}
+      {p.estado === 'rechazada' && (
+        <Nota tono="danger">
+          {nombre} no ha aceptado esta historia{p.motivo_rechazo ? `: ${p.motivo_rechazo}` : '.'}
+        </Nota>
       )}
     </div>
   )

@@ -6,7 +6,7 @@
  * portales no. Titular en tinta sobre naranja, igual que el hero.
  *
  * LA CIFRA SALE DE LA BASE DE DATOS, NUNCA DEL CÓDIGO.
- * `creadores_programas_abiertos()` (accesible sin cuenta) devuelve los
+ * `creadores_programas_abiertos_v2()` (accesible sin cuenta) devuelve los
  * restaurantes con el programa encendido y su escalera real. Si un restaurante
  * cambia sus premios, esta sección se entera sola. Y si NO hay ninguno
  * encendido —hoy mismo es el caso— la sección explica el mecanismo pero no
@@ -18,7 +18,7 @@
  * restaurante que la paga (Ley de Competencia Desleal art. 5).
  * ────────────────────────────────────────────────────────────────────────── */
 import { useState, useEffect } from 'react'
-import { Video, ShoppingBag, Ticket, ArrowRight, Eye, Sparkles } from 'lucide-react'
+import { Video, ShoppingBag, Ticket, ArrowRight, Eye, Sparkles, AtSign } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { fmtEur, mejorPremioEuros } from '../CreadoresEscalera'
 import { SolidBtn } from './_ui'
@@ -34,7 +34,7 @@ const fmtNum = (n) => Number(n || 0).toLocaleString('es-ES')
 const eur = (n) =>
   `${Number(n || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 
-const PASOS = [
+const PASOS_VIDEO = [
   {
     icon: ShoppingBag,
     title: 'Pide y recibe',
@@ -49,6 +49,26 @@ const PASOS = [
     icon: Ticket,
     title: 'Se aplica solo',
     desc: 'Según las visualizaciones ganas un descuento, y salta solo en tu siguiente pedido.',
+  },
+]
+
+/* Desde el 15 oct 2026 los programas son de HISTORIAS: premio fijo por subir una
+   historia etiquetando al restaurante, que la confirma al ver la mención. */
+const PASOS_HISTORIA = [
+  {
+    icon: ShoppingBag,
+    title: 'Pide y recibe',
+    desc: 'Haz tu pedido normal en cualquier restaurante con el programa abierto.',
+  },
+  {
+    icon: Video,
+    title: 'Súbelo a tu historia',
+    desc: 'Una historia de Instagram con tu pedido, etiquetando al restaurante y a Pidoo.',
+  },
+  {
+    icon: Ticket,
+    title: 'Se aplica solo',
+    desc: 'El restaurante la confirma y tu descuento salta solo en tu siguiente pedido.',
   },
 ]
 
@@ -190,13 +210,6 @@ const TarjetaEscalera = ({ escalera, restaurantes }) => {
   // Lo que se enseña en el recibo es el premio más alto de la escalera pintada:
   // así el ejemplo del pedido y la escalera nunca se contradicen.
   const premio = tope > 0 ? tope : 5
-  // El pedido del ejemplo se calcula, no se escribe: siempre al menos el doble
-  // del premio. No es una regla del sistema —`creadores_valor_cupon` solo topa
-  // el cupón al SUBTOTAL, así que 15 € sobre un pedido de 24,50 € se aplicaría
-  // sin problema— es criterio comercial: quien paga el descuento es el
-  // restaurante, y enseñarle en la portada un pedido con el 61 % descontado es
-  // la mejor forma de que no quiera el programa.
-  const base = Math.max(24.5, premio * 2 + 4.5)
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -246,8 +259,22 @@ const TarjetaEscalera = ({ escalera, restaurantes }) => {
         </div>
       </div>
 
-      {/* El resultado, tal y como lo ve el cliente al pagar. Sin esto, "gana un
-          descuento" es una idea; con esto es una línea en su cuenta. */}
+      <Recibo premio={premio} />
+    </div>
+  )
+}
+
+/* El resultado, tal y como lo ve el cliente al pagar. Sin esto, "gana un
+   descuento" es una idea; con esto es una línea en su cuenta. */
+const Recibo = ({ premio }) => {
+  // El pedido del ejemplo se calcula, no se escribe: siempre al menos el doble
+  // del premio. No es una regla del sistema —`creadores_valor_cupon` solo topa
+  // el cupón al SUBTOTAL, así que 15 € sobre un pedido de 24,50 € se aplicaría
+  // sin problema— es criterio comercial: quien paga el descuento es el
+  // restaurante, y enseñarle en la portada un pedido con el 61 % descontado es
+  // la mejor forma de que no quiera el programa.
+  const base = Math.max(24.5, premio * 2 + 4.5)
+  return (
       <div
         style={{
           background: '#FFFFFF',
@@ -301,6 +328,90 @@ const TarjetaEscalera = ({ escalera, restaurantes }) => {
           <span>{eur(base - premio)}</span>
         </div>
       </div>
+  )
+}
+
+/* Columna derecha en un programa de HISTORIAS: no hay escalera, hay un premio
+   fijo. Se enseña el premio, lo que hay que poner en la historia (las menciones)
+   y el recibo. Mientras no haya ningún programa abierto, va rotulado como
+   ejemplo, igual que la escalera. */
+const TarjetaHistoriaLanding = ({ euros, restaurantes }) => {
+  const real = euros > 0 && restaurantes.length > 0
+  const premio = real ? euros : 2
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div
+        style={{
+          background: '#FFFFFF',
+          borderRadius: 26,
+          padding: 24,
+          boxShadow: '0 40px 80px -34px rgba(26,24,21,0.6)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+          <div
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 11,
+              background: 'rgba(255,107,44,0.12)',
+              color: '#E4671F',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
+            <Sparkles size={17} strokeWidth={2.4} />
+          </div>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 15.5, color: INK }}>
+            Una historia, un descuento
+          </div>
+        </div>
+        <div style={{ fontFamily: FONT, fontSize: 12.5, color: '#5A5348', margin: '0 0 16px', lineHeight: 1.5 }}>
+          {real
+            ? `Abierto ahora en ${restaurantes.join(' · ')}`
+            : 'Ejemplo. Cada restaurante pone su premio.'}
+        </div>
+
+        <div
+          style={{
+            borderRadius: 16,
+            padding: '16px 18px',
+            background: 'linear-gradient(90deg, #FF6B2C 0%, #E4671F 100%)',
+            color: '#FFFFFF',
+          }}
+        >
+          <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 800, letterSpacing: -0.6, lineHeight: 1.1 }}>
+            {`${fmtEur(premio)} € de descuento`}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600, marginTop: 4, opacity: 0.92 }}>
+            en tu próximo pedido, por subir una historia
+          </div>
+        </div>
+
+        <div style={{ fontFamily: FONT, fontSize: 12.5, color: '#5A5348', marginTop: 14, lineHeight: 1.5 }}>
+          En tu historia, etiqueta al restaurante y a Pidoo:
+        </div>
+        <div
+          style={{
+            marginTop: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            borderRadius: 10,
+            background: '#F7F3EC',
+            fontFamily: FONT,
+            fontSize: 13.5,
+            fontWeight: 800,
+            color: INK,
+          }}
+        >
+          <AtSign size={14} strokeWidth={2.6} color="#A85018" />
+          #publi @restaurante @pidooapp
+        </div>
+      </div>
+
+      <Recibo premio={premio} />
     </div>
   )
 }
@@ -310,18 +421,22 @@ export default function CreadoresLanding() {
   const [escalera, setEscalera] = useState([])
   const [restaurantes, setRestaurantes] = useState([])
   const [maxEuros, setMaxEuros] = useState(0)
+  // Historias por defecto: es como funcionan los programas desde el 15 oct 2026,
+  // así que también es lo que enseña el ejemplo cuando no hay ninguno abierto.
+  const [historias, setHistorias] = useState(true)
+  const [importesDistintos, setImportesDistintos] = useState(false)
 
   useEffect(() => {
     let vivo = true
     ;(async () => {
       try {
-        const { data } = await supabase.rpc('creadores_programas_abiertos')
+        const { data } = await supabase.rpc('creadores_programas_abiertos_v2')
         if (!vivo) return
         const progs = Array.isArray(data) ? data : []
         if (!progs.length) return
 
-        // Se enseña la escalera del programa que más da: es la que sostiene el
-        // titular. Las demás salen por nombre en la línea de abajo.
+        // Se enseña el programa que más da: es el que sostiene el titular. Los
+        // demás salen por nombre en la línea de abajo.
         const mejor = progs.reduce(
           (a, p) => (mejorPremioEuros(p.escalera) > mejorPremioEuros(a.escalera) ? p : a),
           progs[0],
@@ -329,6 +444,9 @@ export default function CreadoresLanding() {
         setEscalera((mejor.escalera || []).slice().sort((a, b) => (a.views_necesarias || 0) - (b.views_necesarias || 0)))
         setRestaurantes(progs.map((p) => p.nombre).filter(Boolean))
         setMaxEuros(Math.max(0, ...progs.map((p) => mejorPremioEuros(p.escalera))))
+        // En cuanto haya un programa de vídeo, la sección vuelve a la escalera.
+        setHistorias(progs.every((p) => p.formato === 'historia'))
+        setImportesDistintos(new Set(progs.map((p) => mejorPremioEuros(p.escalera))).size > 1)
       } catch (_) {
         /* La sección se queda en su versión sin cifras. Nunca revienta la landing. */
       }
@@ -388,9 +506,10 @@ export default function CreadoresLanding() {
             Pidoo Creadores
           </h2>
 
-          {/* El titular lleva cifra SOLO si hay un premio real detrás. Y las
-              visualizaciones no son un matiz que se pueda quitar: sin ellas
-              parece que basta con grabar, y no basta. */}
+          {/* El titular lleva cifra SOLO si hay un premio real detrás. Y lo que
+              hay que hacer para ganarlo (etiquetar al restaurante, o las
+              visualizaciones en los vídeos) no es un matiz que se pueda quitar:
+              sin ello parece que basta con pedir, y no basta. */}
           <p
             style={{
               fontFamily: FONT,
@@ -403,9 +522,13 @@ export default function CreadoresLanding() {
               maxWidth: 520,
             }}
           >
-            {maxEuros > 0
-              ? `Graba tu pedido, súbelo a TikTok o Instagram y llévate hasta ${fmtEur(maxEuros)} € de descuento en el siguiente, según las visualizaciones que consigas.`
-              : 'Graba tu pedido, súbelo a TikTok o Instagram y gana descuento en tu siguiente pedido, según las visualizaciones que consigas. Ningún portal te paga por comer.'}
+            {historias
+              ? (maxEuros > 0
+                  ? `Sube tu pedido a tu historia de Instagram, etiqueta al restaurante y llévate ${importesDistintos ? 'hasta ' : ''}${fmtEur(maxEuros)} € de descuento en el siguiente.`
+                  : 'Sube tu pedido a tu historia de Instagram, etiqueta al restaurante y gana descuento en tu siguiente pedido. Ningún portal te paga por comer.')
+              : (maxEuros > 0
+                  ? `Graba tu pedido, súbelo a TikTok o Instagram y llévate hasta ${fmtEur(maxEuros)} € de descuento en el siguiente, según las visualizaciones que consigas.`
+                  : 'Graba tu pedido, súbelo a TikTok o Instagram y gana descuento en tu siguiente pedido, según las visualizaciones que consigas. Ningún portal te paga por comer.')}
           </p>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -414,7 +537,7 @@ export default function CreadoresLanding() {
               size="lg"
               style={{ background: INK, borderColor: INK, boxShadow: '0 10px 24px -10px rgba(26,24,21,0.7)' }}
             >
-              Empieza a grabar <ArrowRight size={17} strokeWidth={2.6} />
+              {historias ? 'Empieza ahora' : 'Empieza a grabar'} <ArrowRight size={17} strokeWidth={2.6} />
             </SolidBtn>
             <a
               href="/contacto"
@@ -452,7 +575,9 @@ export default function CreadoresLanding() {
         </div>
 
         <div className="pd-cre-card">
-          <TarjetaEscalera escalera={escalera} restaurantes={restaurantes} />
+          {historias
+            ? <TarjetaHistoriaLanding euros={maxEuros} restaurantes={restaurantes} />
+            : <TarjetaEscalera escalera={escalera} restaurantes={restaurantes} />}
         </div>
       </div>
 
@@ -461,7 +586,7 @@ export default function CreadoresLanding() {
           partía en dos líneas. */}
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '0 20px 82px' }}>
         <div className="pd-cre-pasos" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
-          {PASOS.map((p, i) => (
+          {(historias ? PASOS_HISTORIA : PASOS_VIDEO).map((p, i) => (
             <Paso key={p.title} {...p} n={i + 1} />
           ))}
         </div>

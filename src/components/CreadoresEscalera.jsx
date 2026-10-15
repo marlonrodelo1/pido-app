@@ -8,11 +8,14 @@ import { supabase } from '../lib/supabase'
 // de que le entregaran un pedido, y aun así solo veía el primer escalón. Sin
 // esto, "graba un vídeo y gana descuentos" es una promesa sin cifras.
 //
-// Los datos vienen SIEMPRE del servidor (`creadores_escalera_publica` /
-// `creadores_programa_publico` / `creadores_programas_abiertos`), que no
-// devuelve `coste_estimado`: lo que el premio le cuesta al restaurante no es
-// asunto del cliente. Por eso también el restaurante puede cambiar sus premios
-// y esta pantalla se entera sola, sin actualizar la app.
+// Los datos vienen SIEMPRE del servidor (`creadores_programa_publico_v2` /
+// `creadores_programas_abiertos_v2`), que no devuelve `coste_estimado`: lo que
+// el premio le cuesta al restaurante no es asunto del cliente. Por eso también
+// el restaurante puede cambiar sus premios y esta pantalla se entera sola, sin
+// actualizar la app.
+//
+// En un programa de HISTORIAS la "escalera" llega con un solo premio y 0
+// visualizaciones (premio fijo por subirla). Se pinta con el mismo componente.
 
 const C = {
   paper: '#FBF8F2', cream2: '#EFE9DD',
@@ -80,7 +83,11 @@ export default function CreadoresEscalera({ escalera = [], titulo, nota, compact
               {e.descripcion}
             </div>
             <div style={{ fontSize: compacto ? 11 : 11.5, color: C.stone, marginTop: 2 }}>
-              al llegar a {fmtNum(e.views_necesarias)} visualizaciones
+              {/* Las historias llegan como un premio de 0 visualizaciones: no
+                  hay escalera, hay un premio fijo por subirla. */}
+              {Number(e.views_necesarias) > 0
+                ? `al llegar a ${fmtNum(e.views_necesarias)} visualizaciones`
+                : 'por subir una historia a Instagram etiquetando al restaurante'}
             </div>
           </div>
         </div>
@@ -108,7 +115,7 @@ export function CreadoresComoGanar({ programas = null }) {
   useEffect(() => {
     if (programas) return
     let vivo = true
-    supabase.rpc('creadores_programas_abiertos').then(({ data }) => {
+    supabase.rpc('creadores_programas_abiertos_v2').then(({ data }) => {
       if (vivo) setAbiertos(Array.isArray(data) ? data : [])
     })
     return () => { vivo = false }
@@ -152,12 +159,13 @@ export function CreadoresComoGanar({ programas = null }) {
         marginTop: 12, padding: '10px 12px', borderRadius: 10,
         background: C.cream2, color: C.stone, fontSize: 11.5, lineHeight: 1.5,
       }}>
-        {/* Desde el 18 ago hay DOS caminos: el de siempre (con un pedido) y el
-            del QR de la mesa (sin pedido, con el visto bueno del restaurante).
-            Y el premio, venga de donde venga, solo se gasta a domicilio. */}
-        Puedes registrar un vídeo de un pedido ya entregado —tienes 14 días desde que te
-        llegó, un pedido un vídeo— o desde el código QR de la mesa si comes en el local,
-        y en ese caso lo revisa el restaurante.
+        {/* Dos caminos: con un pedido entregado o desde el QR de la mesa. Las
+            historias las confirma siempre el restaurante (es quien recibe la
+            mención). Y el premio, venga de donde venga, solo se gasta a domicilio. */}
+        Puedes apuntar tu historia con un pedido ya entregado —tienes 14 días desde que te
+        llegó, una historia por pedido— o desde el código QR de la mesa si comes en el local.
+        El restaurante la confirma al ver tu mención, y si no lo hace en 48 horas, el premio
+        te llega igual.
         <br /><br />
         <strong>El descuento que ganes solo se aplica en pedidos a domicilio</strong>, del
         mismo restaurante que te lo dio. Se te pone solo al pagar, sin códigos.
@@ -206,9 +214,11 @@ function FilaRestaurante({ r, soloUno }) {
             {r.nombre}
           </div>
           <div style={{ fontSize: 11.5, color: C.stone, marginTop: 2 }}>
-            {primero
-              ? `Desde ${fmtNum(primero.views_necesarias)} visualizaciones`
-              : 'Premios disponibles'}
+            {r.formato === 'historia' && primero
+              ? `${primero.descripcion} por una historia`
+              : primero
+                ? `Desde ${fmtNum(primero.views_necesarias)} visualizaciones`
+                : 'Premios disponibles'}
             {escalera.length > 1 && ` · ${escalera.length} premios`}
           </div>
         </div>
@@ -229,12 +239,20 @@ function FilaRestaurante({ r, soloUno }) {
 
 // Los tres pasos, para quien nunca ha oído hablar de esto. Se usa en la
 // pantalla de Creadores del perfil y en la ficha del restaurante.
-export function CreadoresComoFunciona({ compacto = false }) {
-  const pasos = [
-    'Haz tu pedido como siempre.',
-    'Cuando te llegue, graba un vídeo en TikTok o Instagram y pega el enlace en la app.',
-    'Según las visualizaciones que consiga, tu descuento aparece solo en tu siguiente pedido.',
-  ]
+// Por defecto cuenta las HISTORIAS, que es como funcionan todos los programas
+// desde el 15 oct 2026. `formato="video"` devuelve los pasos de la escalera.
+export function CreadoresComoFunciona({ compacto = false, formato = 'historia' }) {
+  const pasos = formato === 'video'
+    ? [
+        'Haz tu pedido como siempre.',
+        'Cuando te llegue, graba un vídeo en TikTok o Instagram y pega el enlace en la app.',
+        'Según las visualizaciones que consiga, tu descuento aparece solo en tu siguiente pedido.',
+      ]
+    : [
+        'Haz tu pedido como siempre.',
+        'Cuando te llegue, súbelo a tu historia de Instagram etiquetando al restaurante y a Pidoo, y apúntalo en la app.',
+        'El restaurante la confirma y tu descuento aparece solo en tu siguiente pedido a domicilio.',
+      ]
   return (
     <div style={{
       background: C.paper, border: `1px solid ${C.border}`, borderRadius: 14,
