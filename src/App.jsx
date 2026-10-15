@@ -18,6 +18,7 @@ const TiendaSocio = lazy(() => import('./pages/TiendaSocio'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const AbrirEnApp = lazy(() => import('./pages/AbrirEnApp'))
 const CartaLocal = lazy(() => import('./pages/CartaLocal'))
+const GanaHistoria = lazy(() => import('./pages/GanaHistoria'))
 
 // Error Boundary — evita pantalla blanca si algo falla
 class ErrorBoundary extends Component {
@@ -267,6 +268,9 @@ function AppRoutes() {
             precios de consumo en el local. Va ANTES del comodín /:slug. Es de
             solo lectura: ver la cabecera de CartaLocal.jsx. */}
         <Route path="/:slug/carta" element={<CartaLocal />} />
+        {/* Destino del QR de la pegatina de la bolsa (Creadores). URL IMPRESA:
+            no cambiarla nunca; si cambia el premio, se cambia la página. */}
+        <Route path="/:slug/gana" element={<GanaHistoria />} />
         <Route path="/:slug" element={<TiendaPublicaRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -51,21 +51,53 @@ export const CLAVE_VOLVER = 'pidoo_carta_participar'
 // mesa queda auditable por separado.
 export const CONDICIONES_VERSION_MESA = 'creadores-mesa-2026-08-18'
 
-export default function ParticiparMesa({ establecimiento, programa, onClose, onEnviado }) {
+// `contexto`:
+//   · 'mesa'   — la carta del QR de la mesa (lo de siempre): está comiendo en el local.
+//   · 'pedido' — la pegatina del QR que cierra la bolsa (`/<slug>/gana`): le acaba
+//                de llegar un pedido. Si tiene uno entregado en Pidoo sin historia,
+//                la historia se ata a ese pedido; si pidió por teléfono o en el
+//                mostrador (sin cuenta), entra sin pedido y la confirma el dueño.
+// `volverA`: a dónde devuelve el rodeo de Google tras identificarse.
+export default function ParticiparMesa({ establecimiento, programa, onClose, onEnviado, contexto = 'mesa', volverA = null }) {
   return createPortal(
     // `sinPerfil`: carga la sesión, no el perfil. Evita que abrir este panel
     // dispare el diálogo de permiso de notificaciones del navegador (ver el
     // comentario de AuthContext). Aquí no hace falta el perfil para nada.
     <AuthProvider sinPerfil>
-      <Panel establecimiento={establecimiento} programa={programa} onClose={onClose} onEnviado={onEnviado} />
+      <Panel establecimiento={establecimiento} programa={programa} onClose={onClose} onEnviado={onEnviado}
+        contexto={contexto} volverA={volverA} />
     </AuthProvider>,
     document.body
   )
 }
 
-function Panel({ establecimiento, programa, onClose, onEnviado }) {
+// El pedido entregado más reciente de este restaurante (últimos 14 días) que aún
+// no tiene historia. Es lo que permite que la historia de la pegatina cuente como
+// "con pedido" en vez de "sin pedido". Si falla la consulta, se sigue sin pedido:
+// el dueño la revisa igual, y un fallo aquí no puede costarle el premio a nadie.
+async function pedidoParaHistoria(usuarioId, estId) {
+  try {
+    const desde = new Date(Date.now() - 13.5 * 86400000).toISOString()
+    const { data: peds } = await supabase.from('pedidos')
+      .select('id')
+      .eq('usuario_id', usuarioId).eq('establecimiento_id', estId).eq('estado', 'entregado')
+      .gte('created_at', desde)
+      .order('created_at', { ascending: false }).limit(10)
+    const ids = (peds || []).map(p => p.id)
+    if (!ids.length) return null
+    const { data: usados } = await supabase.from('participaciones_creador')
+      .select('pedido_id').in('pedido_id', ids)
+    const ocupados = new Set((usados || []).map(u => u.pedido_id))
+    return ids.find(id => !ocupados.has(id)) || null
+  } catch {
+    return null
+  }
+}
+
+function Panel({ establecimiento, programa, onClose, onEnviado, contexto, volverA }) {
   const { user, loading } = useAuth()
   const [enviado, setEnviado] = useState(false)
+  const desdeMesa = contexto !== 'pedido'
   // Desde el 15 oct 2026 los programas son de historias. El de vídeos se queda
   // por si un restaurante vuelve a tener escalera por visualizaciones.
   const historia = programa?.formato === 'historia'
@@ -102,7 +134,7 @@ function Panel({ establecimiento, programa, onClose, onEnviado }) {
         </div>
 
         {enviado
-          ? <Enviado establecimiento={establecimiento} programa={programa} />
+          ? <Enviado establecimiento={establecimiento} programa={programa} desdeMesa={desdeMesa} />
           : loading
             ? <div style={{ padding: '30px 0', textAlign: 'center', fontSize: 13, color: C.stone }}>Un momento…</div>
             : user
@@ -110,13 +142,15 @@ function Panel({ establecimiento, programa, onClose, onEnviado }) {
                   ? <FormularioHistoria
                       programa={programa}
                       nombreRest={programa?.nombre || establecimiento?.nombre || 'el restaurante'}
-                      desdeMesa
+                      desdeMesa={desdeMesa}
                       onEnviar={async (usuario) => {
-                        const { error } = await supabase.rpc('crear_participacion_historia', {
-                          p_establecimiento_id: establecimiento.id,
-                          p_usuario_red: usuario,
-                          p_condiciones_version: CONDICIONES_VERSION_HISTORIA,
-                        })
+                        // Desde la bolsa, si hay un pedido suyo entregado sin
+                        // historia, va atada a él (no pasa por los frenos de
+                        // "sin pedido"). Desde la mesa, nunca hay pedido.
+                        const pedidoId = desdeMesa ? null : await pedidoParaHistoria(user.id, establecimiento.id)
+                        const { error } = await supabase.rpc('crear_participacion_historia', pedidoId
+                          ? { p_pedido_id: pedidoId, p_usuario_red: usuario, p_condiciones_version: CONDICIONES_VERSION_HISTORIA }
+                          : { p_establecimiento_id: establecimiento.id, p_usuario_red: usuario, p_condiciones_version: CONDICIONES_VERSION_HISTORIA })
                         if (error) return { error: traducirErrorHistoria(error.message) }
                         setEnviado(true); onEnviado?.()
                         return {}
@@ -125,15 +159,16 @@ function Panel({ establecimiento, programa, onClose, onEnviado }) {
                       establecimiento={establecimiento}
                       programa={programa}
                       onHecho={() => { setEnviado(true); onEnviado?.() }} />)
-              : <Identificarse establecimiento={establecimiento} programa={programa} />}
+              : <Identificarse establecimiento={establecimiento} programa={programa} desdeMesa={desdeMesa} volverA={volverA} />}
       </div>
     </div>
   )
 }
 
 /* ── Sin cuenta ──────────────────────────────────────────────────────────── */
-function Identificarse({ establecimiento, programa }) {
+function Identificarse({ establecimiento, programa, desdeMesa = true, volverA = null }) {
   const escalera = programa?.escalera || []
+  const nombre = establecimiento?.nombre || 'este restaurante'
 
   return (
     <div>
@@ -143,7 +178,7 @@ function Identificarse({ establecimiento, programa }) {
       }}>
         <div style={{ fontSize: 13.5, color: '#7A4C28', lineHeight: 1.55 }}>
           {programa?.formato === 'historia'
-            ? <>Sube una historia de lo que estás comiendo a Instagram, etiqueta a{' '}
+            ? <>Sube una historia {desdeMesa ? 'de lo que estás comiendo' : 'de tu pedido'} a Instagram, etiqueta a{' '}
                 {establecimiento?.nombre} y te llevas un descuento para tu próximo pedido a domicilio.</>
             : <>Sube un vídeo de lo que estás comiendo a TikTok o Instagram y, según las
                 visualizaciones que consiga, {establecimiento?.nombre} te regala un descuento.</>}
@@ -159,7 +194,9 @@ function Identificarse({ establecimiento, programa }) {
             escalera={escalera}
             titulo="Lo que puedes ganar"
             compacto
-            nota={`El premio se aplica solo en tu próximo pedido A DOMICILIO de ${establecimiento?.nombre || 'este restaurante'}. Aquí en la mesa la carta es solo para consultar.`} />
+            nota={desdeMesa
+              ? `El premio se aplica solo en tu próximo pedido A DOMICILIO de ${nombre}. Aquí en la mesa la carta es solo para consultar.`
+              : `El premio se aplica solo en tu próximo pedido A DOMICILIO de ${nombre}, desde la app o desde pidoo.es.`} />
         </div>
       )}
 
@@ -178,13 +215,13 @@ function Identificarse({ establecimiento, programa }) {
       <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.5, marginBottom: 12 }}>
         Con <strong>Google</strong> entras de un toque. Si te creas la cuenta con tu{' '}
         <strong>correo</strong>, tendrás que confirmarlo desde el email que te enviamos y
-        volver a escanear el QR de la mesa para terminar.
+        volver a escanear el QR {desdeMesa ? 'de la mesa' : 'de la pegatina'} para terminar.
       </div>
 
       {/* El formulario de siempre. Se le pasa la ruta de vuelta para que el rodeo
           de Google devuelva al cliente a esta misma carta y no a la portada. */}
       <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
-        <Login nextPath={establecimiento?.slug ? `/${establecimiento.slug}/carta` : null} />
+        <Login nextPath={volverA || (establecimiento?.slug ? `/${establecimiento.slug}/carta` : null)} />
       </div>
     </div>
   )
@@ -364,7 +401,7 @@ function Paso({ n, titulo }) {
 // lo que va a encontrar en la app son los precios de domicilio, que son otros
 // (en algunos platos, el doble). El descuento es justo lo que amortigua ese
 // salto, así que es lo que tiene que ir por delante.
-function Enviado({ establecimiento, programa }) {
+function Enviado({ establecimiento, programa, desdeMesa = true }) {
   const tope = mejorPremioEuros(programa?.escalera || [])
   const historia = programa?.formato === 'historia'
   return (
@@ -410,8 +447,8 @@ function Enviado({ establecimiento, programa }) {
         </div>
         <div style={{ fontSize: 12.5, color: C.stone, lineHeight: 1.55 }}>
           El descuento <strong>solo se puede usar pidiendo a domicilio</strong> en{' '}
-          {establecimiento?.nombre}, desde la app o desde pidoo.es. Aquí, en el
-          local, no se aplica. Se te pondrá solo al pagar, sin códigos.
+          {establecimiento?.nombre}, desde la app o desde pidoo.es.
+          {desdeMesa ? ' Aquí, en el local, no se aplica.' : ''} Se te pondrá solo al pagar, sin códigos.
         </div>
       </div>
 
